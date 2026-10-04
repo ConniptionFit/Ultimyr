@@ -1,6 +1,6 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { hasScope } from "@ultimyr/authz";
-import { buildCoverage, topGaps, type ObjectiveNode, type QuizStats } from "@ultimyr/coverage";
+import { buildCoverage, buildQueue, topGaps, type ObjectiveNode, type QuizStats } from "@ultimyr/coverage";
 import { z } from "zod";
 import type { Authed } from "./auth.js";
 import type { McpConfig } from "./config.js";
@@ -144,6 +144,13 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     await send("content", `/v1/items/${it.id}`, { status: "draft", source: "mcp" }, "PATCH");
     return true;
   }
+  const objectiveIds = z.array(z.uuid()).max(30).optional().describe("Exam objective ids from get_objectives that this material covers. Links it in the same call.");
+  /** Link a new guide or deck to objectives. Returns how many were linked. */
+  async function linkItem(archiveId: string, refId: string, ids: string[] | undefined) {
+    if (!ids?.length) return 0;
+    await send("content", `/v1/archives/${archiveId}/links`, { kind: "item", refId, objectiveIds: ids }, "PUT");
+    return ids.length;
+  }
   const holdFlag = z.boolean().default(true).describe("Hide the change from learners until a person republishes it. Default true.");
 
   // ---- reading ----------------------------------------------------------
@@ -184,9 +191,10 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     return { id: row.id, title: row.title, overview: row.overview, vendor: row.vendor, tags: row.tags };
   });
 
-  tool("create_guide", "content:write", "write", { title: "Create a guide", description: "Create a study guide in an archive from Markdown (# and ## headings, lists, short paragraphs). Saved as a draft.", input: { archiveId: id, title: z.string().min(1).max(160), summary: z.string().max(2000).default(""), markdown: z.string().min(1).max(500_000) } }, async (a) => {
+  tool("create_guide", "content:write", "write", { title: "Create a guide", description: "Create a study guide in an archive from Markdown (# and ## headings, lists, short paragraphs). Pass objectiveIds (from get_objectives) to link it to the exam objectives it covers. Saved as a draft.", input: { archiveId: id, title: z.string().min(1).max(160), summary: z.string().max(2000).default(""), markdown: z.string().min(1).max(500_000), objectiveIds: objectiveIds } }, async (a) => {
     const it = await send("content", `/v1/archives/${a.archiveId}/items`, { kind: "guide", title: a.title, summary: a.summary, markdown: a.markdown, source: "mcp" });
-    return { ...summary(it), note: "Saved as a draft. A person must review and publish it in Ultimyr." };
+    const linked = await linkItem(a.archiveId, it.id, a.objectiveIds);
+    return { ...summary(it), linkedObjectives: linked, note: "Saved as a draft. A person must review and publish it in Ultimyr." };
   });
   tool("update_guide", "content:write", "write", { title: "Update a guide", description: "Replace a guide's Markdown (and optionally title or summary). Creates a new version marked as MCP, so it can be restored.", input: { itemId: id, markdown: z.string().min(1).max(500_000).optional(), title: z.string().min(1).max(160).optional(), summary: z.string().max(2000).optional(), note: z.string().max(200).optional(), holdForReview: holdFlag } }, async (a) => {
     const before = await item(a.itemId, "guide");
@@ -194,9 +202,10 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     const held = await hold(before, a.holdForReview);
     return { ...summary(it), status: held ? "draft" : it.status, note: held ? "The guide is now a draft until a person republishes it. The previous version is in its history." : undefined };
   });
-  tool("create_deck", "content:write", "write", { title: "Create a deck", description: "Create a flashcard deck, optionally with cards. Saved as a draft.", input: { archiveId: id, title: z.string().min(1).max(160), summary: z.string().max(2000).default(""), cards: z.array(card.omit({ id: true })).max(500).optional() } }, async (a) => {
+  tool("create_deck", "content:write", "write", { title: "Create a deck", description: "Create a flashcard deck, optionally with cards. Pass objectiveIds to count it toward those exam objectives. Saved as a draft.", input: { archiveId: id, title: z.string().min(1).max(160), summary: z.string().max(2000).default(""), cards: z.array(card.omit({ id: true })).max(500).optional(), objectiveIds: objectiveIds } }, async (a) => {
     const it = await send("content", `/v1/archives/${a.archiveId}/items`, { kind: "deck", title: a.title, summary: a.summary, cards: a.cards, source: "mcp" });
-    return { ...summary(it), cardCount: a.cards?.length ?? 0, note: "Saved as a draft. A person must review and publish it in Ultimyr." };
+    const linked = await linkItem(a.archiveId, it.id, a.objectiveIds);
+    return { ...summary(it), cardCount: a.cards?.length ?? 0, linkedObjectives: linked, note: "Saved as a draft. A person must review and publish it in Ultimyr." };
   });
   tool("upsert_cards", "content:write", "write", { title: "Add or update cards", description: "Add cards to a deck, or update existing ones by id.", input: { itemId: id, cards: z.array(card).min(1).max(200), holdForReview: holdFlag } }, async (a) => {
     const before = await item(a.itemId, "deck");
@@ -291,6 +300,24 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     const cov = buildCoverage(tree, stats);
     return { summary: cov.summary, biggestGaps: topGaps(cov, 8).map((r) => ({ id: r.id, code: r.code, title: r.title, status: r.status, missing: r.missing })), rows: cov.rows, note: `coverageBp and accuracyBp are basis points: 8000 means 80%. ${stats ? "" : "Question counts are missing because this connection cannot read quizzes."}`.trim() };
   });
+  tool("get_build_queue", "content:read", "read", { title: "Get the build queue", description: "The to-do list for building an archive out from its exam objectives: the next few concrete tasks (write a guide for a domain, add N flashcards or N practice questions for an objective), the decks and quizzes that already exist, and overall progress. Work the tasks, then call it again until done is true. Set objectives first with set_objectives. Depth: quick, standard (default) or deep.", input: { archiveId: id, depth: z.enum(["quick", "standard", "deep"]).default("standard"), batch: z.number().int().min(1).max(10).default(4) } }, async (a) => {
+    const [tree, arch] = await Promise.all([get("content", `/v1/archives/${a.archiveId}/objectives`), get("content", `/v1/archives/${a.archiveId}`)]);
+    if (!tree.objectives?.length) return { done: false, tasks: [], note: "This archive has no exam objectives yet. Ask the person for the exam guide or objective list, add it with set_objectives, then call this again." };
+    let stats: QuizStats | null = null;
+    if (hasScope(principal, "quiz:read")) {
+      stats = await get("quiz", "/v1/analytics/objectives", { archive: a.archiveId }).catch((e) => {
+        if (e instanceof UpstreamError && (e.status === 403 || e.status === 404)) return null;
+        throw e;
+      });
+    }
+    const q = buildQueue(buildCoverage(tree.objectives as ObjectiveNode[], stats), a.depth, a.batch);
+    return {
+      ...q,
+      existing: (arch.items ?? []).map((i: any) => ({ id: i.id, kind: i.kind, title: i.title, status: i.status })),
+      howTo: "guide: create_guide with objectiveIds set to the task's objectives. cards: create_deck titled '<code> Flashcards' with objectiveIds set to that one objective (or upsert_cards into a deck you made for it). questions: add to one quiz per domain (create_quiz once, reuse it) with create_quiz_questions, setting each question's objectiveId. Then call get_build_queue again.",
+      note: stats ? undefined : "Question counts are missing because this connection cannot read quizzes, so question tasks may repeat.",
+    };
+  });
   tool("get_credentials", "content:read", "read", { title: "Get credentials", description: "The person's tracked certifications: exam dates, earned and expiry dates, continuing education progress, and what needs attention soon (alerts, most urgent first). Voucher codes are never shown here.", input: {} }, async () => {
     const r = await get("content", "/v1/credentials");
     return {
@@ -340,6 +367,18 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   );
   prompt("build_roadmap", "Plan a learning roadmap for an archive from its material and training links.", { archiveId: z.string(), goal: z.string().max(300).optional() }, (a) =>
     `Build a learning roadmap for archive ${a.archiveId}${a.goal ? ` (goal: ${a.goal})` : ""}. Start with get_archive, list_resources and get_roadmap. Group the guides, decks, quizzes and links into stages such as weekly blocks, put the required steps first and mark extras optional, and add a milestone after each stage. Only add links I have given you or you have opened yourself, using add_resources. Save the plan with set_roadmap and tell me it is a draft to review.`,
+  );
+  prompt("build_certification", "Build a whole certification: objectives, roadmap, guides, flashcards and quizzes, all as drafts.", { certification: z.string().min(1).max(200), depth: z.enum(["quick", "standard", "deep"]).optional(), archiveId: z.string().optional() }, (a) =>
+    `Build a complete study archive for "${a.certification}" in Ultimyr (depth: ${a.depth ?? "standard"}). Work in these phases and tell me when each is done.\n` +
+    `1. Facts first. ${a.archiveId ? `Use archive ${a.archiveId}. ` : "Call list_archives to check for an existing archive, otherwise create one with create_archive. "}Ask me for the vendor's official exam objectives (pasted text or a link you can open). If I have none, say so and stop. Never guess objectives, exam weights, passing scores or prices.\n` +
+    `2. Objectives. Save them with set_objectives (## domain with its percentage, then one line per objective) and check the result with get_objectives.\n` +
+    `3. Resources. Add only links I gave you or you have opened, with add_resources.\n` +
+    `4. Roadmap. Draft it with import_outline or set_roadmap: stages by week, required steps first, a milestone after each stage.\n` +
+    `5. Build. Call get_build_queue, do every task it returns (guides, flashcards, questions, each linked to its objectives), then call it again. Repeat until done is true. Write in your own words, never copy exam questions or vendor text, and keep facts you are unsure about out. If a write is rate limited, wait a minute and continue.\n` +
+    `6. Report. Call get_coverage and tell me the coverage, anything thin, and what needs my review. Everything is a draft: remind me to review and publish it in Ultimyr.`,
+  );
+  prompt("continue_build", "Pick up building an archive where an earlier chat stopped.", { archiveId: z.string(), depth: z.enum(["quick", "standard", "deep"]).optional() }, (a) =>
+    `Continue building archive ${a.archiveId} (depth: ${a.depth ?? "standard"}). Call get_archive and get_coverage to see where it stands, then work get_build_queue batch by batch until done is true. Link everything to its objectives, write in your own words, and finish with a short coverage report. Everything stays a draft for me to review.`,
   );
   prompt("quiz_me_on", "Quiz the learner on a topic using their material.", { topic: z.string().max(300) }, (a) =>
     `Quiz me on "${a.topic}". Find my material with search_materials, then ask one question at a time, wait for my answer, and explain it. Use get_weak_areas to focus on where I am weakest.`,

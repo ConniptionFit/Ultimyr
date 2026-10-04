@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCoverage, topGaps, type MaterialCounts, type ObjectiveNode, type QuizStats } from "../src/index.js";
+import { buildCoverage, buildQueue, topGaps, type MaterialCounts, type ObjectiveNode, type QuizStats } from "../src/index.js";
 
 const c = (guides = 0, decks = 0, cards = 0, resources = 0): MaterialCounts => ({ guides, decks, cards, resources });
 const node = (id: string, counts: MaterialCounts, extra: Partial<ObjectiveNode> = {}): ObjectiveNode => ({ id, code: id, title: `Objective ${id}`, weightBp: null, counts, ...extra });
@@ -71,5 +71,36 @@ describe("coverage map", () => {
   it("uses custom thresholds", () => {
     const cov = buildCoverage([node("a", c(1, 0, 2, 0))], stats([q("a", 1)]), { minCards: 2, minQuestions: 1 });
     expect(cov.rows[0]!.status).toBe("covered");
+  });
+});
+
+describe("build queue", () => {
+  it("lists a guide per domain then cards and questions per objective, heaviest domain first", () => {
+    const cov = buildCoverage(tree, stats([q("1.1", 4)]));
+    const queue = buildQueue(cov, "standard", 50);
+    expect(queue.done).toBe(false);
+    expect(queue.tasks.slice(0, 4).map((t) => [t.type, t.domain.code, t.objectives.map((o) => o.code), t.need])).toEqual([
+      ["guide", "1.0", ["1.2", "1.3"], undefined],
+      ["cards", "1.0", ["1.1"], 2],
+      ["questions", "1.0", ["1.1"], 2],
+      ["cards", "1.0", ["1.2"], 8],
+    ]);
+    expect(queue.tasks.at(-1)).toMatchObject({ type: "questions", domain: { code: "2.0" }, need: 6 });
+    expect(queue.remaining.tasks).toBe(queue.tasks.length);
+  });
+
+  it("counts draft questions so work in flight is not repeated", () => {
+    const t: ObjectiveNode[] = [node("a", c(1, 0, 10), { weightBp: 10000 })];
+    const cov = buildCoverage(t, stats([q("a", 2, 0, 0, 4)]));
+    expect(buildQueue(cov, "standard").done).toBe(true);
+  });
+
+  it("batches, scales with depth and reports progress", () => {
+    const cov = buildCoverage(tree, null);
+    expect(buildQueue(cov, "standard", 3).tasks).toHaveLength(3);
+    expect(buildQueue(cov, "deep", 100).remaining.cards).toBeGreaterThan(buildQueue(cov, "quick", 100).remaining.cards);
+    const full = buildQueue(buildCoverage([node("a", c(1, 0, 30), { weightBp: 10000 })], stats([q("a", 20)])), "deep");
+    expect(full).toMatchObject({ done: true, progressBp: 10000 });
+    expect(buildQueue(buildCoverage([], null)).done).toBe(false);
   });
 });

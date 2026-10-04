@@ -29,6 +29,7 @@ export const terms = {
   credentials: { themed: "Sigils", plain: "Credentials" },
   drills: { themed: "Whetstone", plain: "Weak-area drills" },
   coverage: { themed: "Atlas", plain: "Coverage" },
+  build: { themed: "Commission the Archivist", plain: "Build with an AI assistant" },
   countdown: { themed: "The Eve", plain: "Exam countdown" },
 } as const;
 export type TermKey = keyof typeof terms;

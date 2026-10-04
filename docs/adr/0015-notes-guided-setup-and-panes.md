@@ -1,4 +1,4 @@
-# ADR 0014: Guided notes setup, per-person root folder and pane
+# ADR 0015: Guided notes setup, per-person root folder and pane
 
 **Status:** Accepted. Amends ADR 0013 on who sets the server address.
 

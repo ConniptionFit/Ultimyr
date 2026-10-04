@@ -189,3 +189,74 @@ export function topGaps(c: Coverage, limit = 5): CoverageRow[] {
     .sort((a, b) => rank[a.status] - rank[b.status] || (domainWeight.get(b.id) ?? b.weightBp ?? 0) - (domainWeight.get(a.id) ?? a.weightBp ?? 0) || a.code.localeCompare(b.code, undefined, { numeric: true }) || a.title.localeCompare(b.title))
     .slice(0, limit);
 }
+
+/** How much to build per objective. */
+export type Depth = "quick" | "standard" | "deep";
+export const DEPTH: Record<Depth, { cards: number; questions: number }> = {
+  quick: { cards: 5, questions: 3 },
+  standard: { cards: 10, questions: 6 },
+  deep: { cards: 20, questions: 12 },
+};
+
+export interface BuildTask {
+  type: "guide" | "cards" | "questions";
+  /** The exam domain the task belongs to. */
+  domain: { id: string; code: string; title: string; weightBp: number | null };
+  /** The objectives the new material must be linked to. */
+  objectives: { id: string; code: string; title: string }[];
+  /** For cards and questions: how many more to add. */
+  need?: number;
+}
+export interface BuildQueue {
+  done: boolean;
+  /** Share of the wanted material that exists, 0 to 10000. */
+  progressBp: number;
+  remaining: { guides: number; cards: number; questions: number; tasks: number };
+  tasks: BuildTask[];
+}
+
+/**
+ * The to-do list for building an archive out: a guide for each domain (linked to the objectives it covers), then
+ * flashcards and practice questions up to the chosen depth for each objective. Heaviest domains first. Pure, so a new
+ * chat can pick up exactly where an old one stopped. Draft questions count, so work in flight is not repeated.
+ */
+export function buildQueue(c: Coverage, depth: Depth = "standard", batch = 4): BuildQueue {
+  const want = DEPTH[depth];
+  const domains = [...c.rows].sort((a, b) => (b.weightBp ?? -1) - (a.weightBp ?? -1) || a.code.localeCompare(b.code, undefined, { numeric: true }));
+  const all: BuildTask[] = [];
+  let have = 0;
+  let need = 0;
+  const rem = { guides: 0, cards: 0, questions: 0 };
+  for (const d of domains) {
+    const dom = { id: d.id, code: d.code, title: d.title, weightBp: d.weightBp };
+    const leaves = d.children?.length ? d.children : [d];
+    const noGuide = leaves.filter((l) => l.counts.guides === 0);
+    need += leaves.length;
+    have += leaves.length - noGuide.length;
+    if (noGuide.length) {
+      rem.guides += 1;
+      all.push({ type: "guide", domain: dom, objectives: noGuide.map((l) => ({ id: l.id, code: l.code, title: l.title })) });
+    }
+    for (const l of leaves) {
+      const o = [{ id: l.id, code: l.code, title: l.title }];
+      const cards = Math.max(0, want.cards - l.counts.cards);
+      const questions = Math.max(0, want.questions - l.questions - l.drafts);
+      need += want.cards + want.questions;
+      have += Math.min(l.counts.cards, want.cards) + Math.min(l.questions + l.drafts, want.questions);
+      if (cards) {
+        rem.cards += cards;
+        all.push({ type: "cards", domain: dom, objectives: o, need: cards });
+      }
+      if (questions) {
+        rem.questions += questions;
+        all.push({ type: "questions", domain: dom, objectives: o, need: questions });
+      }
+    }
+  }
+  return {
+    done: all.length === 0 && domains.length > 0,
+    progressBp: need ? Math.round((have * 10_000) / need) : 0,
+    remaining: { ...rem, tasks: all.length },
+    tasks: all.slice(0, Math.max(1, batch)),
+  };
+}
