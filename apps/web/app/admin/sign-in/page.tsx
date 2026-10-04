@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Badge, ErrorLine, selectCls } from "@/components/admin/bits";
+import { SsoGuide, type Prefill } from "@/components/admin/sso-guide";
 import { Button, Field, Toggle } from "@/components/ui";
 import { message } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
@@ -39,6 +40,8 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<Kind>("oidc");
+  const [prefill, setPrefill] = useState<(Prefill & { n: number }) | null>(null);
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
 
   const load = useCallback(async () => {
     try {
@@ -50,6 +53,9 @@ export default function SignIn() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (prefill) document.getElementById("new-provider")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [prefill]);
 
   async function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -88,6 +94,15 @@ export default function SignIn() {
       <h2 className="text-2xl">Sign-in methods</h2>
       <p className="text-sm text-muted">Passwords, passkeys and authenticator codes are always available. Add single sign-on so people can use your identity provider. See docs/identity.md.</p>
       <ErrorLine error={error} />
+      <SsoGuide
+        origin={origin}
+        existing={list}
+        onPrefill={(p) => {
+          setKind(p.kind);
+          setPrefill({ ...p, n: Date.now() });
+          setAdding(true);
+        }}
+      />
       <ul className="divide-y divide-line rounded-md border border-line">
         {list.map((p) => (
           <li key={p.id} className="space-y-3 p-4">
@@ -117,7 +132,7 @@ export default function SignIn() {
       {!adding ? (
         <Button onClick={() => setAdding(true)}>Add a provider</Button>
       ) : (
-        <form onSubmit={create} className="space-y-3 rounded-md border border-line p-5">
+        <form id="new-provider" key={prefill?.n ?? 0} onSubmit={create} className="space-y-3 rounded-md border border-line p-5">
           <h3 className="text-lg">New provider</h3>
           <label className="block space-y-1 text-sm text-muted">
             Type
@@ -129,8 +144,8 @@ export default function SignIn() {
               ))}
             </select>
           </label>
-          <Field id="p-name" name="name" label="Button label" required maxLength={60} />
-          <Field id="p-slug" name="slug" label="Short name (lowercase, used in the address)" required pattern="[a-z0-9][a-z0-9\-]{0,38}[a-z0-9]" />
+          <Field id="p-name" name="name" label="Button label" required maxLength={60} defaultValue={prefill?.name ?? ""} />
+          <Field id="p-slug" name="slug" label="Short name (lowercase, used in the address)" required pattern="[a-z0-9][a-z0-9\-]{0,38}[a-z0-9]" defaultValue={prefill?.slug ?? ""} />
           {FIELDS[kind].map(([key, label, type, required]) => (
             <Field key={`${kind}-${key}`} id={`p-${key}`} name={key} label={label} type={type} required={required} />
           ))}

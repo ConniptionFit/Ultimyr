@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/bits";
+import { CopyButton } from "@/components/admin/copy-button";
 import { Button, Field } from "@/components/ui";
 import { cleanBase, curlCheck, SCIM_PROVIDERS, type Fill } from "@/lib/scim-providers";
 
@@ -17,28 +18,6 @@ function load(): Saved {
   } catch {
     return empty;
   }
-}
-
-function CopyButton({ text, label }: { text: string; label: string }) {
-  const [ok, setOk] = useState(false);
-  return (
-    <Button
-      variant="quiet"
-      className="px-3 py-1"
-      aria-label={`Copy ${label}`}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setOk(true);
-          setTimeout(() => setOk(false), 1500);
-        } catch {
-          setOk(false);
-        }
-      }}
-    >
-      {ok ? "Copied" : "Copy"}
-    </Button>
-  );
 }
 
 export function ScimGuide({ url, token, onCreateToken }: { url: string; token: string | null; onCreateToken: (name: string) => Promise<void> }) {

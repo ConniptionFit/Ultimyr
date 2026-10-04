@@ -21,6 +21,9 @@ In production the service refuses to start without both.
 Existing local accounts are never auto-linked by email unless the provider has `trustEmail` enabled.
 
 ## Adding an identity provider
+**Guided setup.** Admin panel > Sign-in methods opens with a setup guide. Pick a provider (authentik is the default) and OpenID Connect or SAML, choose the short name, and the guide shows the exact addresses to paste into your provider (redirect address, ACS address, entity ID) with copy buttons. Type your provider's address to get direct links to the right admin pages. The last steps open the Add a provider form with the type and short name filled in, then give you a test sign-in link once the provider exists. Notes the guide repeats where they matter: SAML assertions must be signed, an email address must be sent, SAML sign-in starts from Ultimyr only, and Keycloak needs Sign assertions on and Client signature required off.
+
+**By hand.**
 Admin only. `POST /api/v1/admin/idp-providers` with a bearer token.
 
 ```jsonc
@@ -42,7 +45,7 @@ Administrators (role `platform_admin`) see **Admin panel** in the account menu (
 | General | Counts, the registration switch, deployment details. |
 | Users | Search, suspend or reinstate, edit roles. The last active administrator is protected. |
 | Groups | Create local groups and manage members. SSO and SCIM groups are read only. |
-| Sign-in methods | Add, enable and remove OIDC, OAuth 2 and SAML providers. |
+| Sign-in methods | A step by step setup guide for OpenID Connect and SAML (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and add, enable and remove OIDC, OAuth 2 and SAML providers. |
 | Provisioning | A step by step SCIM setup guide (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and SCIM token management. |
 | Audit log | Latest sign-ins and admin actions, with a filter. |
 
