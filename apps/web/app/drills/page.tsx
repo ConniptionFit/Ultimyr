@@ -67,7 +67,7 @@ function Drills() {
     <div className="ulti-fade max-w-xl space-y-8">
       <div>
         <h1 className="flex items-center gap-2 text-3xl">
-          <Dumbbell aria-hidden /> Weak-area drills
+          <Dumbbell aria-hidden /> {t("drills")}
         </h1>
         <p className="mt-1 text-sm text-muted">A short practice set built from the questions you miss most, with instant feedback. Drills do not count toward your readiness estimate.</p>
       </div>

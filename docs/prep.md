@@ -2,6 +2,8 @@
 
 Four tools that help you get to the exam date and stay certified. All are under the **Exam prep** menu.
 
+**Names:** with themed names on (Your settings), the menu and pages say Preparations, Sigils (credentials), Whetstone (drills), Atlas (coverage) and The Eve (countdown). Plain names are the default. APIs, MCP and exports always use the plain names.
+
 ## Credential tracker
 **Where:** Exam prep > Credentials.
 

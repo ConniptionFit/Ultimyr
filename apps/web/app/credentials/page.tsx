@@ -7,12 +7,14 @@ import { CredentialForm } from "@/components/credentials/credential-form";
 import { Loading } from "@/components/loading";
 import { RequireSession } from "@/lib/require-session";
 import { Button } from "@/components/ui";
+import { useNaming } from "@/lib/naming";
 import { useAuth } from "@/lib/auth";
 import type { Alert, Credential } from "@/lib/certs";
 import type { Archive } from "@/lib/types";
 
 function Credentials() {
   const { api } = useAuth();
+  const { t } = useNaming();
   const [list, setList] = useState<Credential[] | null>(null);
   const [archives, setArchives] = useState<Archive[]>([]);
   const [adding, setAdding] = useState(false);
@@ -41,7 +43,7 @@ function Credentials() {
     <div className="ulti-fade space-y-8">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl">Credentials</h1>
+          <h1 className="text-3xl">{t("credentials")}</h1>
           <p className="text-sm text-muted">Exam dates, vouchers, renewals and continuing education hours, kept private to you.</p>
         </div>
         {!adding && (

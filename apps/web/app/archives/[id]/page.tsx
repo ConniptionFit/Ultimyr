@@ -282,7 +282,7 @@ export default function ArchivePage() {
                 onClick={() => setTab(k)}
                 className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}
               >
-                {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : k === "resources" ? t("resources") : "Coverage"}
+                {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : k === "resources" ? t("resources") : t("coverage")}
               </button>
             ))}
           </div>

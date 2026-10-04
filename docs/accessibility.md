@@ -41,7 +41,7 @@ The reading room has an **Add a small example** button. It imports a tiny CompTI
 
 | Measure | Budget | Today |
 |---|---|---|
-| All JavaScript | 500 KB | 466 KB |
+| All JavaScript | 500 KB | 474 KB |
 | Largest JS chunk | 90 KB | 70 KB |
 | CSS | 15 KB | 5 KB |
 

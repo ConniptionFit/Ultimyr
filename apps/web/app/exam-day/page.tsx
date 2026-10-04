@@ -8,6 +8,7 @@ import { Loading } from "@/components/loading";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { MODE_LABEL, daysText, formatDay, formatDayShort, todayIso, type Credential, type Plan, type PlanDay, type PlanTask } from "@/lib/certs";
+import { useNaming } from "@/lib/naming";
 import { pct } from "@/lib/quiz";
 import { RequireSession } from "@/lib/require-session";
 import type { Archive } from "@/lib/types";
@@ -33,6 +34,7 @@ const store = {
 
 function ExamDay() {
   const { api } = useAuth();
+  const { t } = useNaming();
   const params = useSearchParams();
   const credentialId = params.get("credential");
   const [credential, setCredential] = useState<Credential | null>(null);
@@ -115,7 +117,7 @@ function ExamDay() {
     <div className="ulti-fade space-y-8">
       <div>
         <h1 className="flex items-center gap-2 text-3xl">
-          <CalendarClock aria-hidden /> Exam countdown
+          <CalendarClock aria-hidden /> {t("countdown")}
         </h1>
         <p className="mt-1 text-sm text-muted">{credential ? credential.name : "A day-by-day plan to your exam date, shaped by how many days are left and how you are scoring."}</p>
       </div>
