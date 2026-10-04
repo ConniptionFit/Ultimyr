@@ -61,6 +61,9 @@ services:
       ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
       ULTIMYR_ALLOW_INSECURE_IDP: ${ULTIMYR_ALLOW_INSECURE_IDP:-false}
       AUTH_REGISTRATION: ${AUTH_REGISTRATION:-open}
+      # Admin panel > About asks GitHub for the latest release. Set to false for air-gapped installs; ULTIMYR_REPO points it at a fork.
+      ULTIMYR_UPDATE_CHECK: ${ULTIMYR_UPDATE_CHECK:-true}
+      ULTIMYR_REPO: ${ULTIMYR_REPO:-ConniptionFit/Ultimyr}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       NODE_ENV: production
     secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper]

@@ -48,6 +48,7 @@ Administrators (role `platform_admin`) see **Admin panel** in the account menu (
 | Sign-in methods | A step by step setup guide for OpenID Connect and SAML (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and add, enable and remove OIDC, OAuth 2 and SAML providers, and the switch that disables local accounts. |
 | Provisioning | A step by step SCIM setup guide (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and SCIM token management. |
 | Audit log | Latest sign-ins and admin actions, with a filter. |
+| About this app (Colophon) | Name, repository, license, running version and commit, whether an update is available, the latest changelog, and links to docs and issue or security reporting. Needs outbound HTTPS to GitHub for the update check, which you can turn off with `ULTIMYR_UPDATE_CHECK=false`. |
 
 Everything that only affects your own session (display, security, AI keys, connected apps, themed names) is under **Your settings** in the same menu.
 
