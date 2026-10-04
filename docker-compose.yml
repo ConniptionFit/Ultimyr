@@ -1,8 +1,13 @@
-# Ultimyr: Phase 1 stack (edge, web, auth, one-shot migrations, optional bundled Postgres).
+# Ultimyr core stack: web, auth, one-shot migrations, optional bundled Postgres.
+# This file is reverse-proxy agnostic. Pick ONE proxy overlay via COMPOSE_FILE in .env:
+#
+#   Nginx Proxy Manager (default):  COMPOSE_FILE=docker-compose.yml:docker-compose.npm.yml
+#   Traefik (bundled):              COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml
+#   Neither (publish ports only):   COMPOSE_FILE=docker-compose.yml
 #
 # Bundled database:   docker compose --profile bundled-db up -d
 # External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d traefik auth          (no web container)
+# API/MCP only:       docker compose up -d auth      (skip the web container)
 #
 # Secrets are read from ./secrets via Docker secrets (see README).
 
@@ -17,18 +22,6 @@ x-db-env: &db-env
   PG_SSLMODE: ${PG_SSLMODE:-disable}
 
 services:
-  traefik:
-    image: traefik:v3.2
-    command:
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-      - --ping=true
-    ports:
-      - "${ULTIMYR_HTTP_PORT:-8080}:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: unless-stopped
 
   # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
   postgres:
@@ -68,23 +61,20 @@ services:
     secrets: [pg_password, jwt_private_key]
     depends_on:
       migrate: { condition: service_completed_successfully }
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/me`) || PathPrefix(`/.well-known`)
-      - traefik.http.routers.auth.priority=100
-      - traefik.http.routers.auth.middlewares=auth-strip
-      - traefik.http.middlewares.auth-strip.stripprefix.prefixes=/api
-      - traefik.http.services.auth.loadbalancer.server.port=4001
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AUTH_PORT:-4001}:4001"
     restart: unless-stopped
 
   web:
-    build: { context: ., target: web }
+    build:
+      context: .
+      target: web
+      args:
+        # Baked into the web image: where the web app proxies /api/v1 (the compose service name).
+        AUTH_URL: http://auth:4001
     depends_on: [auth]
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.web.rule=PathPrefix(`/`)
-      - traefik.http.routers.web.priority=1
-      - traefik.http.services.web.loadbalancer.server.port=3000
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped
 
 secrets:

@@ -162,3 +162,25 @@ describe("auth config", () => {
     expect(() => loadAuthConfig({ NODE_ENV: "production" })).toThrow(/ULTIMYR_JWT_PRIVATE_KEY/);
   });
 });
+
+describe.skipIf(!url)("auth service route prefixes", () => {
+  it("serves the same routes under /api so proxies need no path rewriting", async () => {
+    const pool = new pg.Pool({ connectionString: url });
+    await pool.query("DROP SCHEMA IF EXISTS auth CASCADE; DROP TABLE IF EXISTS public.ultimyr_migrations");
+    await migrate(pool, { service: "auth", dir: resolve(import.meta.dirname, "../migrations") });
+    const keys = await loadSigningKeys();
+    const app = await buildApp({ pool, config: loadAuthConfig({ NODE_ENV: "test" }), keys, rateLimitMax: 1000 });
+    const reg = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/register",
+      payload: { email: "p@example.com", password: "correct horse battery", displayName: "P" },
+    });
+    expect(reg.statusCode).toBe(201);
+    const me = await app.inject({ url: "/api/v1/me", headers: { authorization: `Bearer ${reg.json().accessToken}` } });
+    expect(me.statusCode).toBe(200);
+    expect((await app.inject({ url: "/api/.well-known/jwks.json" })).statusCode).toBe(200);
+    expect((await app.inject({ url: "/.well-known/jwks.json" })).statusCode).toBe(200);
+    await app.close();
+    await pool.end();
+  });
+});

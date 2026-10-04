@@ -14,5 +14,5 @@ Ultimyr must be strictly non-monolithic, deployable with Docker, usable headless
 
 ## Consequences
 - Adding a service means a new directory, a migrations folder and a Dockerfile target. Nothing else is rebuilt.
-- Public URLs are `/api/v1/...`; Traefik strips `/api` before forwarding, so services see `/v1/...`.
+- Public URLs are `/api/v1/...`. Services answer both `/v1/...` and `/api/v1/...`, so proxies never rewrite paths (see ADR 0003).
 - Phase 1 ships `auth` and `web` only. `content`, `quiz`, `ai-gateway`, `mcp` and `worker` follow the roadmap in `docs/architecture-plan.md`.

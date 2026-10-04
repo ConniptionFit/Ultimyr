@@ -54,6 +54,9 @@ CMD ["node", "dist/migrate-cli.js"]
 # ---- web ----
 FROM source AS web-build
 ENV NEXT_TELEMETRY_DISABLED=1
+# next.config rewrites are fixed at build time: this is where the web app forwards /api/v1.
+ARG AUTH_URL=http://auth:4001
+ENV AUTH_URL=$AUTH_URL
 RUN pnpm --filter @ultimyr/web build
 
 FROM node:22-slim AS web

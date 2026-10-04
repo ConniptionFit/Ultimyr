@@ -103,134 +103,140 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     roles,
   });
 
-  // ---- health -------------------------------------------------------------
-  app.get("/healthz", async () => ({ status: "ok" }));
-  app.get("/readyz", async (_req, reply) => {
-    try {
-      await pool.query("SELECT 1");
-      return { status: "ready" };
-    } catch {
-      return reply.code(503).send({ status: "unavailable" });
-    }
-  });
-
-  // ---- keys ---------------------------------------------------------------
-  app.get("/.well-known/jwks.json", async (_req, reply) => {
-    reply.header("cache-control", "public, max-age=300");
-    return { keys: [keys.publicJwk] };
-  });
-
-  // ---- register -----------------------------------------------------------
-  app.post("/v1/auth/register", { config: limit }, async (req, reply) => {
-    const parsed = registerBody.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid_request", issues: parsed.error.issues.map((i) => i.message) });
-    const { email, password, displayName } = parsed.data;
-    const passwordHash = await hash(password);
-    const userId = uuidv7();
-
-    const result = await db.transaction(async (tx) => {
-      // Serialise first-user detection so two simultaneous sign-ups cannot both become admin.
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('ultimyr_first_user'))`);
-      const [{ n } = { n: 0 }] = await tx.select({ n: sql<number>`count(*)::int` }).from(users);
-      const first = n === 0;
-      if (!first && !config.registrationOpen) return "closed" as const;
-      const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = lower(${email})`);
-      if (exists.length) return "exists" as const;
-      await tx.insert(users).values({ id: userId, email, displayName, passwordHash });
-      const roles: Role[] = first ? ["platform_admin", "org_admin", "author", "learner"] : ["author", "learner"];
-      await tx.insert(roleAssignments).values(roles.map((role) => ({ userId, role })));
-      return first ? ("first" as const) : ("ok" as const);
+  // Routes are served both at `/...` and `/api/...`, so a reverse proxy can forward
+  // /api/v1/* untouched (no path rewriting) and internal callers can use the bare paths.
+  const routes = async (r: FastifyInstance) => {
+    // ---- health -------------------------------------------------------------
+    r.get("/healthz", async () => ({ status: "ok" }));
+    r.get("/readyz", async (_req, reply) => {
+      try {
+        await pool.query("SELECT 1");
+        return { status: "ready" };
+      } catch {
+        return reply.code(503).send({ status: "unavailable" });
+      }
     });
 
-    if (result === "closed") return reply.code(403).send({ error: "registration_closed" });
-    if (result === "exists") return reply.code(409).send({ error: "email_taken" });
+    // ---- keys ---------------------------------------------------------------
+    r.get("/.well-known/jwks.json", async (_req, reply) => {
+      reply.header("cache-control", "public, max-age=300");
+      return { keys: [keys.publicJwk] };
+    });
 
-    await audit(result === "first" ? "user.bootstrap_admin" : "user.register", req, userId, userId);
-    const session = await startSession(req, reply, userId);
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    return reply.code(201).send({ ...session, user: publicUser(user!, await rolesFor(userId)) });
-  });
+    // ---- register -----------------------------------------------------------
+    r.post("/v1/auth/register", { config: limit }, async (req, reply) => {
+      const parsed = registerBody.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: "invalid_request", issues: parsed.error.issues.map((i) => i.message) });
+      const { email, password, displayName } = parsed.data;
+      const passwordHash = await hash(password);
+      const userId = uuidv7();
 
-  // ---- login --------------------------------------------------------------
-  app.post("/v1/auth/login", { config: limit }, async (req, reply) => {
-    const parsed = loginBody.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid_request" });
-    const { email, password } = parsed.data;
-    const [user] = await db.select().from(users).where(sql`lower(${users.email}) = lower(${email})`);
+      const result = await db.transaction(async (tx) => {
+        // Serialise first-user detection so two simultaneous sign-ups cannot both become admin.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('ultimyr_first_user'))`);
+        const [{ n } = { n: 0 }] = await tx.select({ n: sql<number>`count(*)::int` }).from(users);
+        const first = n === 0;
+        if (!first && !config.registrationOpen) return "closed" as const;
+        const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = lower(${email})`);
+        if (exists.length) return "exists" as const;
+        await tx.insert(users).values({ id: userId, email, displayName, passwordHash });
+        const roles: Role[] = first ? ["platform_admin", "org_admin", "author", "learner"] : ["author", "learner"];
+        await tx.insert(roleAssignments).values(roles.map((role) => ({ userId, role })));
+        return first ? ("first" as const) : ("ok" as const);
+      });
 
-    const ok = await verify(user?.passwordHash ?? dummyHash, password).catch(() => false);
-    if (!user || !user.passwordHash || !ok || user.status !== "active") {
-      await audit("login.failed", req, user?.id);
-      return reply.code(401).send({ error: "invalid_credentials" });
-    }
-    await audit("login.success", req, user.id);
-    const session = await startSession(req, reply, user.id);
-    return { ...session, user: publicUser(user, await rolesFor(user.id)) };
-  });
+      if (result === "closed") return reply.code(403).send({ error: "registration_closed" });
+      if (result === "exists") return reply.code(409).send({ error: "email_taken" });
 
-  // ---- refresh (rotating, with reuse detection) -----------------------------
-  app.post("/v1/auth/refresh", { config: limit }, async (req, reply) => {
-    const raw = req.cookies[REFRESH_COOKIE];
-    const [sessionId, secret] = raw?.split(".") ?? [];
-    const fail = () => {
+      await audit(result === "first" ? "user.bootstrap_admin" : "user.register", req, userId, userId);
+      const session = await startSession(req, reply, userId);
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      return reply.code(201).send({ ...session, user: publicUser(user!, await rolesFor(userId)) });
+    });
+
+    // ---- login --------------------------------------------------------------
+    r.post("/v1/auth/login", { config: limit }, async (req, reply) => {
+      const parsed = loginBody.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: "invalid_request" });
+      const { email, password } = parsed.data;
+      const [user] = await db.select().from(users).where(sql`lower(${users.email}) = lower(${email})`);
+
+      const ok = await verify(user?.passwordHash ?? dummyHash, password).catch(() => false);
+      if (!user || !user.passwordHash || !ok || user.status !== "active") {
+        await audit("login.failed", req, user?.id);
+        return reply.code(401).send({ error: "invalid_credentials" });
+      }
+      await audit("login.success", req, user.id);
+      const session = await startSession(req, reply, user.id);
+      return { ...session, user: publicUser(user, await rolesFor(user.id)) };
+    });
+
+    // ---- refresh (rotating, with reuse detection) -----------------------------
+    r.post("/v1/auth/refresh", { config: limit }, async (req, reply) => {
+      const raw = req.cookies[REFRESH_COOKIE];
+      const [sessionId, secret] = raw?.split(".") ?? [];
+      const fail = () => {
+        reply.clearCookie(REFRESH_COOKIE, { path: "/api/v1/auth" });
+        return reply.code(401).send({ error: "invalid_session" });
+      };
+      if (!sessionId || !secret) return fail();
+
+      const [s] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).catch(() => []);
+      if (!s || s.revokedAt || s.expiresAt < new Date()) return fail();
+
+      const presented = sha256(secret);
+      if (safeEq(presented, s.refreshHash)) {
+        const next = randomBytes(32).toString("base64url");
+        await db
+          .update(sessions)
+          .set({ refreshHash: sha256(next), prevRefreshHash: s.refreshHash, lastSeenAt: new Date() })
+          .where(eq(sessions.id, s.id));
+        const [user] = await db.select().from(users).where(eq(users.id, s.userId));
+        if (!user || user.status !== "active") return fail();
+        setRefreshCookie(reply, s.id, next);
+        const roles = await rolesFor(user.id);
+        return { accessToken: await signAccess(user.id, s.id, roles), expiresIn: ACCESS_TTL_SECONDS, user: publicUser(user, roles) };
+      }
+      if (s.prevRefreshHash && safeEq(presented, s.prevRefreshHash)) {
+        // A rotated-out token came back: assume theft and kill the whole session.
+        await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, s.id));
+        await audit("session.reuse_detected", req, s.userId, s.id);
+      }
+      return fail();
+    });
+
+    // ---- logout ---------------------------------------------------------------
+    r.post("/v1/auth/logout", async (req, reply) => {
+      const [sessionId] = req.cookies[REFRESH_COOKIE]?.split(".") ?? [];
+      if (sessionId) {
+        await db
+          .update(sessions)
+          .set({ revokedAt: new Date() })
+          .where(and(eq(sessions.id, sessionId), sql`${sessions.revokedAt} IS NULL`))
+          .catch(() => undefined);
+      }
       reply.clearCookie(REFRESH_COOKIE, { path: "/api/v1/auth" });
-      return reply.code(401).send({ error: "invalid_session" });
-    };
-    if (!sessionId || !secret) return fail();
+      return reply.code(204).send();
+    });
 
-    const [s] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).catch(() => []);
-    if (!s || s.revokedAt || s.expiresAt < new Date()) return fail();
-
-    const presented = sha256(secret);
-    if (safeEq(presented, s.refreshHash)) {
-      const next = randomBytes(32).toString("base64url");
-      await db
-        .update(sessions)
-        .set({ refreshHash: sha256(next), prevRefreshHash: s.refreshHash, lastSeenAt: new Date() })
-        .where(eq(sessions.id, s.id));
-      const [user] = await db.select().from(users).where(eq(users.id, s.userId));
-      if (!user || user.status !== "active") return fail();
-      setRefreshCookie(reply, s.id, next);
-      const roles = await rolesFor(user.id);
-      return { accessToken: await signAccess(user.id, s.id, roles), expiresIn: ACCESS_TTL_SECONDS, user: publicUser(user, roles) };
-    }
-    if (s.prevRefreshHash && safeEq(presented, s.prevRefreshHash)) {
-      // A rotated-out token came back: assume theft and kill the whole session.
-      await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, s.id));
-      await audit("session.reuse_detected", req, s.userId, s.id);
-    }
-    return fail();
-  });
-
-  // ---- logout ---------------------------------------------------------------
-  app.post("/v1/auth/logout", async (req, reply) => {
-    const [sessionId] = req.cookies[REFRESH_COOKIE]?.split(".") ?? [];
-    if (sessionId) {
-      await db
-        .update(sessions)
-        .set({ revokedAt: new Date() })
-        .where(and(eq(sessions.id, sessionId), sql`${sessions.revokedAt} IS NULL`))
-        .catch(() => undefined);
-    }
-    reply.clearCookie(REFRESH_COOKIE, { path: "/api/v1/auth" });
-    return reply.code(204).send();
-  });
-
-  // ---- me -------------------------------------------------------------------
-  app.get("/v1/me", async (req, reply) => {
-    const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthenticated" });
-    try {
-      const principal = await verifyAccessToken(header.slice(7), keys.publicKey);
-      const [s] = await db.select().from(sessions).where(eq(sessions.id, principal.sessionId));
-      if (!s || s.revokedAt) return reply.code(401).send({ error: "unauthenticated" });
-      const [user] = await db.select().from(users).where(eq(users.id, principal.userId));
-      if (!user || user.status !== "active") return reply.code(401).send({ error: "unauthenticated" });
-      return publicUser(user, await rolesFor(user.id));
-    } catch {
-      return reply.code(401).send({ error: "unauthenticated" });
-    }
-  });
+    // ---- me -------------------------------------------------------------------
+    r.get("/v1/me", async (req, reply) => {
+      const header = req.headers.authorization;
+      if (!header?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthenticated" });
+      try {
+        const principal = await verifyAccessToken(header.slice(7), keys.publicKey);
+        const [s] = await db.select().from(sessions).where(eq(sessions.id, principal.sessionId));
+        if (!s || s.revokedAt) return reply.code(401).send({ error: "unauthenticated" });
+        const [user] = await db.select().from(users).where(eq(users.id, principal.userId));
+        if (!user || user.status !== "active") return reply.code(401).send({ error: "unauthenticated" });
+        return publicUser(user, await rolesFor(user.id));
+      } catch {
+        return reply.code(401).send({ error: "unauthenticated" });
+      }
+    });
+  };
+  await app.register(routes);
+  await app.register(routes, { prefix: "/api" });
 
   return app;
 }

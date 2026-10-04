@@ -1,8 +1,10 @@
 import { resolve } from "node:path";
 import type { NextConfig } from "next";
 
-// Dev and single-container fallback: forward API paths to the auth service.
-// In Docker Compose, Traefik routes /api/v1/* before requests reach this app.
+// Forward API paths to the auth service. This makes the web container the single public
+// upstream (one Nginx Proxy Manager host, no custom locations). Reverse proxies that route
+// /api/v1/* straight to auth (Traefik, headless setups) never reach these rewrites.
+// NOTE: rewrites are resolved at build time, so AUTH_URL is a Docker build arg.
 const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:4001";
 
 const config: NextConfig = {

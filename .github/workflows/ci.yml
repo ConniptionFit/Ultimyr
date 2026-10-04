@@ -44,4 +44,7 @@ jobs:
       - name: Validate compose file
         run: |
           mkdir secrets && echo ci > secrets/pg_password && openssl genpkey -algorithm ed25519 -out secrets/jwt_private_key.pem
-          docker compose config --quiet
+          docker compose -f docker-compose.yml config --quiet
+          docker network create proxy
+          docker compose -f docker-compose.yml -f docker-compose.npm.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.traefik.yml config --quiet
