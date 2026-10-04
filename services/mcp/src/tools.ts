@@ -127,8 +127,8 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     );
   }
 
-  const get = (service: "content" | "quiz", path: string, query?: Record<string, string | number | undefined>) => upstream(service, path, token, { query });
-  const send = (service: "content" | "quiz", path: string, body: unknown, method: "POST" | "PATCH" | "PUT" = "POST") => upstream(service, path, token, { method, body });
+  const get = (service: "content" | "quiz" | "notes", path: string, query?: Record<string, string | number | undefined>) => upstream(service, path, token, { query });
+  const send = (service: "content" | "quiz" | "notes", path: string, body: unknown, method: "POST" | "PATCH" | "PUT" = "POST") => upstream(service, path, token, { method, body });
 
   async function item(itemId: string, kind: "guide" | "deck" | "quiz") {
     const it = await get("content", `/v1/items/${itemId}`);
@@ -237,6 +237,20 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     const r = await send("content", `/v1/archives/${a.archiveId}/roadmap`, { summary: a.summary ?? "", stages: a.stages, source: "mcp", status: a.holdForReview ? "draft" : "published" }, "PUT");
     return { status: r.status, stages: r.stages.map((x: any) => ({ id: x.id, title: x.title, steps: x.progress.total })), totals: r.totals, note: r.status === "draft" ? "Saved as a draft. A person must publish the roadmap in Ultimyr before learners see it." : undefined };
   });
+
+  // ---- notes (the person's own Obsidian notes; only with the notes:use scope) ----
+  const stepId = z.uuid().describe("A step id from get_roadmap. The step must already have a note (the person presses Create notes on the roadmap).");
+  tool("get_step_note", "notes:use", "read", { title: "Read a step note", description: "The person's own Markdown note for a roadmap step, from their Obsidian vault. It follows the Ultimyr note standard: fixed headings Summary, Key points, Examples, Questions, Flashcards, Related.", input: { stepId } }, async (a) => {
+    const r = await get("notes", `/v1/notes/steps/${a.stepId}`);
+    return { path: r.path, exists: r.exists, content: r.content };
+  });
+  tool("append_step_note", "notes:use", "write", { title: "Add to a step note", description: "Add text to the END of the person's note for a step. It never changes or removes what they wrote. Write Markdown in the standard headings, and put a flashcard on its own line as 'Question :: Answer' under '## Flashcards'. Only add what you are sure is right; the person edits their own notes.", input: { stepId, text: z.string().min(1).max(20_000).describe("Markdown to append.") } }, async (a) => {
+    const r = await send("notes", `/v1/notes/steps/${a.stepId}/append`, { text: a.text });
+    return { path: r.path, note: "Added to the end of the note." };
+  });
+  tool("get_step_flashcards", "notes:use", "read", { title: "Read a step's flashcards", description: "The 'Question :: Answer' lines under '## Flashcards' in a step note, as front and back. Pass them to create_deck to turn them into a deck.", input: { stepId } }, async (a) =>
+    get("notes", `/v1/notes/steps/${a.stepId}/flashcards`),
+  );
 
   // ---- progress ------------------------------------------------------------
   tool("get_progress", "quiz:read", "read", { title: "Get progress", description: "The person's quiz accuracy by day and domain, streak, and a readiness estimate when an archive is given.", input: { archiveId: id.optional(), days: z.number().int().min(1).max(365).default(30) } }, async (a) =>

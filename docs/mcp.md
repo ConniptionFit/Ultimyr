@@ -35,6 +35,8 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `add_resources` | `content:write` | Save up to 50 links (YouTube, Anthropic training pages, docs). A link already saved is updated, not duplicated. Saved as drafts |
 | `import_outline` | `content:write` | Add a whole nested outline to the roadmap in one call: `## Stage` lines and bulleted steps with `[Title](https://link) 20m`, `[[Guide title]]` and `(optional)`. The easiest way to load a certification. Saved as a draft |
 | `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
+| `get_step_note`, `get_step_flashcards` | `notes:use` | Read the note for a roadmap step from your Obsidian vault, and the `Question :: Answer` lines in it (hand them to `create_deck`) |
+| `append_step_note` | `notes:use` | Add text to the END of a step note. Never edits or removes what you wrote |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
 | `share_item` | `content:share` | Give a person or group access. Off unless you grant sharing |
 
@@ -57,7 +59,7 @@ Ultimyr follows the MCP authorization spec: OAuth 2.1 with PKCE (S256 only), dyn
 | `GET /.well-known/oauth-protected-resource` | Names the resource (`/mcp`) and its authorization server. A 401 from `/mcp` points here in `WWW-Authenticate`. |
 | `GET /.well-known/oauth-authorization-server` | Issuer is `ULTIMYR_PUBLIC_URL`. Endpoints, `S256`, `none` client auth, scopes. |
 | `POST /oauth/register` | `{ client_name, redirect_uris[] }`. Redirects must be https, `http://localhost` (or 127.0.0.1) or an app scheme, with no fragment. Rate limited. |
-| `GET /oauth/authorize` | `response_type=code`, `client_id`, exact `redirect_uri`, `code_challenge` (S256), optional `scope` (default: content and quiz read and write) and `state`. Unknown clients and redirects are refused, never redirected to. Continues on the consent page. |
+| `GET /oauth/authorize` | `response_type=code`, `client_id`, exact `redirect_uri`, `code_challenge` (S256), optional `scope` (default: content and quiz read and write, and `notes:use`; untick any on the consent page) and `state`. Unknown clients and redirects are refused, never redirected to. Continues on the consent page. |
 | `POST /oauth/token` | `authorization_code` (with `code_verifier`) or `refresh_token`. Codes live 5 minutes and work once. Refresh tokens rotate on every use and expire after 90 days of disuse; replaying an old one revokes the connection. Access tokens last 30 minutes. |
 
 Tokens are the same EdDSA JWTs as everywhere else (`sid` is `mcp:<connection id>`, `amr` is `oauth`). Connected apps cannot manage the account: sessions, keys, passkeys, other connections and consent require a real sign in.
