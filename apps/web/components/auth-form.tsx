@@ -4,6 +4,7 @@ import { StatusIcon, type Status } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { takeReturn } from "@/lib/after-login";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
@@ -34,7 +35,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       await signInWithPasskey();
       setStatus("success");
-      router.push("/reading-room");
+      router.push(takeReturn() ?? "/reading-room");
     } catch (err) {
       setStatus("error");
       setError(err instanceof ApiError ? "That passkey was not recognised." : "Passkey sign-in was cancelled or is not available here.");
@@ -50,7 +51,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       await verifyMfa(mfaToken, useRecovery ? { recoveryCode: v } : { code: v });
       setStatus("success");
-      router.push("/reading-room");
+      router.push(takeReturn() ?? "/reading-room");
     } catch (err) {
       setStatus("error");
       setError(err instanceof ApiError && err.code === "invalid_code" ? "That code did not work." : err instanceof ApiError && err.status === 401 ? "This sign-in expired. Start again." : "Something went wrong. Please try again.");
@@ -74,7 +75,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         }
       } else await register(String(f.get("displayName")), email, password);
       setStatus("success");
-      router.push("/reading-room");
+      router.push(takeReturn() ?? "/reading-room");
     } catch (err) {
       setStatus("error");
       if (err instanceof ApiError) {

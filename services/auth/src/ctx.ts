@@ -1,4 +1,4 @@
-import { AUDIENCE, API_KEY_SESSION_PREFIX, ISSUER, verifyAccessToken, type Principal, type Role } from "@ultimyr/authz";
+import { AUDIENCE, API_KEY_SESSION_PREFIX, ISSUER, MCP_SESSION_PREFIX, verifyAccessToken, type Principal, type Role } from "@ultimyr/authz";
 import { and, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { FastifyReply, FastifyRequest } from "fastify";
@@ -165,6 +165,9 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
           .where(eq(apiKeys.id, keyId))
           .catch(() => []);
         if (!k || k.revokedAt || (k.expiresAt && k.expiresAt < new Date())) throw new HttpError(401, "unauthenticated");
+      } else if (principal.sessionId.startsWith(MCP_SESSION_PREFIX)) {
+        const { rows } = await base.pool.query("SELECT 1 FROM auth.mcp_connections WHERE id::text = $1 AND revoked_at IS NULL AND expires_at > now()", [principal.sessionId.slice(MCP_SESSION_PREFIX.length)]);
+        if (!rows[0]) throw new HttpError(401, "unauthenticated");
       } else {
         const [s] = await db.select().from(sessions).where(and(eq(sessions.id, principal.sessionId), sql`${sessions.revokedAt} IS NULL`));
         if (!s || s.expiresAt < new Date()) throw new HttpError(401, "unauthenticated");
@@ -176,7 +179,7 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
 
     async authenticateInteractive(req) {
       const a = await ctx.authenticate(req);
-      if (a.principal.sessionId.startsWith(API_KEY_SESSION_PREFIX)) throw new HttpError(403, "interactive_session_required");
+      if (a.principal.sessionId.startsWith(API_KEY_SESSION_PREFIX) || a.principal.sessionId.startsWith(MCP_SESSION_PREFIX)) throw new HttpError(403, "interactive_session_required");
       return a;
     },
 

@@ -5,6 +5,7 @@
 #   ultimyr-auth:4001  only needed for headless / API-only setups
 #   ultimyr-quiz:4003     likewise (/api/v1/quizzes, questions, attempts, scoring-profiles, analytics, goals)
 #   ultimyr-ai:4004       likewise (/api/v1/ai)
+#   ultimyr-mcp:4005      likewise (/mcp and /.well-known/oauth-protected-resource)
 #   ultimyr-content:4002  likewise (headless: route /api/v1/archives, items, search... here)
 #
 # One-time: if NPM has no shared network yet, create one and connect NPM to it:
@@ -40,6 +41,12 @@ services:
       default: {}
       proxy:
         aliases: [ultimyr-ai]
+
+  mcp:
+    networks:
+      default: {}
+      proxy:
+        aliases: [ultimyr-mcp]
 
 networks:
   proxy:

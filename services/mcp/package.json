@@ -1,0 +1,23 @@
+{
+  "name": "@ultimyr/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@ultimyr/authz": "workspace:^",
+    "@ultimyr/config": "workspace:^",
+    "fastify": "^5.12.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@ultimyr/service-kit": "workspace:^"
+  }
+}
