@@ -15,6 +15,7 @@ export const SCOPES = [
   "quiz:read",
   "quiz:write",
   "ai:use",
+  "notes:use",
 ] as const;
 export type Scope = (typeof SCOPES)[number];
 export const isScope = (s: string): s is Scope => (SCOPES as readonly string[]).includes(s);

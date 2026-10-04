@@ -2,7 +2,7 @@
 
 Ultimyr keeps your **path** (roadmaps, steps, progress). Your **notes** are plain Markdown files in an Obsidian vault. This page defines one layout and one format so that people, Obsidian, Claude and Ultimyr all know where things go. It is version 1 of the standard (`ultimyr: 1` in every note).
 
-How the notes reach the web app (the side-by-side pane and the Obsidian sync) is described in the plan at `docs/architecture-plan.md` and, once built, in this file's sync section.
+How the notes reach the web app (the side-by-side pane and the Obsidian sync) is described in [Sync with Obsidian](#sync-with-obsidian) below.
 
 ## Why this shape
 - **One note per thing you study.** Each course, lesson, video or page on the path gets its own small note, so progress and notes line up one to one.
@@ -78,3 +78,23 @@ What is the maximum context window? :: ...
 2. If an idea comes up twice, make a concept note and link it.
 3. After every practice test, write a review note and link what to revisit.
 4. Keep step notes short. If one grows past a screen, split out concepts.
+
+## Sync with Obsidian
+Ultimyr talks to your vault through [Fast Note Sync](https://github.com/haierkeys/obsidian-fast-note-sync), a self-hosted server plus an Obsidian plugin that keeps the vault in sync across your devices. Ultimyr never touches your files directly: it uses the server's REST API.
+
+**Set up (once)**
+1. Run a Fast Note Sync server. To run one next to Ultimyr: `docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d`, then put `FNS_URL=http://fns:9000` in `.env` and recreate the `notes` service. Already have one? Just set `FNS_URL` to its address.
+2. Open the server's web page, create your account and a vault, install the **Fast Note Sync** plugin in Obsidian and paste its config.
+3. In Ultimyr: **Settings > Notes**. Paste the vault name and the API token (Copy API Config on the server page).
+
+**Use**
+- On an archive's Roadmap tab press **Create notes**. Ultimyr writes `00 Index.md` and one note per step using the layout above. It never overwrites a note that exists, so it is safe to press again after adding steps (**Add notes for new steps**).
+- The note icon on a step opens it **beside the roadmap**: edit or preview Markdown and press Save (or Ctrl/Cmd+S). **Open in Obsidian** jumps to the same note in the app.
+- Ticking a step sets `status: done` in its note's properties, and un-ticking sets `status: todo`. Nothing else in the note is changed by a tick.
+
+**Good to know**
+- Notes are matched to steps by the `ultimyr_step` property and a saved path. Renaming a *step* in Ultimyr does not rename its file. If you move or rename a note file in Obsidian, the pane will show it as missing; press **Create notes** to make a fresh one, or keep the old path.
+- Saving sends the version the pane loaded. If the note changed meanwhile (for example you typed in Obsidian), the save is refused and you are asked to reload, so nothing is overwritten silently.
+- The token is encrypted with the server's master key (the same key as the AI vault) and is never shown again. Without that key, or without `FNS_URL`, notes stay off and everything else works.
+- The server address is set by the operator only, never by a person, so Ultimyr cannot be pointed at other machines.
+- Flashcard lines (`Question :: Answer`) are not yet turned into decks automatically.

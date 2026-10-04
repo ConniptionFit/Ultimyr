@@ -8,7 +8,7 @@ import { createPool, migrate } from "./index.js";
  * Each service owns its own migrations directory and Postgres schema.
  */
 /** Services that own a schema, in the order their migrations run. */
-const SERVICES: [service: string, dir: string][] = [["auth", "auth"], ["content", "content"], ["quiz", "quiz"], ["ai", "ai-gateway"]];
+const SERVICES: [service: string, dir: string][] = [["auth", "auth"], ["content", "content"], ["quiz", "quiz"], ["ai", "ai-gateway"], ["notes", "notes"]];
 const root = process.env.ULTIMYR_ROOT ?? resolve(import.meta.dirname, "../../..");
 const targets = process.argv.slice(2).length
   ? process.argv.slice(2).map((a) => {

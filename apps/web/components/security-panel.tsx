@@ -16,7 +16,7 @@ interface Passkey { id: string; name: string; backedUp: boolean; createdAt: stri
 interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; expiresAt: string | null; revokedAt: string | null; lastUsedAt: string | null }
 interface SessionRow { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string | null }
 
-const SCOPE_CHOICES = ["content:read", "content:write", "content:share", "quiz:read", "quiz:write", "ai:use"];
+const SCOPE_CHOICES = ["content:read", "content:write", "content:share", "quiz:read", "quiz:write", "ai:use", "notes:use"];
 const when = (v: string | null) => (v ? new Date(v).toLocaleString() : "never");
 const message = (e: unknown) => (e instanceof ApiError ? e.issues[0] ?? e.code.replaceAll("_", " ") : "Could not reach the server.");
 

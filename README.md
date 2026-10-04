@@ -48,7 +48,7 @@ That is the whole setup: the web container forwards `/api/v1/*` to the auth serv
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets`, `access`, `study`, `resources` and `roadmap` go to content, `/api/v1/ai` goes to the AI gateway, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets`, `access`, `study`, `resources` and `roadmap` go to content, `/api/v1/ai` goes to the AI gateway, `/api/v1/notes` to the notes service, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
@@ -81,6 +81,7 @@ services/content      Content service (Fastify + SQL), owns the `content` schema
 services/quiz         Quiz service (Fastify + SQL), owns the `quiz` schema
 services/mcp          MCP server (stateless, no database): tools, resources, prompts
 services/ai-gateway   AI gateway: key vault, generation jobs, assistant. Owns the `ai` schema
+services/notes        Notes bridge to Fast Note Sync (Obsidian). Owns the `notes` schema
 packages/scoring      Pure scoring library (question types, profiles, grading)
 packages/fsrs         Pure FSRS-5 spaced repetition scheduler
 packages/config       Env parsing, Docker secrets (_FILE), database config

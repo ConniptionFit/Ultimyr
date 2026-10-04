@@ -1,13 +1,15 @@
 "use client";
 
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
+import { notesMessage, type ArchiveNotes, type ScaffoldResult } from "@/lib/notes";
 import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
 import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
+import { NotePane } from "./note-pane";
 
 const ITEM_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
 
@@ -110,6 +112,16 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   const [busy, setBusy] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [notes, setNotes] = useState<ArchiveNotes | null>(null);
+  const [openNote, setOpenNote] = useState<{ id: string; title: string } | null>(null);
+
+  const loadNotes = useCallback(async () => {
+    try {
+      setNotes(await api<ArchiveNotes>("GET", `notes/archives/${archiveId}`));
+    } catch {
+      setNotes(null); // notes are optional: the roadmap works without them
+    }
+  }, [api, archiveId]);
 
   const load = useCallback(async () => {
     try {
@@ -121,12 +133,37 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   }, [api, archiveId, canEdit]);
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadNotes();
+  }, [load, loadNotes]);
+
+  async function scaffold() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<ScaffoldResult>("POST", `notes/archives/${archiveId}/scaffold`);
+      setWarnings([`Notes: ${r.created} created, ${r.existing} already there${r.failed.length ? `, ${r.failed.length} failed` : ""}.`]);
+      await loadNotes();
+    } catch (e) {
+      setError(e instanceof ApiError ? notesMessage(e.code) : "Could not create the notes.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Keeps each note's `status` property in step with its tick. Best effort: a tick never fails because notes are down. */
+  function syncStatus(step: RoadmapStep, done: boolean) {
+    if (!notes?.connected) return;
+    const walk = (x: RoadmapStep): RoadmapStep[] => [x, ...x.children.flatMap(walk)];
+    for (const x of walk(step)) {
+      if (notes.steps[x.id]) void api("POST", `notes/steps/${x.id}/status`, { status: done ? "done" : "todo" }).catch(() => {});
+    }
+  }
 
   async function tick(step: RoadmapStep, done: boolean) {
     setError(null);
     try {
       await api("PUT", `roadmap/steps/${step.id}/progress`, { done });
+      syncStatus(step, done);
       setRoad(await api<Roadmap>("GET", `archives/${archiveId}/roadmap`));
       onChanged?.();
     } catch {
@@ -304,6 +341,28 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
               road.totals.required > 0 && <p className="text-sm text-accent">{copy("roadmapDone")}</p>
             )}
           </div>
+          {notes?.enabled && !notes.connected && (
+            <p className="text-sm text-muted">
+              Keep a note for every step in Obsidian: <Link href="/settings#notes" className="text-accent underline">connect Fast Note Sync</Link>.
+            </p>
+          )}
+          {notes?.connected && !notes.scaffolded && (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
+              <span className="text-muted">Create one note per step in your Obsidian vault (never overwrites anything).</span>
+              <Button type="button" onClick={scaffold} disabled={busy}>
+                <NotebookPen size={16} aria-hidden /> Create notes
+              </Button>
+            </div>
+          )}
+          {notes?.connected && notes.scaffolded && (
+            <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
+              Notes are on: use the note icon on a step to read it beside your notes.
+              <Button type="button" variant="quiet" onClick={scaffold} disabled={busy}>
+                Add notes for new steps
+              </Button>
+            </p>
+          )}
+          <div className={openNote ? "grid gap-4 lg:grid-cols-2 lg:items-start" : ""}>
           <ol className="space-y-8">
             {road.stages.map((st, i) => {
               return (
@@ -321,20 +380,34 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
                   <ul className="divide-y divide-line rounded-md border border-line">
                     {st.steps.length === 0 && <li className="p-3 text-sm text-muted">Nothing in this stage yet.</li>}
                     {st.steps.map((x) => (
-                      <StepRow key={x.id} step={x} depth={0} onTick={tick} />
+                      <StepRow key={x.id} step={x} depth={0} onTick={tick} notes={notes?.connected ? notes.steps : undefined} openId={openNote?.id} onNote={setOpenNote} />
                     ))}
                   </ul>
                 </li>
               );
             })}
           </ol>
+          {openNote && (
+            <div className="lg:sticky lg:top-4">
+              <NotePane stepId={openNote.id} title={openNote.title} onClose={() => setOpenNote(null)} />
+            </div>
+          )}
+          </div>
         </>
       )}
     </div>
   );
 }
 
-function StepRow({ step, depth, onTick }: { step: RoadmapStep; depth: number; onTick: (step: RoadmapStep, done: boolean) => void }) {
+interface RowProps {
+  onTick: (step: RoadmapStep, done: boolean) => void;
+  /** Steps that have a note, when notes are connected. */
+  notes?: ArchiveNotes["steps"];
+  openId?: string;
+  onNote: (n: { id: string; title: string }) => void;
+}
+
+function StepRow({ step, depth, onTick, notes, openId, onNote }: { step: RoadmapStep; depth: number } & RowProps) {
   const { t } = useNaming();
   const [open, setOpen] = useState(!step.done);
   const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
@@ -388,11 +461,22 @@ function StepRow({ step, depth, onTick }: { step: RoadmapStep; depth: number; on
           {step.note && <p className="mt-1 text-sm text-ink/80">{step.note}</p>}
           {step.kind === "resource" && step.resource!.summary && <p className="mt-1 text-sm text-muted">{step.resource!.summary}</p>}
         </div>
+        {notes?.[step.id] && (
+          <button
+            type="button"
+            aria-label={`Notes for ${label}`}
+            aria-pressed={openId === step.id}
+            onClick={() => onNote({ id: step.id, title: label })}
+            className={`mt-0.5 shrink-0 rounded-md p-1 ${openId === step.id ? "bg-surface text-accent" : "text-muted hover:text-ink"}`}
+          >
+            <NotebookPen size={18} aria-hidden />
+          </button>
+        )}
       </div>
       {parent && open && (
         <ul>
           {step.children.map((c) => (
-            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} />
+            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} notes={notes} openId={openId} onNote={onNote} />
           ))}
         </ul>
       )}
