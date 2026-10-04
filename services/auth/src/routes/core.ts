@@ -21,6 +21,9 @@ export const parse = <S extends z.ZodType>(schema: S, body: unknown): z.infer<S>
   return r.data;
 };
 
+// How long a rotated-out refresh token still gets an access token (not a new cookie). Beyond it, reuse means theft.
+const REFRESH_GRACE_MS = 10_000;
+
 export function coreRoutes(ctx: Ctx) {
   const { db, config, keys, limit, refreshLimit } = ctx;
 
@@ -102,24 +105,35 @@ export function coreRoutes(ctx: Ctx) {
       const [s] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).catch(() => []);
       if (!s || s.revokedAt || s.expiresAt < new Date()) return fail();
 
+      const issue = async (sess: typeof s, user: typeof users.$inferSelect) => {
+        const roles = await ctx.rolesFor(user.id);
+        return {
+          accessToken: await ctx.signAccess({ userId: user.id, sessionId: sess.id, roles, amr: sess.amr }),
+          expiresIn: ACCESS_TTL_SECONDS,
+          user: ctx.publicUser(user, roles),
+        };
+      };
+
       const presented = sha256Hex(secret);
       if (safeEqual(presented, s.refreshHash)) {
         const next = randomToken();
         await db
           .update(sessions)
-          .set({ refreshHash: sha256Hex(next), prevRefreshHash: s.refreshHash, lastSeenAt: new Date() })
+          .set({ refreshHash: sha256Hex(next), prevRefreshHash: s.refreshHash, rotatedAt: new Date(), lastSeenAt: new Date() })
           .where(eq(sessions.id, s.id));
         const [user] = await db.select().from(users).where(eq(users.id, s.userId));
         if (!user || user.status !== "active") return fail();
         ctx.setRefreshCookie(reply, s.id, next);
-        const roles = await ctx.rolesFor(user.id);
-        return {
-          accessToken: await ctx.signAccess({ userId: user.id, sessionId: s.id, roles, amr: s.amr }),
-          expiresIn: ACCESS_TTL_SECONDS,
-          user: ctx.publicUser(user, roles),
-        };
+        return issue(s, user);
       }
       if (s.prevRefreshHash && safeEqual(presented, s.prevRefreshHash)) {
+        // A second tab or request sent the old cookie before the rotation response reached the browser.
+        // The browser already holds the new cookie, so serve an access token and leave the cookie alone.
+        if (s.rotatedAt && Date.now() - s.rotatedAt.getTime() < REFRESH_GRACE_MS) {
+          const [user] = await db.select().from(users).where(eq(users.id, s.userId));
+          if (!user || user.status !== "active") return fail();
+          return issue(s, user);
+        }
         // A rotated-out token came back: assume theft and kill the whole session.
         await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, s.id));
         await ctx.audit("session.reuse_detected", req, s.userId, s.id);

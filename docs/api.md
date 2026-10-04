@@ -16,7 +16,7 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 | POST | `/auth/register` | `{ displayName, email, password }`. First account becomes admin. Honors `AUTH_REGISTRATION`. |
 | POST | `/auth/login` | `{ email, password }`. Returns a session, or `{ mfaRequired, mfaToken, methods }` when TOTP is on. |
 | POST | `/auth/mfa/verify` | `{ mfaToken, code }` or `{ mfaToken, recoveryCode }`. |
-| POST | `/auth/refresh` | Rotates the refresh cookie. Replaying an old cookie revokes the session. |
+| POST | `/auth/refresh` | Rotates the refresh cookie. Replaying an old cookie revokes the session, except within 10 seconds of the rotation (two tabs racing), when it gets an access token and no new cookie. |
 | POST | `/auth/logout` | Revokes the session. |
 | POST | `/auth/passkeys/login/options`, `/auth/passkeys/login/verify` | WebAuthn sign in. Verify takes `{ challengeId, response }`. |
 | GET | `/auth/sso/providers` | Enabled providers and their `startUrl`. |
