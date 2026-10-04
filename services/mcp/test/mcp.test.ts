@@ -124,7 +124,7 @@ describe("MCP server", () => {
   it("adds links and sets a roadmap as drafts, and refuses unsafe input", async () => {
     fresh();
     await boot();
-    respond = (c) => (c.path.endsWith("/resources/bulk") ? { resources: [{ id: ITEM, title: "Intro", provider: "YouTube", kind: "video", created: true }] } : { status: "draft", stages: [{ id: ID, title: "Week 1", steps: [{}] }], totals: { steps: 1 } });
+    respond = (c) => (c.path.endsWith("/resources/bulk") ? { resources: [{ id: ITEM, title: "Intro", provider: "YouTube", kind: "video", created: true }] } : { status: "draft", stages: [{ id: ID, title: "Week 1", progress: { done: 0, total: 1 }, steps: [{}] }], totals: { steps: 1 }, warnings: [] });
     const c = await connect(await issuer.token({ scopes: ["content:write"] }));
     const add = await c.callTool({ name: "add_resources", arguments: { archiveId: ID, resources: [{ url: "https://www.youtube.com/watch?v=abc", title: "Intro" }] } });
     expect(add.isError).toBeFalsy();
@@ -132,9 +132,15 @@ describe("MCP server", () => {
     const set = await c.callTool({ name: "set_roadmap", arguments: { archiveId: ID, stages: [{ title: "Week 1", steps: [{ resourceId: ITEM }, { milestone: "Quiz" }] }] } });
     expect(JSON.parse(text(set))).toMatchObject({ status: "draft" });
     expect(calls[1]).toMatchObject({ path: `/v1/archives/${ID}/roadmap`, method: "PUT", body: { source: "mcp", status: "draft" } });
+    const outline = await c.callTool({ name: "import_outline", arguments: { archiveId: ID, outline: "## Week 1\n- [Hub](https://example.com/h) 30m\n  - [Lesson](https://youtu.be/x)" } });
+    expect(outline.isError).toBeFalsy();
+    expect(calls[2]).toMatchObject({ path: `/v1/archives/${ID}/roadmap/outline`, method: "POST", body: { source: "mcp", status: "draft", mode: "append" } });
+    const nested = await c.callTool({ name: "set_roadmap", arguments: { archiveId: ID, stages: [{ title: "W", steps: [{ resource: { url: "https://example.com/h", title: "Hub" }, steps: [{ milestone: "Lesson" }] }] }] } });
+    expect(nested.isError).toBeFalsy();
+    expect(calls[3]!.body.stages[0].steps[0].steps[0].milestone).toBe("Lesson");
     const bad = await c.callTool({ name: "add_resources", arguments: { archiveId: ID, resources: [{ url: "not a url", title: "x" }] } }).catch((e) => e);
     expect(bad.isError ?? true).toBe(true);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(4);
   });
 
   it("holds edits to published material for review, and says so", async () => {

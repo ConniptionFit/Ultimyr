@@ -82,6 +82,12 @@ export interface RoadmapStep {
   minutes: number | null;
   note: string;
   done: boolean;
+  /** Steps inside this one. Only leaves carry a tick; a parent is done when what it requires is done. */
+  children: RoadmapStep[];
+  progress?: { done: number; total: number };
+  /** For a parent: the minutes of everything inside it. */
+  minutesTotal?: number | null;
+  effectiveRequired?: boolean;
   title?: string;
   item?: { id: string; kind: ItemSummary["kind"]; title: string; summary: string; status: "draft" | "published" };
   resource?: Resource;
@@ -105,7 +111,7 @@ export interface Roadmap {
   exists: boolean;
   status: "draft" | "published" | null;
   summary: string;
-  stages: { id: string; title: string; summary: string; steps: RoadmapStep[] }[];
+  stages: { id: string; title: string; summary: string; progress: { done: number; total: number }; steps: RoadmapStep[] }[];
   totals: RoadmapTotals;
   next: RoadmapNext | null;
 }

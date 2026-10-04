@@ -17,6 +17,19 @@ const safeNormalize = (u: string) => {
     return u;
   }
 };
+const fileStepFields = {
+  itemIndex: z.number().int().min(0).optional(),
+  resourceUrl: z.string().max(2000).optional(),
+  milestone: z.string().trim().min(1).max(160).optional(),
+  note: z.string().max(1000).default(""),
+  required: z.boolean().default(true),
+  minutes: z.number().int().min(1).max(6000).nullable().optional(),
+};
+const fileStepLeaf = z.object(fileStepFields);
+const fileStepMid = z.object({ ...fileStepFields, steps: z.array(fileStepLeaf).max(60).optional() });
+const fileStepTop = z.object({ ...fileStepFields, steps: z.array(fileStepMid).max(60).optional() });
+type FileStep = z.infer<typeof fileStepTop>;
+
 const archiveDoc = z.object({
   format: z.literal("ultimyr-archive"),
   version: z.literal(1),
@@ -37,27 +50,7 @@ const archiveDoc = z.object({
   roadmap: z
     .object({
       summary: z.string().max(2000).default(""),
-      stages: z
-        .array(
-          z.object({
-            title: z.string().trim().min(1).max(160),
-            summary: z.string().max(1000).default(""),
-            steps: z
-              .array(
-                z.object({
-                  itemIndex: z.number().int().min(0).optional(),
-                  resourceUrl: z.string().max(2000).optional(),
-                  milestone: z.string().trim().min(1).max(160).optional(),
-                  note: z.string().max(1000).default(""),
-                  required: z.boolean().default(true),
-                  minutes: z.number().int().min(1).max(6000).nullable().optional(),
-                }),
-              )
-              .max(60)
-              .max(60),
-          }),
-        )
-        .max(30),
+      stages: z.array(z.object({ title: z.string().trim().min(1).max(160), summary: z.string().max(1000).default(""), steps: z.array(fileStepTop).max(60) })).max(30),
     })
     .optional(),
 });
@@ -77,18 +70,21 @@ export function ioRoutes(ctx: Ctx) {
   async function exportRoadmap(userId: string, archiveId: string, rel: number, indexOf: Map<string, number>) {
     const v = await buildRoadmap(pool, userId, archiveId, rel);
     if (!v.exists) return undefined;
+    // An item that is not part of this file (a quiz) stays on the path as a plain checkpoint, so the structure survives.
+    const fileStep = (x: Record<string, any>): FileStep => {
+      const common = { note: x.note, required: x.required, minutes: x.minutes ?? undefined };
+      const kids = x.children.length ? { steps: x.children.map(fileStep) } : {};
+      if (x.kind === "milestone") return { milestone: x.title, ...common, ...kids };
+      if (x.kind === "resource") return { resourceUrl: x.resource.url, ...common, ...kids };
+      const i = indexOf.get(x.item.id);
+      return i === undefined ? { milestone: x.item.title.slice(0, 160), ...common, ...kids } : { itemIndex: i, ...common, ...kids };
+    };
     return {
       summary: v.summary,
       stages: v.stages.map((st) => ({
         title: st.title,
         summary: st.summary,
-        steps: st.steps.flatMap((x: Record<string, any>) => {
-          const common = { note: x.note, required: x.required, minutes: x.minutes ?? undefined };
-          if (x.kind === "milestone") return [{ milestone: x.title, ...common }];
-          if (x.kind === "resource") return [{ resourceUrl: x.resource.url, ...common }];
-          const i = indexOf.get(x.item.id);
-          return i === undefined ? [] : [{ itemIndex: i, ...common }];
-        }),
+        steps: st.steps.map(fileStep),
       })),
     };
   }
@@ -163,17 +159,16 @@ export function ioRoutes(ctx: Ctx) {
           resourceIds.set(row.url, row.id);
         }
         if (doc.roadmap) {
-          const stages: RoadmapInput["stages"] = doc.roadmap.stages.map((st) => ({
-            title: st.title,
-            summary: st.summary,
-            steps: st.steps.flatMap((x): RoadmapInput["stages"][number]["steps"] => {
-              const common = { note: x.note, required: x.required, minutes: x.minutes };
-              if (x.milestone) return [{ milestone: x.milestone, ...common }];
-              if (x.itemIndex !== undefined) return itemIds[x.itemIndex] ? [{ itemId: itemIds[x.itemIndex], ...common }] : [];
-              const id = x.resourceUrl ? resourceIds.get(safeNormalize(x.resourceUrl)) : undefined;
-              return id ? [{ resourceId: id, ...common }] : [];
-            }),
-          }));
+          const toStep = (x: FileStep): RoadmapInput["stages"][number]["steps"][number] => {
+            const common = { note: x.note, required: x.required, minutes: x.minutes };
+            const kids = x.steps?.length ? { steps: x.steps.map(toStep as never) as never } : {};
+            if (x.milestone) return { milestone: x.milestone, ...common, ...kids } as never;
+            if (x.itemIndex !== undefined && itemIds[x.itemIndex]) return { itemId: itemIds[x.itemIndex], ...common, ...kids } as never;
+            const id = x.resourceUrl ? resourceIds.get(safeNormalize(x.resourceUrl)) : undefined;
+            // A step that points at nothing we can find keeps its place as a checkpoint rather than dropping its children.
+            return id ? ({ resourceId: id, ...common, ...kids } as never) : ({ milestone: (x.resourceUrl ?? "Checkpoint").slice(0, 160), ...common, ...kids } as never);
+          };
+          const stages: RoadmapInput["stages"] = doc.roadmap.stages.map((st) => ({ title: st.title, summary: st.summary, steps: st.steps.map(toStep) }));
           await saveRoadmap(pool, archive.id, a.userId, { summary: doc.roadmap.summary, stages, source: "import", status: "published" });
         }
         return reply.code(201).send({ archiveId: archive.id, items: doc.items.length, resources: resourceIds.size });

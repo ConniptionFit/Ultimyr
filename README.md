@@ -48,7 +48,7 @@ That is the whole setup: the web container forwards `/api/v1/*` to the auth serv
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, `/api/v1/ai` goes to the AI gateway, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets`, `access`, `study`, `resources` and `roadmap` go to content, `/api/v1/ai` goes to the AI gateway, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
