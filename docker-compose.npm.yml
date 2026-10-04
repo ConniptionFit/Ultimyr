@@ -1,0 +1,26 @@
+# Nginx Proxy Manager overlay (default).
+#
+# Attaches Ultimyr to the Docker network your NPM container is on, under stable aliases:
+#   ultimyr-web:3000   the whole site (it forwards /api/v1 to auth itself)
+#   ultimyr-auth:4001  only needed for headless / API-only setups
+#
+# One-time: if NPM has no shared network yet, create one and connect NPM to it:
+#   docker network create proxy && docker network connect proxy <your-npm-container>
+# Or set PROXY_NETWORK in .env to the network NPM already uses.
+
+services:
+  web:
+    networks:
+      default: {}
+      proxy:
+        aliases: [ultimyr-web]
+  auth:
+    networks:
+      default: {}
+      proxy:
+        aliases: [ultimyr-auth]
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-proxy}
+    external: true

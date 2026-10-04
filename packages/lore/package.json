@@ -1,0 +1,8 @@
+{
+  "name": "@ultimyr/lore",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "typecheck": "tsc -p .", "test": "vitest run" }
+}

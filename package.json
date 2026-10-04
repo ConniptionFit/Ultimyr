@@ -1,0 +1,23 @@
+{
+  "name": "ultimyr",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "dev:auth": "pnpm --filter @ultimyr/auth dev",
+    "dev:web": "pnpm --filter @ultimyr/web dev",
+    "migrate": "pnpm --filter @ultimyr/db migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  }
+}

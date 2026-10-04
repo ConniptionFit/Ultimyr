@@ -1,0 +1,96 @@
+# Ultimyr core stack: web, auth, one-shot migrations, optional bundled Postgres.
+# This file is reverse-proxy agnostic. Pick ONE proxy overlay via COMPOSE_FILE in .env:
+#
+#   Nginx Proxy Manager (default):  COMPOSE_FILE=docker-compose.yml:docker-compose.npm.yml
+#   Traefik (bundled):              COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml
+#   Neither (publish ports only):   COMPOSE_FILE=docker-compose.yml
+#
+# Bundled database:   docker compose --profile bundled-db up -d
+# External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
+# API/MCP only:       docker compose up -d auth      (skip the web container)
+#
+# Secrets are read from ./secrets via Docker secrets (see README).
+
+name: ultimyr
+
+x-db-env: &db-env
+  DATABASE_URL: ${DATABASE_URL:-}
+  PG_HOST: ${PG_HOST:-}
+  PG_PORT: ${PG_PORT:-5432}
+  PG_USER: ${PG_USER:-}
+  PG_DATABASE: ${PG_DATABASE:-}
+  PG_SSLMODE: ${PG_SSLMODE:-disable}
+
+services:
+
+  # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
+  postgres:
+    profiles: ["bundled-db"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${PG_USER:-ultimyr}
+      POSTGRES_DB: ${PG_DATABASE:-ultimyr}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ., target: migrate }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    restart: "no"
+
+  auth:
+    build: { context: ., target: auth }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+      ULTIMYR_JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      ULTIMYR_AUTH_ENC_KEY_FILE: /run/secrets/auth_enc_key
+      ULTIMYR_API_KEY_PEPPER_FILE: /run/secrets/api_key_pepper
+      # Public origin users reach Ultimyr on. Drives passkey (WebAuthn) binding and SSO callback URLs.
+      ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
+      ULTIMYR_ALLOW_INSECURE_IDP: ${ULTIMYR_ALLOW_INSECURE_IDP:-false}
+      AUTH_REGISTRATION: ${AUTH_REGISTRATION:-open}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      NODE_ENV: production
+    secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AUTH_PORT:-4001}:4001"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # Baked into the web image: where the web app proxies /api/v1 (the compose service name).
+        AUTH_URL: http://auth:4001
+    depends_on: [auth]
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password
+  jwt_private_key:
+    file: ./secrets/jwt_private_key.pem
+  auth_enc_key:
+    file: ./secrets/auth_enc_key
+  api_key_pepper:
+    file: ./secrets/api_key_pepper
+
+volumes:
+  pgdata:

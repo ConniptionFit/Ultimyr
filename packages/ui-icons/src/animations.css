@@ -1,0 +1,13 @@
+@keyframes ulti-spin { to { transform: rotate(360deg); } }
+@keyframes ulti-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes ulti-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes ulti-draw { from { stroke-dasharray: 30; stroke-dashoffset: 30; } to { stroke-dasharray: 30; stroke-dashoffset: 0; } }
+
+.ulti-icon-spin { animation: ulti-spin 0.9s linear infinite; }
+.ulti-icon-pulse { animation: ulti-pulse 1.4s ease-in-out infinite; }
+.ulti-icon-bounce { animation: ulti-bounce 0.8s ease-in-out infinite; }
+.ulti-icon-draw * { animation: ulti-draw 0.35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ulti-icon-spin, .ulti-icon-pulse, .ulti-icon-bounce, .ulti-icon-draw * { animation: none; }
+}
