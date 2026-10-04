@@ -3,11 +3,20 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { RANK, loadArchive, loadItem, need } from "../access.js";
 import type { Ctx } from "../ctx.js";
+import { normalizeUrl } from "../links.js";
 import { csvField, parseCsv } from "../markdown.js";
 import { createArchive, createArchiveBody } from "./archives.js";
 import { MAX_CARDS, MAX_MARKDOWN, cardInput, createItem, itemDetail } from "./items.js";
+import { buildRoadmap, resourceInput, saveRoadmap, upsertResource, type RoadmapInput } from "./roadmap.js";
 
 const MAX_IMPORT_ITEMS = 200;
+const safeNormalize = (u: string) => {
+  try {
+    return normalizeUrl(u);
+  } catch {
+    return u;
+  }
+};
 const archiveDoc = z.object({
   format: z.literal("ultimyr-archive"),
   version: z.literal(1),
@@ -23,6 +32,34 @@ const archiveDoc = z.object({
       }),
     )
     .max(MAX_IMPORT_ITEMS),
+  resources: z.array(resourceInput).max(500).optional(),
+  // Steps point at items by position in `items` and at resources by link, so the file carries no database ids.
+  roadmap: z
+    .object({
+      summary: z.string().max(2000).default(""),
+      stages: z
+        .array(
+          z.object({
+            title: z.string().trim().min(1).max(160),
+            summary: z.string().max(1000).default(""),
+            steps: z
+              .array(
+                z.object({
+                  itemIndex: z.number().int().min(0).optional(),
+                  resourceUrl: z.string().max(2000).optional(),
+                  milestone: z.string().trim().min(1).max(160).optional(),
+                  note: z.string().max(1000).default(""),
+                  required: z.boolean().default(true),
+                  minutes: z.number().int().min(1).max(6000).nullable().optional(),
+                }),
+              )
+              .max(60)
+              .max(60),
+          }),
+        )
+        .max(30),
+    })
+    .optional(),
 });
 
 const importBody = z.discriminatedUnion("format", [
@@ -35,6 +72,27 @@ const exportQuery = z.object({ format: z.enum(["json", "markdown", "anki-csv"]).
 
 export function ioRoutes(ctx: Ctx) {
   const { pool } = ctx;
+
+  /** The roadmap without ids or progress. Steps on quizzes are left out because quizzes are not part of this file. */
+  async function exportRoadmap(userId: string, archiveId: string, rel: number, indexOf: Map<string, number>) {
+    const v = await buildRoadmap(pool, userId, archiveId, rel);
+    if (!v.exists) return undefined;
+    return {
+      summary: v.summary,
+      stages: v.stages.map((st) => ({
+        title: st.title,
+        summary: st.summary,
+        steps: st.steps.flatMap((x: Record<string, any>) => {
+          const common = { note: x.note, required: x.required, minutes: x.minutes ?? undefined };
+          if (x.kind === "milestone") return [{ milestone: x.title, ...common }];
+          if (x.kind === "resource") return [{ resourceUrl: x.resource.url, ...common }];
+          const i = indexOf.get(x.item.id);
+          return i === undefined ? [] : [{ itemIndex: i, ...common }];
+        }),
+      })),
+    };
+  }
+
   return async (r: FastifyInstance) => {
     r.get("/v1/archives/:id/export", async (req, reply) => {
       const a = await ctx.actor(req, "content:read");
@@ -45,7 +103,9 @@ export function ioRoutes(ctx: Ctx) {
         [row.id, rel >= RANK.editor],
       );
       const out = [];
+      const indexOf = new Map<string, number>();
       for (const s of items) {
+        indexOf.set(s.id, out.length);
         const d = await itemDetail(pool, s, rel);
         out.push({ kind: s.kind, title: s.title, summary: s.summary, ...(s.kind === "guide" ? { markdown: d.markdown } : { cards: d.cards.map((c: any) => ({ front: c.front, back: c.back, hint: c.hint, tags: c.tags })) }) });
       }
@@ -54,6 +114,8 @@ export function ioRoutes(ctx: Ctx) {
         version: 1,
         archive: { title: row.title, overview: row.overview, vendor: row.vendor, purchaseLinks: row.purchase_links, validityMonths: row.validity_months, quickStats: row.quick_stats, iconName: row.icon_name, tags: row.tags },
         items: out,
+        resources: (await pool.query("SELECT kind, title, url, summary, minutes, tags FROM content.resources WHERE master_item_id = $1 AND (status = 'published' OR $2::boolean) ORDER BY ord, created_at", [row.id, rel >= RANK.editor])).rows,
+        roadmap: await exportRoadmap(a.userId, row.id, rel, indexOf),
       };
       return reply.header("content-disposition", `attachment; filename="${row.slug}.ultimyr.json"`).send(doc);
     });
@@ -93,8 +155,28 @@ export function ioRoutes(ctx: Ctx) {
           doc = parse(archiveDoc, raw);
         } else doc = body.content;
         const archive = await createArchive(pool, a.userId, { ...doc.archive, overview: doc.archive.overview ?? "" });
-        for (const it of doc.items) await createItem(pool, archive.id, a.userId, { kind: it.kind, title: it.title, summary: it.summary, markdown: it.kind === "guide" ? (it.markdown ?? "") : undefined, cards: it.kind === "deck" ? (it.cards ?? []) : undefined, source: "import", status: "published" });
-        return reply.code(201).send({ archiveId: archive.id, items: doc.items.length });
+        const itemIds: string[] = [];
+        for (const it of doc.items) itemIds.push((await createItem(pool, archive.id, a.userId, { kind: it.kind, title: it.title, summary: it.summary, markdown: it.kind === "guide" ? (it.markdown ?? "") : undefined, cards: it.kind === "deck" ? (it.cards ?? []) : undefined, source: "import", status: "published" })).id);
+        const resourceIds = new Map<string, string>();
+        for (const res of doc.resources ?? []) {
+          const { row } = await upsertResource(pool, archive.id, a.userId, res, "import", "published");
+          resourceIds.set(row.url, row.id);
+        }
+        if (doc.roadmap) {
+          const stages: RoadmapInput["stages"] = doc.roadmap.stages.map((st) => ({
+            title: st.title,
+            summary: st.summary,
+            steps: st.steps.flatMap((x): RoadmapInput["stages"][number]["steps"] => {
+              const common = { note: x.note, required: x.required, minutes: x.minutes };
+              if (x.milestone) return [{ milestone: x.milestone, ...common }];
+              if (x.itemIndex !== undefined) return itemIds[x.itemIndex] ? [{ itemId: itemIds[x.itemIndex], ...common }] : [];
+              const id = x.resourceUrl ? resourceIds.get(safeNormalize(x.resourceUrl)) : undefined;
+              return id ? [{ resourceId: id, ...common }] : [];
+            }),
+          }));
+          await saveRoadmap(pool, archive.id, a.userId, { summary: doc.roadmap.summary, stages, source: "import", status: "published" });
+        }
+        return reply.code(201).send({ archiveId: archive.id, items: doc.items.length, resources: resourceIds.size });
       }
 
       const { rel, row } = await loadArchive(pool, a, body.archiveId);

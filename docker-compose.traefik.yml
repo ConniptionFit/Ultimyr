@@ -26,7 +26,7 @@ services:
   content:
     labels:
       - traefik.enable=true
-      - traefik.http.routers.content.rule=PathPrefix(`/api/v1/archives`) || PathPrefix(`/api/v1/items`) || PathPrefix(`/api/v1/cards`) || PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/import`) || PathPrefix(`/api/v1/trash`) || PathPrefix(`/api/v1/assets`) || PathPrefix(`/api/v1/access`) || PathPrefix(`/api/v1/study`)
+      - traefik.http.routers.content.rule=PathPrefix(`/api/v1/archives`) || PathPrefix(`/api/v1/items`) || PathPrefix(`/api/v1/cards`) || PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/import`) || PathPrefix(`/api/v1/trash`) || PathPrefix(`/api/v1/assets`) || PathPrefix(`/api/v1/access`) || PathPrefix(`/api/v1/study`) || PathPrefix(`/api/v1/resources`) || PathPrefix(`/api/v1/roadmap`)
       - traefik.http.routers.content.priority=100
       - traefik.http.services.content.loadbalancer.server.port=4002
 

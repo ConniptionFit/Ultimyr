@@ -33,7 +33,7 @@ const config: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/v1/auth/:path*", destination: `${AUTH_URL}/v1/auth/:path*` },
-      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access", "study"].flatMap((p) => [
+      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access", "study", "resources", "roadmap", "roadmaps"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${CONTENT_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${CONTENT_URL}/v1/${p}/:path*` },
       ]),

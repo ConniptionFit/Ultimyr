@@ -9,6 +9,8 @@ import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
+import { ResourcesPanel } from "@/components/roadmap/resources-panel";
+import { RoadmapPanel } from "@/components/roadmap/roadmap-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { ICONS, iconFor } from "@/lib/icons";
@@ -16,6 +18,8 @@ import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
 const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
+const TABS = ["material", "roadmap", "resources"] as const;
+type Tab = (typeof TABS)[number];
 
 export default function ArchivePage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +31,17 @@ export default function ArchivePage() {
   const [adding, setAdding] = useState<ItemSummary["kind"] | null>(null);
   const [editing, setEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [tab, setTabState] = useState<Tab>("material");
+
+  // The tab lives in the address (#roadmap) so a link can open straight onto it.
+  useEffect(() => {
+    const h = window.location.hash.slice(1) as Tab;
+    if (TABS.includes(h)) setTabState(h);
+  }, []);
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    history.replaceState(null, "", next === "material" ? window.location.pathname : `#${next}`);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -255,6 +270,35 @@ export default function ArchivePage() {
             </form>
           )}
 
+          <div role="tablist" aria-label="Sections" className="flex gap-1 border-b border-line">
+            {TABS.map((k) => (
+              <button
+                key={k}
+                role="tab"
+                id={`tab-${k}`}
+                aria-selected={tab === k}
+                aria-controls={`panel-${k}`}
+                onClick={() => setTab(k)}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}
+              >
+                {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : t("resources")}
+              </button>
+            ))}
+          </div>
+
+          {tab === "roadmap" && (
+            <section id="panel-roadmap" role="tabpanel" aria-labelledby="tab-roadmap">
+              <RoadmapPanel archiveId={id} items={a.items ?? []} canEdit={editor} />
+            </section>
+          )}
+          {tab === "resources" && (
+            <section id="panel-resources" role="tabpanel" aria-labelledby="tab-resources">
+              <ResourcesPanel archiveId={id} canEdit={editor} />
+            </section>
+          )}
+
+          {tab === "material" && (
+          <div id="panel-material" role="tabpanel" aria-labelledby="tab-material" className="space-y-8">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xl">Material</h2>
@@ -305,6 +349,8 @@ export default function ArchivePage() {
           </section>
 
           {editor && <GeneratePanel archiveId={id} onDone={() => void load()} />}
+          </div>
+          )}
 
           {a.relation === "owner" && (
             <div>

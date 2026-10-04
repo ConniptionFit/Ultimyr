@@ -5,7 +5,7 @@
 | [Root README](../README.md) | Install with Docker, pick a reverse proxy, develop locally |
 | [configuration.md](configuration.md) | Look up every environment variable and secret |
 | [identity.md](identity.md) | Set up MFA, passkeys, SSO (OIDC, OAuth2, SAML), SCIM and API keys, and use the admin panel |
-| [content.md](content.md) | Understand archives, guides, decks, versions, sharing, search and import/export |
+| [content.md](content.md) | Understand archives, guides, decks, roadmaps and external links, versions, sharing, search and import/export |
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
 | [accessibility.md](accessibility.md) | Use display settings, focus mode, extra time, install the app, see the performance budget |

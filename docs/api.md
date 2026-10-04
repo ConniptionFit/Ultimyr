@@ -111,6 +111,22 @@ Scopes: reads need `content:read`, writes `content:write`, sharing `content:shar
 | PATCH | `/cards/:id` | |
 | GET | `/items/:id/export?format=json\|markdown\|anki-csv` | |
 
+## Resources and roadmaps
+See [content.md](content.md#roadmaps-and-external-resources). Reading needs `viewer` on the archive; writing needs `editor`. Drafts are only returned to editors. Progress uses `content:write`, like the daily review.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/archives/:id/resources` | `?kind=video\|playlist\|article\|course\|docs\|practice\|book\|podcast\|other`. |
+| POST | `/archives/:id/resources` | `{ url, title, kind?, summary?, minutes?, tags?, status?, source? }`. `url` must be `https`. The same link updates the existing resource (200) instead of adding one (201). `kind` defaults to `video` for YouTube and Vimeo, otherwise `article`. `source` `ai` or `mcp` defaults to draft. |
+| POST | `/archives/:id/resources/bulk` | `{ resources: [...], source? }`, up to 100, all or nothing. |
+| GET, PATCH, DELETE | `/resources/:id` | PATCH takes any of the fields above plus `order`. DELETE also removes the resource from the roadmap. |
+| GET | `/archives/:id/roadmap` | Stages and steps as you may see them, with your `done` ticks, `totals` (`percent`, `required`, `doneRequired`, `minutes`, `minutesLeft`) and `next`. `exists: false` when there is none (or it is a draft and you cannot edit). |
+| PUT | `/archives/:id/roadmap` | Replaces the whole roadmap: `{ summary?, stages: [{ id?, title, summary?, steps: [{ id?, itemId \| resourceId \| resource \| milestone, note?, required?, minutes? }] }], status?, source? }`. Keep an `id` to keep its progress; anything left out is removed. `resource` is a new link added in the same call. Items and resources must belong to the archive. `source` `ai` or `mcp` defaults to draft. |
+| PATCH | `/archives/:id/roadmap` | `{ status: draft\|published }`. |
+| DELETE | `/archives/:id/roadmap` | Removes the roadmap and everyone's ticks on it. |
+| PUT | `/roadmap/steps/:id/progress` | `{ done: boolean }`. Your own tick only. Returns new `totals` and `next`. |
+| GET | `/roadmaps` | Up to 12 published roadmaps you can read, most recently worked on first, with `totals` and `next`. Used by the dashboard. |
+
 ## Sharing and access
 | Method | Path | Notes |
 |---|---|---|
@@ -121,7 +137,7 @@ Scopes: reads need `content:read`, writes `content:write`, sharing `content:shar
 ## Search and import
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/search?q=&archive=&type=` | `type` is `archive`, `item`, `section` or `card`. |
+| GET | `/search?q=&archive=&type=` | `type` is `archive`, `item`, `section`, `card` or `resource` (resource hits carry the `url`). |
 | POST | `/import` | `{ format: archive-json\|markdown\|anki-csv, content, archiveId?, title? }` |
 
 # Quiz service API

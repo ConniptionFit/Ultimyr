@@ -14,6 +14,8 @@ export const terms = {
   guide: { themed: "Codex", plain: "Study guide" },
   deck: { themed: "Folio", plain: "Flashcard deck" },
   card: { themed: "Leaf", plain: "Flashcard" },
+  roadmap: { themed: "Path", plain: "Roadmap" },
+  resources: { themed: "References", plain: "Resources" },
   quiz: { themed: "Trial", plain: "Quiz" },
   exam: { themed: "Rite", plain: "Practice exam" },
   queue: { themed: "Vigil", plain: "Daily review" },
@@ -61,6 +63,15 @@ export const copy = {
   emptyItems: {
     themed: "Nothing shelved yet. Begin with a single page.",
     plain: "Nothing here yet. Add a guide, deck or quiz.",
+  },
+  emptyRoadmap: {
+    themed: "No path has been laid yet.",
+    plain: "No roadmap yet.",
+  },
+  roadmapDone: { themed: "Every required step walked. Well done.", plain: "Every required step is done. Nice work." },
+  emptyResources: {
+    themed: "No references shelved. Add a link to a talk, a page or a course.",
+    plain: "No resources yet. Add a link to a video, article or course.",
   },
   emptySearch: { themed: "Nothing on the shelves matches that.", plain: "No results." },
   caughtUp: { themed: "That is everything for now.", plain: "You are all caught up." },
