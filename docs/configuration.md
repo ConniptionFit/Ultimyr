@@ -33,7 +33,7 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 |---|---|---|
 | `NODE_ENV` | `development` | `production` makes the three secrets below mandatory and secure cookies the default. |
 | `PORT`, `HOST` | `4001`, `0.0.0.0` | Listen address. |
-| `AUTH_REGISTRATION` | `open` | `closed` allows only the very first account (the admin). Later users come from SSO, SCIM or an admin. |
+| `AUTH_REGISTRATION` | `open` | `closed` allows only the very first account (the admin). Later users come from SSO, SCIM or an admin (Admin panel > Users > Add a person). An admin can override this in the panel. |
 | `COOKIE_SECURE` | true in production | Set `true` once you serve over HTTPS. |
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party, SSO callback URLs and the OAuth issuer for MCP apps. Changing it later orphans passkeys. |
 | `ULTIMYR_ALLOW_INSECURE_IDP` | false in production | Allow `http://` identity providers (otherwise only `https://` is accepted). Local testing only. |
@@ -84,6 +84,7 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 |---|---|---|
 | `PORT`, `HOST` | `4005`, `0.0.0.0` | Listen address. |
 | `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`. |
+| `NOTES_URL` | `http://localhost:4006` | The notes service, for the step note tools. Compose sets `http://notes:4006`. |
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Names this server in OAuth metadata. Must be the address clients use. Auth uses the same setting as the OAuth issuer. |
 | `MCP_RATE_PER_MINUTE` | `120` | Requests per person per minute. |
 | `MCP_WRITE_PER_MINUTE` | `30` | Write tool calls per person per minute. |

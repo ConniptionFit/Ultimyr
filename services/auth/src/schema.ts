@@ -13,6 +13,7 @@ export const users = auth.table("users", {
   createdVia: text("created_via").notNull().default("local"),
   externalId: text("external_id"),
   scimManaged: boolean("scim_managed").notNull().default(false),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   givenName: text("given_name"),
   familyName: text("family_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -172,4 +173,14 @@ export const instanceSettings = auth.table("instance_settings", {
   value: jsonb("value").notNull(),
   updatedBy: uuid("updated_by"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const passwordTokens = auth.table("password_tokens", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

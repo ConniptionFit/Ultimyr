@@ -29,6 +29,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Start each service bundle
+        run: ./scripts/smoke-bundles.sh
       - name: Performance budget
         run: node scripts/check-budgets.mjs
 

@@ -92,9 +92,12 @@ Ultimyr talks to your vault through [Fast Note Sync](https://github.com/haierkey
 - The note icon on a step opens it **beside the roadmap**: edit or preview Markdown and press Save (or Ctrl/Cmd+S). **Open in Obsidian** jumps to the same note in the app.
 - Ticking a step sets `status: done` in its note's properties, and un-ticking sets `status: todo`. Nothing else in the note is changed by a tick.
 
+**Flashcards and Claude**
+- **Make a deck** (in the note pane) turns the `Question :: Answer` lines under `## Flashcards` into a new deck in the archive. It reads the saved note, so save first. Lines without both sides and duplicates are skipped, and pressing it again makes another deck.
+- Connect Claude to Ultimyr's MCP and grant `notes:use` (it is offered on the consent page; untick it to keep your notes private). Claude can then read a step's note (`get_step_note`), add text at the end of it (`append_step_note`, never editing what you wrote) and read its flashcards (`get_step_flashcards`) to build a deck. Steps need a note first: press **Create notes**.
+
 **Good to know**
 - Notes are matched to steps by the `ultimyr_step` property and a saved path. Renaming a *step* in Ultimyr does not rename its file. If you move or rename a note file in Obsidian, the pane will show it as missing; press **Create notes** to make a fresh one, or keep the old path.
 - Saving sends the version the pane loaded. If the note changed meanwhile (for example you typed in Obsidian), the save is refused and you are asked to reload, so nothing is overwritten silently.
 - The token is encrypted with the server's master key (the same key as the AI vault) and is never shown again. Without that key, or without `FNS_URL`, notes stay off and everything else works.
 - The server address is set by the operator only, never by a person, so Ultimyr cannot be pointed at other machines.
-- Flashcard lines (`Question :: Answer`) are not yet turned into decks automatically.

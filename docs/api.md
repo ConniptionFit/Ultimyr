@@ -15,6 +15,8 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 |---|---|---|
 | POST | `/auth/register` | `{ displayName, email, password }`. First account becomes admin. Honors `AUTH_REGISTRATION`. |
 | POST | `/auth/login` | `{ email, password }`. Returns a session, or `{ mfaRequired, mfaToken, methods }` when TOTP is on. |
+| POST | `/auth/change-password` | `{ changeToken, currentPassword, newPassword }`. Second step when login returns `{ passwordChangeRequired, changeToken }` (an admin-created account with a temporary password). Signs in on success. The token lasts 10 minutes. |
+| POST | `/auth/set-password` | `{ token, password }`. Redeems a one-time invite or reset link from an admin and signs in. Used, expired and replaced links return 400 `invalid_token`. |
 | POST | `/auth/mfa/verify` | `{ mfaToken, code }` or `{ mfaToken, recoveryCode }`. |
 | POST | `/auth/refresh` | Rotates the refresh cookie. Replaying an old cookie revokes the session, except within 10 seconds of the rotation (two tabs racing), when it gets an access token and no new cookie. |
 | POST | `/auth/logout` | Revokes the session. |
@@ -43,7 +45,9 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/admin/overview` | Counts, deployment details and the settings below. |
-| GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen: boolean or null }`. `null` removes the override and uses `AUTH_REGISTRATION`. |
+| GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen?: boolean or null, localUsersDisabled?: boolean }`. `registrationOpen: null` removes the override and uses `AUTH_REGISTRATION`. `localUsersDisabled: true` returns 409 `no_identity_provider` unless a provider is enabled. |
+| POST | `/admin/users` | Create a local account: `{ email, displayName, roles?, method: "invite" or "password", password? }`. `invite` (default) returns a one-time `inviteUrl` valid 7 days. `password` returns a `temporaryPassword` (generated unless you pass one, 12 or more characters) that must be changed at first sign-in. Both are shown once. 409 `email_taken`, or `local_users_disabled`. |
+| POST | `/admin/users/:id/invite` | New one-time link for a local account. Older links stop working. 409 `not_local_account` for SSO and SCIM users. |
 | GET, PATCH | `/admin/users`, `/admin/users/:id` | PATCH `{ status: active or suspended, roles[] }`. Suspending revokes sessions. The last active admin cannot be removed. |
 | GET, POST, DELETE | `/admin/groups`, `/admin/groups/:id` | |
 | GET, POST, DELETE | `/admin/groups/:id/members`, `/admin/groups/:id/members/:userId` | |
@@ -198,6 +202,8 @@ Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-o
 | POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Returns `{ total, created, existing, failed, indexUrl }`. Safe to repeat. |
 | GET | `/notes/steps/:stepId` | `{ path, exists, content, hash, obsidianUrl }` |
 | PUT | `/notes/steps/:stepId` | `{ content, baseHash }`. 409 `conflict` if the note changed since `hash`. |
+| POST | `/notes/steps/:stepId/append` | `{ text }`. Adds text to the end of the note; never replaces anything. |
+| GET | `/notes/steps/:stepId/flashcards` | `{ cards: [{ front, back }], skipped }` from the `Question :: Answer` lines under `## Flashcards`. |
 | POST | `/notes/steps/:stepId/status` | `{ status: todo, reading or done }`. Patches only the `status` property. |
 
 Errors: 409 `not_connected`, `fns_token_rejected`, `conflict`; 404 `no_note` (step has no note yet); 502 `fns_unreachable`.

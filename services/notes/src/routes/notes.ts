@@ -3,10 +3,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Ctx } from "../ctx.js";
 import { FnsError } from "../fns.js";
+import { parseFlashcards } from "../flashcards.js";
 import { indexPath, obsidianUrl, planNotes } from "../plan.js";
 
 const connectBody = z.strictObject({ token: z.string().min(8).max(2000), vault: z.string().min(1).max(200) });
 const saveBody = z.strictObject({ content: z.string().max(200_000), baseHash: z.string().max(200) });
+const appendBody = z.strictObject({ text: z.string().min(1).max(20_000) });
 const statusBody = z.strictObject({ status: z.enum(["todo", "reading", "done"]) });
 
 const MAX_NOTES = 400;
@@ -145,6 +147,39 @@ export function noteRoutes(ctx: Ctx) {
       try {
         const hash = await fns.saveNote(conn.token, conn.vault, row.path, b.content, b.baseHash);
         return { path: row.path, hash };
+      } catch (e) {
+        mapFns(e);
+      }
+    });
+
+    /** Adds text to the end of the note under the person's hand-written text; never replaces anything. */
+    r.post("/v1/notes/steps/:id/append", async (req) => {
+      const a = await ctx.actor(req);
+      const fns = on();
+      const row = await stepRow(a.userId, idParam(req));
+      const b = parse(appendBody, req.body);
+      const conn = await ctx.connection(a.userId);
+      try {
+        const cur = await fns.getNote(conn.token, conn.vault, row.path);
+        if (!cur) throw new HttpError(404, "no_note");
+        const content = `${cur.content.replace(/\s+$/, "")}\n\n${b.text.trim()}\n`;
+        const hash = await fns.saveNote(conn.token, conn.vault, row.path, content, cur.hash);
+        return { path: row.path, hash };
+      } catch (e) {
+        mapFns(e);
+      }
+    });
+
+    /** The `Question :: Answer` lines under `## Flashcards`, ready to become a deck. */
+    r.get("/v1/notes/steps/:id/flashcards", async (req) => {
+      const a = await ctx.actor(req);
+      const fns = on();
+      const row = await stepRow(a.userId, idParam(req));
+      const conn = await ctx.connection(a.userId);
+      try {
+        const note = await fns.getNote(conn.token, conn.vault, row.path);
+        if (!note) throw new HttpError(404, "no_note");
+        return { path: row.path, ...parseFlashcards(note.content) };
       } catch (e) {
         mapFns(e);
       }
