@@ -8,16 +8,18 @@ Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
               │
               ├─► web (Next.js, :3000) ── rewrites /api/v1/*, /scim/v2, JWKS ─┐
               ├─► auth (Fastify, :4001)  ◄──────────────────────────────────────┤
-              └─► content (Fastify, :4002) ◄────────────────────────────────────┘
+              ├─► content (Fastify, :4002) ◄────────────────────────────────────┤
+              └─► quiz (Fastify, :4003) ◄── asks content who may attempt/edit ───┘
                      │            │  verifies tokens via auth's JWKS,
                      │            └─ asks auth for group memberships
-                     └─► Postgres (schemas `auth`, `content`)
+                     └─► Postgres (schemas `auth`, `content`, `quiz`)
 ```
 - **web** renders the UI. It holds no secrets and no database access. It forwards API calls to auth, so one proxy host is enough. Proxies that can route by path (Traefik) send `/api/v1/*` straight to auth.
 - **auth** owns users, sessions, MFA, passkeys, API keys, groups, identity providers, SCIM and the audit log. It is the only writer of the `auth` schema.
 - **content** owns archives, guides, decks, versions, grants and search (see [content.md](content.md)). It verifies access tokens with auth's JWKS, so a revoked session keeps working there until its 10 minute token expires.
+- **quiz** owns questions, quiz settings, scoring profiles and attempts (see [quiz.md](quiz.md)). It never copies sharing data: for each request it asks content what the caller may do with the quiz item, using the caller's own token. Grading uses the pure `@ultimyr/scoring` package.
 - **migrate** is a one-shot container that applies SQL migrations before auth starts.
-- Every service owns one schema and verifies tokens with `@ultimyr/authz` and the JWKS endpoint, never by calling auth per request. The only per-user call is the content service fetching group memberships (cached 30 seconds). Planned: quiz, AI gateway, MCP.
+- Every service owns one schema and verifies tokens with `@ultimyr/authz` and the JWKS endpoint, never by calling auth per request. The only per-user call is the content service fetching group memberships (cached 30 seconds). Planned: AI gateway, MCP.
 
 ## Tokens and sessions
 1. Login (password, MFA, passkey or SSO) creates a `sessions` row and sets the refresh cookie `ultimyr_rt` (httpOnly, SameSite=Lax, path `/api/v1/auth`, 30 days).

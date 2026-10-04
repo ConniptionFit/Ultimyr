@@ -18,6 +18,8 @@ COPY packages/ui-icons/package.json packages/ui-icons/
 COPY packages/service-kit/package.json packages/service-kit/
 COPY services/auth/package.json services/auth/
 COPY services/content/package.json services/content/
+COPY services/quiz/package.json services/quiz/
+COPY packages/scoring/package.json packages/scoring/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS source
@@ -55,6 +57,22 @@ EXPOSE 4002
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4002/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main.js"]
 
+# ---- quiz service ----
+FROM source AS quiz-build
+RUN pnpm --filter @ultimyr/quiz build \
+ && pnpm --filter @ultimyr/quiz deploy --prod /out/quiz
+
+FROM node:22-slim AS quiz
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=quiz-build /out/quiz/node_modules ./node_modules
+COPY --from=quiz-build /repo/services/quiz/dist ./dist
+COPY --from=quiz-build /repo/services/quiz/migrations ./migrations
+USER node
+EXPOSE 4003
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4003/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
+
 # ---- migrate: one-shot job that applies every service's migrations ----
 FROM source AS migrate-build
 RUN pnpm --filter @ultimyr/db build \
@@ -67,6 +85,7 @@ COPY --from=migrate-build /out/db/node_modules ./node_modules
 COPY --from=migrate-build /repo/packages/db/dist ./dist
 COPY --from=migrate-build /repo/services/auth/migrations ./services/auth/migrations
 COPY --from=migrate-build /repo/services/content/migrations ./services/content/migrations
+COPY --from=migrate-build /repo/services/quiz/migrations ./services/quiz/migrations
 USER node
 CMD ["node", "dist/migrate-cli.js"]
 
@@ -76,7 +95,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # next.config rewrites are fixed at build time: this is where the web app forwards /api/v1.
 ARG AUTH_URL=http://auth:4001
 ARG CONTENT_URL=http://content:4002
-ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL
+ARG QUIZ_URL=http://quiz:4003
+ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL
 RUN pnpm --filter @ultimyr/web build
 
 FROM node:22-slim AS web

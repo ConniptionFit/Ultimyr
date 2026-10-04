@@ -110,7 +110,7 @@ export function attemptRoutes(ctx: Ctx) {
   }
 
   return async (r: FastifyInstance) => {
-    r.post("/v1/items/:id/attempts", { config: ctx.svc.limit }, async (req, reply) => {
+    r.post("/v1/quizzes/:id/attempts", { config: ctx.svc.limit }, async (req, reply) => {
       const a = await ctx.actor(req, "quiz:write");
       const itemId = idParam(req);
       const it = await ctx.quizItem(a, itemId, "attempt");
@@ -231,7 +231,7 @@ export function attemptRoutes(ctx: Ctx) {
       return view(att);
     });
 
-    r.get("/v1/items/:id/attempts", async (req) => {
+    r.get("/v1/quizzes/:id/attempts", async (req) => {
       const a = await ctx.actor(req, "quiz:read");
       const itemId = idParam(req);
       await ctx.quizItem(a, itemId, "attempt");
@@ -240,7 +240,7 @@ export function attemptRoutes(ctx: Ctx) {
       return { attempts: rows.map(summary) };
     });
 
-    r.get("/v1/me/attempts", async (req) => {
+    r.get("/v1/attempts", async (req) => {
       const a = await ctx.actor(req, "quiz:read");
       const { limit, offset } = parse(pageQuery, req.query);
       const { rows } = await pool.query("SELECT * FROM quiz.attempts WHERE user_id = $1 ORDER BY started_at DESC LIMIT $2 OFFSET $3", [a.userId, limit, offset]);

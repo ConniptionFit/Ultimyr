@@ -31,7 +31,7 @@ describe("golden vectors", () => {
       expect(r.rawBp).toBe(v.expected.rawBp);
       expect(r.scaled).toBe(v.expected.scaled);
       expect(r.pass).toBe(v.expected.pass);
-      for (const [id, [earned, outcome]] of Object.entries(v.expected.items as Record<string, [number, string]>)) {
+      for (const [id, [earned, outcome]] of Object.entries(v.expected.items as unknown as Record<string, [number, string]>)) {
         const it = r.items.find((i) => i.id === id)!;
         expect([id, it.earned, it.outcome]).toEqual([id, earned, outcome]);
       }

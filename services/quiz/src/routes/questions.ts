@@ -80,7 +80,7 @@ export function questionRoutes(ctx: Ctx) {
       return { a, q: rows[0] };
     }
 
-    r.get("/v1/items/:id/questions", async (req) => {
+    r.get("/v1/quizzes/:id/questions", async (req) => {
       const a = await ctx.actor(req, "quiz:read");
       const itemId = idParam(req);
       await ctx.quizItem(a, itemId, "write");
@@ -88,7 +88,7 @@ export function questionRoutes(ctx: Ctx) {
       return { questions: rows.map(questionOut) };
     });
 
-    r.post("/v1/items/:id/questions", async (req, reply) => {
+    r.post("/v1/quizzes/:id/questions", async (req, reply) => {
       const a = await ctx.actor(req, "quiz:write");
       const itemId = idParam(req);
       const it = await ctx.quizItem(a, itemId, "write");
@@ -105,7 +105,7 @@ export function questionRoutes(ctx: Ctx) {
     });
 
     /** Up to 200 questions at once, all or nothing. Used by import and by AI and MCP writers. */
-    r.post("/v1/items/:id/questions/bulk", { bodyLimit: 4 * 1024 * 1024 }, async (req, reply) => {
+    r.post("/v1/quizzes/:id/questions/bulk", { bodyLimit: 4 * 1024 * 1024 }, async (req, reply) => {
       const a = await ctx.actor(req, "quiz:write");
       const itemId = idParam(req);
       const it = await ctx.quizItem(a, itemId, "write");
@@ -164,7 +164,7 @@ export function questionRoutes(ctx: Ctx) {
     });
 
     /** Quiz settings. Learners may read them (timing and mode) but never the answer key. */
-    r.get("/v1/items/:id/config", async (req) => {
+    r.get("/v1/quizzes/:id/config", async (req) => {
       const a = await ctx.actor(req, "quiz:read");
       const itemId = idParam(req);
       const it = await ctx.quizItem(a, itemId, "attempt");
@@ -174,7 +174,7 @@ export function questionRoutes(ctx: Ctx) {
       return { ...cfg, publishedQuestions: n[0].n, canEdit: it.canWrite };
     });
 
-    r.put("/v1/items/:id/config", async (req) => {
+    r.put("/v1/quizzes/:id/config", async (req) => {
       const a = await ctx.actor(req, "quiz:write");
       const itemId = idParam(req);
       const it = await ctx.quizItem(a, itemId, "write");

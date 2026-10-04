@@ -40,6 +40,7 @@ jobs:
         run: |
           docker build --target auth -t ultimyr-auth .
           docker build --target content -t ultimyr-content .
+          docker build --target quiz -t ultimyr-quiz .
           docker build --target migrate -t ultimyr-migrate .
           docker build --target web -t ultimyr-web .
       - name: Validate compose file
