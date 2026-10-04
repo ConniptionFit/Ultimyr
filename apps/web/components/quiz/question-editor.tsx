@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { objectiveLabel, useObjectives } from "@/lib/objectives";
 import { TYPE_LABEL, type EditorQuestion, type QType } from "@/lib/quiz";
 
 const LETTERS = "abcdefghijkl";
@@ -21,8 +22,9 @@ function initialChoices(q?: EditorQuestion): Choice[] {
   return [0, 1, 2, 3].map(() => ({ text: "", correct: false }));
 }
 
-export function QuestionEditor({ itemId, initial, onSaved, onCancel }: { itemId: string; initial?: EditorQuestion; onSaved: () => void; onCancel: () => void }) {
+export function QuestionEditor({ itemId, archiveId, initial, onSaved, onCancel }: { itemId: string; archiveId: string; initial?: EditorQuestion; onSaved: () => void; onCancel: () => void }) {
   const { api } = useAuth();
+  const { tree: objectives } = useObjectives(archiveId);
   const [type, setType] = useState<QType>(initial?.type ?? "mcq");
   const [choices, setChoices] = useState<Choice[]>(() => initialChoices(initial));
   const [blanks, setBlanks] = useState<string[]>(() => (initial?.type === "fib" ? initial.key.blanks.map((b: any) => (b.accepted ?? []).join(" | ")) : [""]));
@@ -42,6 +44,7 @@ export function QuestionEditor({ itemId, initial, onSaved, onCancel }: { itemId:
       stem: String(f.get("stem")),
       explanation: String(f.get("explanation") ?? ""),
       domain: String(f.get("domain") ?? "").trim() || null,
+      objectiveId: String(f.get("objective") ?? "") || null,
       weight: Number(f.get("weight") || 1),
       difficulty: f.get("difficulty") ? Number(f.get("difficulty")) : null,
       isPretest: f.get("isPretest") === "on",
@@ -220,6 +223,25 @@ export function QuestionEditor({ itemId, initial, onSaved, onCancel }: { itemId:
         <Field id="qe-weight" name="weight" label="Weight (marks)" type="number" min={1} max={100} defaultValue={initial?.weight ?? 1} />
         <Field id="qe-diff" name="difficulty" label="Difficulty 1 to 5" type="number" min={1} max={5} defaultValue={initial?.difficulty ?? ""} />
       </div>
+      {objectives && objectives.length > 0 && (
+        <div className="space-y-1">
+          <label htmlFor="qe-objective" className="text-sm text-muted">
+            Exam objective (optional)
+          </label>
+          <select id="qe-objective" name="objective" defaultValue={initial?.objectiveId ?? ""} className={input}>
+            <option value="">Not linked</option>
+            {objectives.map((d) => (
+              <optgroup key={d.id} label={objectiveLabel(d)}>
+                {(d.children?.length ? d.children : [d]).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {objectiveLabel(o)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+      )}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isPretest" defaultChecked={initial?.isPretest} /> Unscored trial question (collects data without counting)
       </label>

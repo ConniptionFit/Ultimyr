@@ -12,7 +12,7 @@ import { FIDELITY_LABEL, MODE_LABEL, TYPE_LABEL, formatClock, pct, type Attempt,
 import { QuestionEditor } from "./question-editor";
 
 /** Everything a quiz item needs: start an attempt, see history, and (for editors) manage questions and settings. */
-export function QuizPanel({ itemId, editor, published }: { itemId: string; editor: boolean; published: boolean }) {
+export function QuizPanel({ itemId, archiveId, editor, published }: { itemId: string; archiveId: string; editor: boolean; published: boolean }) {
   const { api } = useAuth();
   const { t } = useNaming();
   const { display } = useDisplay();
@@ -195,6 +195,7 @@ export function QuizPanel({ itemId, editor, published }: { itemId: string; edito
             {editing === "new" && (
               <QuestionEditor
                 itemId={itemId}
+                archiveId={archiveId}
                 onCancel={() => setEditing(null)}
                 onSaved={async () => {
                   setEditing(null);
@@ -209,6 +210,7 @@ export function QuizPanel({ itemId, editor, published }: { itemId: string; edito
                   {editing === q.id ? (
                     <QuestionEditor
                       itemId={itemId}
+                      archiveId={archiveId}
                       initial={q}
                       onCancel={() => setEditing(null)}
                       onSaved={async () => {

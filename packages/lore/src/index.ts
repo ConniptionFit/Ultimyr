@@ -25,6 +25,12 @@ export const terms = {
   share: { themed: "Lend", plain: "Share" },
   keys: { themed: "Conduits", plain: "API keys & MCP" },
   admin: { themed: "The Stacks", plain: "Admin" },
+  prep: { themed: "Preparations", plain: "Exam prep" },
+  credentials: { themed: "Sigils", plain: "Credentials" },
+  drills: { themed: "Whetstone", plain: "Weak-area drills" },
+  coverage: { themed: "Atlas", plain: "Coverage" },
+  build: { themed: "Commission the Archivist", plain: "Build with an AI assistant" },
+  countdown: { themed: "The Eve", plain: "Exam countdown" },
 } as const;
 export type TermKey = keyof typeof terms;
 

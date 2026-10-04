@@ -10,6 +10,7 @@ const meta = z.object({
   explanation: z.string().max(10_000).default(""),
   difficulty: z.number().int().min(1).max(5).nullish(),
   domain: z.string().trim().max(100).nullish(),
+  objectiveId: z.uuid().nullish(),
   weight: z.number().int().min(1).max(100).default(1),
   isPretest: z.boolean().default(false),
   source: z.enum(["human", "ai", "mcp", "import"]).default("human"),
@@ -45,6 +46,7 @@ export const questionOut = (q: Record<string, any>) => ({
   explanation: q.explanation,
   difficulty: q.difficulty,
   domain: q.domain,
+  objectiveId: q.objective_id,
   weight: q.weight,
   isPretest: q.is_pretest,
   status: q.status,
@@ -97,9 +99,9 @@ export function questionRoutes(ctx: Ctx) {
       // AI and MCP writes wait for a human to publish them.
       const status = m.status ?? (m.source === "ai" || m.source === "mcp" ? "draft" : "published");
       const { rows } = await pool.query(
-        `INSERT INTO quiz.questions (id, item_id, archive_id, type, stem, payload, answer_key, explanation, difficulty, domain, weight, is_pretest, status, source, ord, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,(SELECT COALESCE(max(ord), 0) + 1 FROM quiz.questions WHERE item_id = $2),$15) RETURNING *`,
-        [uuidv7(), itemId, it.archiveId, b.type, m.stem, b.payload, b.key, m.explanation, m.difficulty ?? null, m.domain || null, m.weight, m.isPretest, status, m.source, a.userId],
+        `INSERT INTO quiz.questions (id, item_id, archive_id, type, stem, payload, answer_key, explanation, difficulty, domain, weight, is_pretest, status, source, ord, created_by, objective_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,(SELECT COALESCE(max(ord), 0) + 1 FROM quiz.questions WHERE item_id = $2),$15,$16) RETURNING *`,
+        [uuidv7(), itemId, it.archiveId, b.type, m.stem, b.payload, b.key, m.explanation, m.difficulty ?? null, m.domain || null, m.weight, m.isPretest, status, m.source, a.userId, m.objectiveId ?? null],
       );
       return reply.code(201).send(questionOut(rows[0]));
     });
@@ -123,9 +125,9 @@ export function questionRoutes(ctx: Ctx) {
           }
           const status = m.status ?? (m.source === "ai" || m.source === "mcp" ? "draft" : "published");
           const res = await c.query(
-            `INSERT INTO quiz.questions (id, item_id, archive_id, type, stem, payload, answer_key, explanation, difficulty, domain, weight, is_pretest, status, source, ord, created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,(SELECT COALESCE(max(ord), 0) + 1 FROM quiz.questions WHERE item_id = $2),$15) RETURNING *`,
-            [uuidv7(), itemId, it.archiveId, b.type, m.stem, b.payload, b.key, m.explanation, m.difficulty ?? null, m.domain || null, m.weight, m.isPretest, status, m.source, a.userId],
+            `INSERT INTO quiz.questions (id, item_id, archive_id, type, stem, payload, answer_key, explanation, difficulty, domain, weight, is_pretest, status, source, ord, created_by, objective_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,(SELECT COALESCE(max(ord), 0) + 1 FROM quiz.questions WHERE item_id = $2),$15,$16) RETURNING *`,
+            [uuidv7(), itemId, it.archiveId, b.type, m.stem, b.payload, b.key, m.explanation, m.difficulty ?? null, m.domain || null, m.weight, m.isPretest, status, m.source, a.userId, m.objectiveId ?? null],
           );
           out.push(res.rows[0]);
         }
@@ -146,7 +148,7 @@ export function questionRoutes(ctx: Ctx) {
         if (!("type" in raw && "payload" in raw && "key" in raw)) throw new HttpError(400, "invalid_request", { issues: ["type, payload and key must be changed together"] });
         b = checked(raw);
       }
-      const col: Record<string, unknown> = { stem: m.stem, explanation: m.explanation, difficulty: m.difficulty, domain: m.domain, weight: m.weight, is_pretest: m.isPretest, status: m.status };
+      const col: Record<string, unknown> = { stem: m.stem, explanation: m.explanation, difficulty: m.difficulty, domain: m.domain, objective_id: m.objectiveId, weight: m.weight, is_pretest: m.isPretest, status: m.status };
       const set: string[] = [];
       const vals: unknown[] = [];
       for (const [k, v] of Object.entries(col)) if (v !== undefined) set.push(`${k} = $${vals.push(v)}`);

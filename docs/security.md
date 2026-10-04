@@ -15,6 +15,8 @@ This is the project's own review of what Ultimyr protects, how, and what is left
 | Browser | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: SAMEORIGIN` and a restrictive `Permissions-Policy` on every page, `frame-ancestors 'none'` on the consent page. APIs answer `no-store` |
 | Service worker | Caches only the offline page and icons, never pages, API, OAuth or MCP |
 
+Credential records (including voucher codes, stored as plain text so you can copy them back) are private to their owner: no sharing, and the MCP `get_credentials` tool returns only whether a voucher exists. Keep voucher codes out of notes you share.
+
 ## Trust boundaries
 - Only the **web** container needs to be public. It forwards `/api`, `/oauth`, `/mcp` and `/.well-known` to the internal services. The other ports bind to `127.0.0.1` by default.
 - Services verify tokens with the auth service's public key. They never see passwords.

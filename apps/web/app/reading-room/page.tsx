@@ -5,6 +5,7 @@ import { Library, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AlertsBanner } from "@/components/credentials/alerts-banner";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
@@ -120,6 +121,7 @@ export default function ReadingRoom() {
                 {error}
               </p>
             )}
+            <AlertsBanner />
             {paths.length > 0 && (
               <section aria-labelledby="paths-h">
                 <h2 id="paths-h" className="mb-3 text-xl">

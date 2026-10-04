@@ -16,6 +16,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - Phase 7 MCP: connect Claude or any MCP app at `https://<your address>/mcp` with OAuth sign in. It can search and read your material, coach you from your progress, and add drafts. Scopes you approve decide which tools exist. See [`docs/mcp.md`](docs/mcp.md).
 - Phase 8 polish: themes, text size, easy-read font, calm and focus modes, declared extra time on timed quizzes, an installable app with an offline page, a small example archive, and a CI performance budget. See [`docs/accessibility.md`](docs/accessibility.md).
 - Phase 9 hardening: security headers, a written security review and deployment checklist, backup and restore scripts, a load check and runbooks. See [`docs/security.md`](docs/security.md) and [`docs/operations.md`](docs/operations.md).
+- Exam prep: a credential tracker (exam dates, vouchers, renewals, CEU hours), adaptive weak-area drills, an exam objective coverage map and an exam-day countdown plan. See [`docs/prep.md`](docs/prep.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -104,10 +105,10 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 | Area | Paths |
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
-| Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study` |
+| Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study`, `/credentials` |
 | MCP | `/mcp` (Streamable HTTP), `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/me/mcp-connections` |
 | AI | `/ai/status`, `/ai/credentials`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads` |
-| Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals` |
+| Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals`, `/drills`, `/plan` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
 | Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |

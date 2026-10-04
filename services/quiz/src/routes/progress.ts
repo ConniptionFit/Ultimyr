@@ -2,8 +2,16 @@ import { HttpError, idParam, parse } from "@ultimyr/service-kit";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Ctx } from "../ctx.js";
+import { buildPlan } from "../plan.js";
 
 const analyticsQuery = z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(1).max(365).default(30) });
+const planQuery = z.object({
+  archive: z.uuid(),
+  /** The exam date. Falls back to the date on the archive's goal. */
+  examDate: z.iso.date().optional(),
+  minutes: z.coerce.number().int().min(15).max(480).default(45),
+  mode: z.enum(["unknown", "test_center", "online"]).default("unknown"),
+});
 const goalBody = z.object({
   targetBp: z.number().int().min(1).max(10_000),
   targetDate: z.iso.date().nullable().optional(),
@@ -17,10 +25,10 @@ export function progressRoutes(ctx: Ctx) {
 
   const goalOut = (g: Record<string, any>) => ({ archiveId: g.archive_id, targetBp: g.target_bp, targetDate: g.target_date ? new Date(g.target_date).toISOString().slice(0, 10) : null });
 
-  /** Recency weighted average of the latest attempts. An estimate of readiness, never a prediction of the real exam. */
+  /** Recency weighted average of the latest quiz attempts (drills are aimed at weak spots, so they would skew it). An estimate of readiness, never a prediction of the real exam. */
   async function readiness(userId: string, archive: string) {
     const { rows } = await pool.query(
-      "SELECT raw_bp FROM quiz.attempts WHERE user_id = $1 AND archive_id = $2 AND status <> 'in_progress' AND raw_max > 0 ORDER BY started_at DESC LIMIT 10",
+      "SELECT raw_bp FROM quiz.attempts WHERE user_id = $1 AND archive_id = $2 AND kind = 'quiz' AND status <> 'in_progress' AND raw_max > 0 ORDER BY started_at DESC LIMIT 10",
       [userId, archive],
     );
     if (rows.length < 3) return { bp: null, basedOn: rows.length };
@@ -108,6 +116,61 @@ export function progressRoutes(ctx: Ctx) {
         weak: domains.filter((d) => d.questions >= 3).sort((x, y) => x.accuracyBp - y.accuracyBp).slice(0, 3),
         readiness: ready,
         goal,
+      };
+    });
+
+    /**
+     * The countdown plan to an exam date: phases, a task list for each day, advice from readiness and the goal, and an exam-day checklist.
+     * Uses only the caller's own results, so it needs no archive access.
+     */
+    r.get("/v1/plan", async (req) => {
+      const a = await ctx.actor(req, "quiz:read");
+      const q = parse(planQuery, req.query);
+      const { rows: g } = await pool.query("SELECT target_bp, target_date FROM quiz.goals WHERE user_id = $1 AND archive_id = $2", [a.userId, q.archive]);
+      const goalDate = g[0]?.target_date ? new Date(g[0].target_date).toISOString().slice(0, 10) : null;
+      const examDate = q.examDate ?? goalDate;
+      if (!examDate) throw new HttpError(400, "invalid_request", { issues: ["examDate: give the exam date, or set a goal date for this archive"] });
+      const est = await readiness(a.userId, q.archive);
+      const { rows: doms } = await pool.query(
+        `SELECT COALESCE(ai.question->>'domain', 'General') AS domain, COALESCE(sum(ai.points_awarded), 0)::bigint AS earned, COALESCE(sum((ai.grading->>'max')::int), 0)::bigint AS max, count(*)::int AS questions
+           FROM quiz.attempt_items ai JOIN quiz.attempts at ON at.id = ai.attempt_id
+          WHERE at.user_id = $1 AND at.archive_id = $2 AND ai.outcome IS NOT NULL AND ai.outcome <> 'excluded' GROUP BY 1`,
+        [a.userId, q.archive],
+      );
+      const weakAreas = doms
+        .filter((d) => d.questions >= 3 && d.domain !== "General")
+        .map((d) => ({ domain: d.domain as string, bp: ratioBp(Number(d.earned), Number(d.max)) }))
+        .sort((x, y) => x.bp - y.bp || x.domain.localeCompare(y.domain))
+        .slice(0, 4)
+        .map((d) => d.domain);
+      return { archiveId: q.archive, usedGoalDate: !q.examDate, ...buildPlan({ today: ctx.now().toISOString().slice(0, 10), examDate, readinessBp: est.bp, targetBp: g[0]?.target_bp ?? null, weakAreas, minutesPerDay: q.minutes, mode: q.mode }) };
+    });
+
+    /** Questions and the caller's own results for each exam objective of an archive, for the coverage map. */
+    r.get("/v1/analytics/objectives", async (req) => {
+      const a = await ctx.actor(req, "quiz:read");
+      const { archive: archiveId } = parse(z.object({ archive: z.uuid() }), req.query);
+      const arc = await ctx.archiveAccess(a, archiveId);
+      const itemIds = arc.quizzes.filter((x) => x.canAttempt && (x.status === "published" || x.canWrite)).map((x) => x.id);
+      if (!itemIds.length) return { archiveId, objectives: [], unmapped: { questions: 0, drafts: 0, answered: 0, correct: 0, accuracyBp: null } };
+      const { rows } = await pool.query(
+        `SELECT q.objective_id, count(*) FILTER (WHERE q.status = 'published')::int AS questions, count(*) FILTER (WHERE q.status = 'draft')::int AS drafts,
+                COALESCE(sum(st.answered), 0)::int AS answered, COALESCE(sum(st.correct), 0)::int AS correct
+           FROM quiz.questions q
+           LEFT JOIN LATERAL (
+             SELECT count(*)::int AS answered, count(*) FILTER (WHERE ai.outcome = 'correct')::int AS correct
+               FROM quiz.attempt_items ai JOIN quiz.attempts att ON att.id = ai.attempt_id
+              WHERE ai.question_id = q.id AND att.user_id = $1 AND ai.outcome IN ('correct', 'partial', 'incorrect')) st ON true
+          WHERE q.item_id = ANY($2::uuid[]) AND NOT q.is_pretest AND (q.status = 'published' OR ($3::boolean AND q.status = 'draft'))
+          GROUP BY q.objective_id`,
+        [a.userId, itemIds, arc.canWrite],
+      );
+      const out = (r: Record<string, any>) => ({ questions: r.questions as number, drafts: r.drafts as number, answered: r.answered as number, correct: r.correct as number, accuracyBp: r.answered > 0 ? ratioBp(r.correct, r.answered) : null });
+      const unmapped = rows.find((r) => r.objective_id === null);
+      return {
+        archiveId,
+        objectives: rows.filter((r) => r.objective_id !== null).map((r) => ({ objectiveId: r.objective_id as string, ...out(r) })),
+        unmapped: unmapped ? out(unmapped) : { questions: 0, drafts: 0, answered: 0, correct: 0, accuracyBp: null },
       };
     });
 
