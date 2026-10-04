@@ -8,6 +8,7 @@ import { AssistantPanel } from "@/components/assistant-panel";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
+import { ObjectivePicker } from "@/components/coverage/objective-picker";
 import { QuizPanel } from "@/components/quiz/quiz-panel";
 import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
@@ -187,8 +188,9 @@ export default function ItemPage() {
           )}
 
           {it.kind === "guide" && (editing ? <GuideEditor it={it} onSubmit={saveGuide} onCancel={() => setEditing(false)} /> : <GuideReader it={it} />)}
+          {editor && it.kind !== "quiz" && <ObjectivePicker archiveId={it.archive.id} kind="item" refId={id} />}
           {it.kind === "deck" && <Deck it={it} editor={editor} studying={studying} setStudying={setStudying} reload={load} fail={fail} />}
-          {it.kind === "quiz" && <QuizPanel itemId={id} editor={editor} published={it.status === "published"} />}
+          {it.kind === "quiz" && <QuizPanel itemId={id} archiveId={it.archive.id} editor={editor} published={it.status === "published"} />}
 
           {it.kind !== "quiz" && it.status === "published" && <AssistantPanel context={{ type: "item", id }} label="Ask about this" />}
 

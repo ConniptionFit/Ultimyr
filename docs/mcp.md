@@ -27,7 +27,7 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `search_materials` | `content:read` | Full text search of archives, guide sections and cards |
 | `get_guide`, `get_deck` | `content:read` | Read material |
 | `get_quiz` | `quiz:read` | Quiz and questions (questions only for editors) |
-| `create_guide`, `update_guide` | `content:write` | Write guides. New versions are marked `mcp` |
+| `create_guide`, `update_guide` | `content:write` | Write guides. New versions are marked `mcp`. `create_guide` and `create_deck` take `objectiveIds` to link the material to exam objectives in the same call |
 | `create_deck`, `upsert_cards`, `delete_cards` | `content:write` | Flashcards |
 | `create_quiz`, `create_quiz_questions` | `content:write`, `quiz:write` | Quizzes. Questions are validated strictly, all or nothing |
 | `list_resources` | `content:read` | The external links saved in an archive |
@@ -37,10 +37,29 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
 | `get_step_note`, `get_step_flashcards` | `notes:use` | Read the note for a roadmap step from your Obsidian vault, and the `Question :: Answer` lines in it (hand them to `create_deck`) |
 | `append_step_note` | `notes:use` | Add text to the END of a step note. Never edits or removes what you wrote |
+| `get_objectives` | `content:read` | The exam objectives (domains and topics with weights) and what is linked to each |
+| `set_objectives` | `content:write` | Add or update objectives from an outline. Merges by code or title, never deletes |
+| `link_objectives` | `content:write` | Link guides, decks, cards or resources to objectives |
+| `link_questions` | `quiz:write` | Tag questions with an objective |
+| `get_coverage` | `content:read`, `quiz:read` | Per objective: cards, questions, your accuracy, and the biggest gaps |
+| `get_build_queue` | `content:read` (`quiz:read` for exact question counts) | The to-do list for building an archive out: the next few tasks (a guide per domain, flashcards and questions per objective), the decks and quizzes that exist, and progress. Depth: quick, standard, deep |
+| `get_credentials` | `content:read` | Your credentials with exam dates, renewals, CEU totals and current alerts. Voucher codes are never returned |
+| `get_exam_plan` | `quiz:read` | The day by day plan to an exam date |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
 | `share_item` | `content:share` | Give a person or group access. Off unless you grant sharing |
 
-**Resources:** `ultimyr://archive/{id}`, `ultimyr://guide/{id}` (Markdown), `ultimyr://deck/{id}`. **Prompts:** `make_study_guide`, `quiz_me_on`, `explain_my_mistakes`, `build_roadmap`. Tools, resources and prompts use plain names even when themed names are on.
+**Resources:** `ultimyr://archive/{id}`, `ultimyr://guide/{id}` (Markdown), `ultimyr://deck/{id}`. **Prompts:** `make_study_guide`, `quiz_me_on`, `explain_my_mistakes`, `build_roadmap`, `build_certification`, `continue_build`. Tools, resources and prompts use plain names even when themed names are on.
+
+## Build a whole certification from one prompt
+Open **Exam prep > Build with an AI assistant** (themed: Commission the Archivist), type the certification and pick a depth, then paste the prompt into Claude. On an archive's **Coverage** tab, the same panel shows build progress and a prompt to continue.
+
+How the assistant works through it:
+1. **Facts first.** It asks you for the vendor's exam objectives and stops if you have none. It never guesses objectives, weights, scores or prices.
+2. **Objectives and roadmap.** `set_objectives`, `add_resources` (only links you gave it), `import_outline`.
+3. **The queue.** `get_build_queue` returns a few tasks at a time, heaviest exam domains first: a guide per domain, flashcards and questions per objective. The assistant writes them, links them to their objectives, and asks again until `done` is true. Depth sets the target per objective: quick 5 cards and 3 questions, standard 10 and 6, deep 20 and 12.
+4. **Report.** `get_coverage` shows what is thin. Everything is a draft until you publish it.
+
+Because the queue is computed from what already exists, a new chat can pick up exactly where an old one stopped (`continue_build`). Draft questions count, so nothing is written twice. Writes are rate limited per minute; the assistant is told to wait and continue.
 
 ## Safety
 - **Drafts.** New material and quiz questions are saved as drafts with source `mcp`, visible only to editors until a person publishes them. Editing **published** material creates a new version (so it can be restored) and moves the item back to draft until republished. Pass `holdForReview: false` on a tool call to skip that hold.

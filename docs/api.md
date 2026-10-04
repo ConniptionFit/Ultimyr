@@ -188,6 +188,34 @@ Response shapes: `mcq` `{ choice }`, `multi` `{ choices }`, `fib` `{ blanks }`, 
 | GET | `/goals` | All your goals. |
 | GET, PUT, DELETE | `/goals/:archiveId` | PUT `{ targetBp, targetDate? }` (`targetBp` 1 to 10000, so 8000 is 80%). GET returns `{ goal: null }` when none. |
 
+## Credentials (content service)
+Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET, POST | `/credentials` | POST `{ name, issuer?, status: planned\|scheduled\|earned\|retired, archiveId?, examDate?, voucherCode?, voucherExpires?, earnedOn?, expiresOn?, renewalAlertDays?, ceuRequired?, ceuUnit?, credentialId?, verifyUrl?, notes? }`. |
+| GET | `/credentials/alerts` | Computed from your dates: `exam_today`, `exam_soon`, `exam_past`, `voucher_expiring`, `voucher_expired`, `renewal_due`, `expired`, `ceu_short`, each with `severity`, `date`, `daysLeft`, `message`. |
+| GET, PATCH, DELETE | `/credentials/:id` | GET includes CEU entries and the total in the current cycle. |
+| POST | `/credentials/:id/ceu` | `{ title, units, earnedOn, category?, evidenceUrl? }`. |
+| PATCH, DELETE | `/credentials/:id/ceu/:entryId` | |
+
+## Objectives and coverage
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/archives/:id/objectives` | Two-level tree (domain, topic) with `weightBp` and linked counts rolled up (distinct material counted once). |
+| PUT | `/archives/:id/objectives` | Replaces the tree (editor). |
+| POST | `/archives/:id/objectives/import` | `{ outline, replace? }`. Outline lines: `## 1.0 Domain (15%)` then bullets. Merges by code or title. |
+| GET, PUT | `/archives/:id/links` | Links from objectives to `item`, `card` or `resource` ids. |
+| GET | `/analytics/objectives?archive=` | Quiz service. Per objective: questions, drafts, answered, correct, `accuracyBp`, plus `unmapped`. |
+
+`GET /access/archive/:id` also returns `quizzes: [{ id, title, status, canAttempt, canWrite }]`.
+
+## Drills and plan (quiz service)
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/drills` | `{ archiveId, count: 3 to 50, focus: mixed\|weak\|missed, objectiveId?, restart? }`. Resumes an open drill unless `restart`. 409 `no_questions` or `nothing_to_drill`. A drill is an attempt with `kind: "drill"`, so the attempt routes above apply. Drills do not feed the readiness estimate. |
+| GET | `/plan?archive=&examDate=&minutes=&mode=` | Phases, daily tasks (up to 28 days plus exam day), advice and an exam-day checklist. |
+
 ## AI gateway
 See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
 

@@ -139,6 +139,14 @@ function Progress() {
                 <Field id="goal-date" name="date" label="Exam date (optional)" type="date" defaultValue={an.goal?.targetDate ?? ""} />
                 <Button type="submit">{an.goal ? "Update goal" : "Set goal"}</Button>
               </form>
+              <p className="flex flex-wrap gap-4 text-sm">
+                <Link href={`/drills?archive=${archive}`} className="text-accent underline">
+                  Drill your weak areas
+                </Link>
+                <Link href={`/exam-day?archive=${archive}${an.goal?.targetDate ? `&date=${an.goal.targetDate}` : ""}`} className="text-accent underline">
+                  Exam countdown plan
+                </Link>
+              </p>
               {an.goal && (
                 <p className="text-sm" role="status">
                   {an.goal.onTrack === null

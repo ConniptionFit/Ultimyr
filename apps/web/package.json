@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
+    "@ultimyr/coverage": "workspace:^",
     "@ultimyr/lore": "workspace:^",
     "@ultimyr/ui-icons": "workspace:^",
     "lucide-react": "^1.51.0",

@@ -4,7 +4,7 @@ import { createTestIssuer } from "@ultimyr/service-kit/testing";
 import type { FastifyInstance } from "fastify";
 import pg from "pg";
 import { buildApp } from "../src/app.js";
-import type { AccessChecker, ItemAccess } from "../src/access.js";
+import type { AccessChecker, ArchiveAccess, ItemAccess } from "../src/access.js";
 
 export const testDbUrl = process.env.TEST_DATABASE_URL;
 export const uuid = () => crypto.randomUUID();
@@ -15,6 +15,8 @@ export interface Harness {
   issuer: ReturnType<typeof createTestIssuer>;
   /** Stub of the content service's answer: `${userId}:${itemId}` -> access. */
   access: Map<string, ItemAccess>;
+  /** Stub of the content service's archive answer: `${userId}:${archiveId}` -> access. */
+  archives: Map<string, ArchiveAccess>;
   /** Move the service clock. */
   clock: { now: Date };
   close(): Promise<void>;
@@ -27,8 +29,13 @@ export async function createHarness(): Promise<Harness> {
   await migrate(pool, { service: "quiz", dir: resolve(import.meta.dirname, "../migrations") });
   const issuer = createTestIssuer();
   const access = new Map<string, ItemAccess>();
+  const archives = new Map<string, ArchiveAccess>();
   const clock = { now: new Date("2026-10-04T12:00:00Z") };
+  const sub = (bearer: string) => JSON.parse(Buffer.from(bearer.split(".")[1]!, "base64url").toString()).sub as string;
   const checker: AccessChecker = {
+    async archive(bearer, archiveId) {
+      return archives.get(`${sub(bearer)}:${archiveId}`) ?? null;
+    },
     async item(bearer, itemId) {
       const sub = JSON.parse(Buffer.from(bearer.split(".")[1]!, "base64url").toString()).sub as string;
       return access.get(`${sub}:${itemId}`) ?? null;
@@ -40,6 +47,7 @@ export async function createHarness(): Promise<Harness> {
     app,
     issuer,
     access,
+    archives,
     clock,
     async close() {
       await app.close();
