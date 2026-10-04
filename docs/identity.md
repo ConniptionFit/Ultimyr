@@ -43,7 +43,7 @@ Administrators (role `platform_admin`) see **Admin panel** in the account menu (
 | Users | Search, suspend or reinstate, edit roles. The last active administrator is protected. |
 | Groups | Create local groups and manage members. SSO and SCIM groups are read only. |
 | Sign-in methods | Add, enable and remove OIDC, OAuth 2 and SAML providers. |
-| Provisioning | Create and revoke SCIM tokens. |
+| Provisioning | A step by step SCIM setup guide (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and SCIM token management. |
 | Audit log | Latest sign-ins and admin actions, with a filter. |
 
 Everything that only affects your own session (display, security, AI keys, connected apps, themed names) is under **Your settings** in the same menu.
@@ -51,6 +51,11 @@ Everything that only affects your own session (display, security, AI keys, conne
 **Registration switch.** General has "Allow new sign-ups". It overrides `AUTH_REGISTRATION` until you choose "Use the default". The first account on a fresh install is always allowed.
 
 ## SCIM 2.0 provisioning
+**Guided setup.** Admin panel > Provisioning opens a setup guide. Pick a provider (authentik is the default), optionally type your provider's address so each step gets a direct link to the right page in that provider, generate a token inline, and copy the address and token with one click. Tick steps off as you go (progress is remembered in your browser). Menu names come from each vendor's current docs, so a provider that renames menus may differ slightly. Keycloak has no outbound SCIM of its own, and the guide says so.
+
+Things every provider needs: the provider must be able to reach `{PUBLIC_URL}/scim/v2` from its own servers, and `userName` must be an email address.
+
+**By hand.**
 1. Create a token: `POST /api/v1/admin/scim-tokens` (shown once).
 2. Point your IdP at `{PUBLIC_URL}/scim/v2` with that bearer token.
 3. Users and Groups are supported, including the Okta and Entra PATCH styles. SCIM-managed users are flagged `scim_managed`.
