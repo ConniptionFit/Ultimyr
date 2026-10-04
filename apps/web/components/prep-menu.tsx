@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, ChevronDown, Dumbbell, ShieldCheck } from "lucide-react";
+import { CalendarClock, ChevronDown, Dumbbell, ShieldCheck, Sparkles } from "lucide-react";
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useNaming } from "@/lib/naming";
@@ -31,7 +31,7 @@ export function PrepMenu() {
         {t("prep")} <UIcon icon={ChevronDown} size={14} aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-md border border-line bg-surface shadow-lg">
+        <div role="menu" className="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-md border border-line bg-surface shadow-lg">
           <Link role="menuitem" href="/credentials" className={item} onClick={() => setOpen(false)}>
             <UIcon icon={ShieldCheck} size={16} /> {t("credentials")}
           </Link>
@@ -40,6 +40,9 @@ export function PrepMenu() {
           </Link>
           <Link role="menuitem" href="/exam-day" className={item} onClick={() => setOpen(false)}>
             <UIcon icon={CalendarClock} size={16} /> {t("countdown")}
+          </Link>
+          <Link role="menuitem" href="/build" className={item} onClick={() => setOpen(false)}>
+            <UIcon icon={Sparkles} size={16} /> {t("build")}
           </Link>
         </div>
       )}

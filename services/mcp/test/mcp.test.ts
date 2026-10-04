@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await boot();
     const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name).sort();
     const reader = await names(["content:read"]);
-    expect(reader).toEqual(["get_archive", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
+    expect(reader).toEqual(["get_archive", "get_build_queue", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
     const full = await names(["content:read", "content:write", "quiz:read", "quiz:write"]);
     expect(full).toContain("create_quiz_questions");
     expect(full).toContain("get_progress");
@@ -322,6 +322,35 @@ describe("MCP server", () => {
     expect(r2.note).toContain("cannot read quizzes");
   });
 
+  it("hands out the build queue, and links new guides and decks to objectives in the same call", async () => {
+    fresh();
+    await boot();
+    const tree = [{ id: ID, code: "1.0", title: "Basics", weightBp: 10000, counts: { guides: 0, decks: 0, cards: 0, resources: 0 }, children: [{ id: ITEM, code: "1.1", title: "One", weightBp: null, counts: { guides: 0, decks: 0, cards: 0, resources: 0 } }] }];
+    respond = (x) => (x.service === "quiz" ? { objectives: [], unmapped: { questions: 0, drafts: 0, answered: 0, correct: 0, accuracyBp: null } } : x.path.endsWith("/objectives") ? { objectives: tree } : { id: ID, items: [{ id: ITEM, kind: "quiz", title: "Basics quiz", status: "draft", markdown: "SECRET" }] });
+    const c = await connect(await issuer.token({ scopes: ["content:read", "quiz:read", "content:write"] }));
+    const q = JSON.parse(text(await c.callTool({ name: "get_build_queue", arguments: { archiveId: ID, depth: "quick", batch: 2 } })));
+    expect(q.done).toBe(false);
+    expect(q.tasks.map((t: any) => t.type)).toEqual(["guide", "cards"]);
+    expect(q.tasks[0].objectives[0]).toMatchObject({ id: ITEM, code: "1.1" });
+    expect(q.existing).toEqual([{ id: ITEM, kind: "quiz", title: "Basics quiz", status: "draft" }]);
+    expect(q.howTo).toContain("get_build_queue");
+
+    fresh();
+    respond = (x) => (x.path.endsWith("/items") ? { id: ITEM, kind: "guide", title: "G", status: "draft" } : {});
+    await c.callTool({ name: "create_guide", arguments: { archiveId: ID, title: "G", markdown: "# G", objectiveIds: [ID] } });
+    expect(calls.map((x) => [x.path, x.method])).toEqual([[`/v1/archives/${ID}/items`, "POST"], [`/v1/archives/${ID}/links`, "PUT"]]);
+    expect(calls[1]!.body).toEqual({ kind: "item", refId: ITEM, objectiveIds: [ID] });
+    fresh();
+    respond = () => ({ id: ITEM, kind: "deck", title: "D", status: "draft" });
+    await c.callTool({ name: "create_deck", arguments: { archiveId: ID, title: "D" } });
+    expect(calls).toHaveLength(1); // nothing to link, so no second call
+
+    fresh();
+    respond = () => ({ objectives: [] });
+    const empty = JSON.parse(text(await c.callTool({ name: "get_build_queue", arguments: { archiveId: ID } })));
+    expect(empty.note).toContain("set_objectives");
+  });
+
   it("shows credentials without voucher codes, and fetches the countdown plan", async () => {
     fresh();
     await boot();
@@ -349,7 +378,7 @@ describe("MCP server", () => {
     const guide = await c.readResource({ uri: `ultimyr://guide/${ITEM}` });
     expect(guide.contents[0]).toMatchObject({ mimeType: "text/markdown", text: "# Ports" });
     const prompts = (await c.listPrompts()).prompts.map((p) => p.name).sort();
-    expect(prompts).toEqual(["build_roadmap", "explain_my_mistakes", "make_study_guide", "quiz_me_on"]);
+    expect(prompts).toEqual(["build_certification", "build_roadmap", "continue_build", "explain_my_mistakes", "make_study_guide", "quiz_me_on"]);
     const p = await c.getPrompt({ name: "make_study_guide", arguments: { topic: "DNS" } });
     expect((p.messages[0]!.content as any).text).toContain("DNS");
     const noRead = await connect(await issuer.token({ scopes: ["quiz:read"] }));
