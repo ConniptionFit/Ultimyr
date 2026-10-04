@@ -1,5 +1,6 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { hasScope } from "@ultimyr/authz";
+import { buildCoverage, topGaps, type ObjectiveNode, type QuizStats } from "@ultimyr/coverage";
 import { z } from "zod";
 import type { Authed } from "./auth.js";
 import type { McpConfig } from "./config.js";
@@ -50,6 +51,7 @@ const question = z.object({
   explanation: z.string().max(10_000).optional().describe("Why the answer is right. Shown after the learner answers."),
   difficulty: z.number().int().min(1).max(5).optional(),
   domain: z.string().max(100).optional().describe("Exam domain or objective, used for the per-domain score breakdown."),
+  objectiveId: z.uuid().optional().describe("The exam objective this question tests, from get_objectives. Lets the coverage map and weak-area drills use it."),
   weight: z.number().int().min(1).max(100).optional(),
 });
 
@@ -260,6 +262,45 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     const r = await get("quiz", "/v1/analytics", { archive: a.archiveId, days: a.days });
     return { weak: r.weak, domains: [...r.domains].sort((x: any, y: any) => x.accuracyBp - y.accuracyBp), readiness: r.readiness, note: "accuracyBp is in basis points: 8000 means 80%." };
   });
+
+  // ---- exam objectives, coverage, credentials and the countdown plan ---------
+  tool("get_objectives", "content:read", "read", { title: "Get exam objectives", description: "The archive's exam objectives (domains and the objectives inside them) with how much study material is linked to each. Includes the ids to use in link_objectives and in questions' objectiveId.", input: { archiveId: id } }, async (a) =>
+    get("content", `/v1/archives/${a.archiveId}/objectives`),
+  );
+  tool("set_objectives", "content:write", "write", { title: "Set exam objectives", description: "Add the certification's official objective list to an archive from an outline. Format: '## 1.0 Domain name (15%)' for a domain with its exam weight, then one line per objective such as '- 1.1 Given a scenario, ...'. Merges by code (or title): it adds new lines and updates titles, and never removes anything or loses links. Only paste objectives from the vendor's published exam guide that you were given or have opened. Never guess weights.", input: { archiveId: id, outline: z.string().min(1).max(60_000) } }, async (a) => {
+    const r = await send("content", `/v1/archives/${a.archiveId}/objectives/import`, { text: a.outline, replace: false });
+    return { added: r.added, updated: r.updated, warnings: r.warnings, objectives: r.objectives.map((d: any) => ({ id: d.id, code: d.code, title: d.title, weightBp: d.weightBp, children: d.children.map((k: any) => ({ id: k.id, code: k.code, title: k.title })) })) };
+  });
+  tool("link_objectives", "content:write", "write", { title: "Link material to objectives", description: "Say which exam objectives a study guide or deck (kind 'item'), a single flashcard ('card') or a saved link ('resource') supports. Each call sets the exact list for that one thing. Use ids from get_objectives. Questions are linked with objectiveId in create_quiz_questions or link_questions.", input: { archiveId: id, links: z.array(z.object({ kind: z.enum(["item", "card", "resource"]), refId: z.uuid(), objectiveIds: z.array(z.uuid()).max(30) })).min(1).max(100) } }, async (a) => {
+    for (const l of a.links) await send("content", `/v1/archives/${a.archiveId}/links`, l, "PUT");
+    return { linked: a.links.length };
+  });
+  tool("link_questions", "quiz:write", "write", { title: "Link questions to objectives", description: "Say which exam objective each existing quiz question tests (or null to unlink). Use question ids from get_quiz and objective ids from get_objectives.", input: { links: z.array(z.object({ questionId: z.uuid(), objectiveId: z.uuid().nullable() })).min(1).max(100) } }, async (a) => {
+    for (const l of a.links) await send("quiz", `/v1/questions/${l.questionId}`, { objectiveId: l.objectiveId }, "PATCH");
+    return { linked: a.links.length };
+  });
+  tool("get_coverage", "content:read", "read", { title: "Get objective coverage", description: "For each exam objective: how much study material, flashcards and practice questions support it, whether it is covered, thin or a gap, what is missing, and (with quiz access) how the person is scoring on it. Also the biggest gaps to fix first. Use it to decide what to write next.", input: { archiveId: id } }, async (a) => {
+    const tree = (await get("content", `/v1/archives/${a.archiveId}/objectives`)).objectives as ObjectiveNode[];
+    let stats: QuizStats | null = null;
+    if (hasScope(principal, "quiz:read")) {
+      stats = await get("quiz", "/v1/analytics/objectives", { archive: a.archiveId }).catch((e) => {
+        if (e instanceof UpstreamError && (e.status === 403 || e.status === 404)) return null;
+        throw e;
+      });
+    }
+    const cov = buildCoverage(tree, stats);
+    return { summary: cov.summary, biggestGaps: topGaps(cov, 8).map((r) => ({ id: r.id, code: r.code, title: r.title, status: r.status, missing: r.missing })), rows: cov.rows, note: `coverageBp and accuracyBp are basis points: 8000 means 80%. ${stats ? "" : "Question counts are missing because this connection cannot read quizzes."}`.trim() };
+  });
+  tool("get_credentials", "content:read", "read", { title: "Get credentials", description: "The person's tracked certifications: exam dates, earned and expiry dates, continuing education progress, and what needs attention soon (alerts, most urgent first). Voucher codes are never shown here.", input: {} }, async () => {
+    const r = await get("content", "/v1/credentials");
+    return {
+      alerts: r.alerts,
+      credentials: r.credentials.map((c: any) => ({ id: c.id, name: c.name, issuer: c.issuer, archiveId: c.archiveId, status: c.status, examDate: c.examDate, examTime: c.examTime, examMode: c.examMode, hasVoucher: !!c.voucherCode, voucherExpires: c.voucherExpires, earnedOn: c.earnedOn, expiresOn: c.expiresOn, ceuRequired: c.ceuRequired, ceuLogged: c.ceuLogged, ceuUnit: c.ceuUnit })),
+    };
+  });
+  tool("get_exam_plan", "quiz:read", "read", { title: "Get the exam countdown plan", description: "The day-by-day plan from today to the exam: phase, tasks for each day, advice from the person's readiness estimate and goal, and an exam-day checklist. Give examDate (YYYY-MM-DD), or leave it out to use the date on the archive's goal. The checklist is generic: the exam provider's own instructions always win.", input: { archiveId: id, examDate: z.iso.date().optional(), minutesPerDay: z.number().int().min(15).max(480).default(45), mode: z.enum(["unknown", "test_center", "online"]).default("unknown") } }, async (a) =>
+    get("quiz", "/v1/plan", { archive: a.archiveId, examDate: a.examDate, minutes: a.minutesPerDay, mode: a.mode }),
+  );
 
   // ---- sharing: only with the content:share scope --------------------------
   tool("share_item", "content:share", "write", { title: "Share", description: "Give a person or group access to an archive or item you own. Use only when the person asked you to share.", input: { type: z.enum(["archive", "item"]), id, subjectType: z.enum(["user", "group"]), subjectId: z.uuid(), relation: z.enum(["attempt", "viewer", "editor"]) } }, async (a) =>

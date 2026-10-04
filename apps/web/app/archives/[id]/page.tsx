@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
+import { CoveragePanel } from "@/components/coverage/coverage-panel";
 import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
 import { ResourcesPanel } from "@/components/roadmap/resources-panel";
@@ -18,7 +19,7 @@ import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
 const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
-const TABS = ["material", "roadmap", "resources"] as const;
+const TABS = ["material", "roadmap", "resources", "coverage"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function ArchivePage() {
@@ -281,7 +282,7 @@ export default function ArchivePage() {
                 onClick={() => setTab(k)}
                 className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}
               >
-                {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : t("resources")}
+                {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : k === "resources" ? t("resources") : "Coverage"}
               </button>
             ))}
           </div>
@@ -294,6 +295,12 @@ export default function ArchivePage() {
           {tab === "resources" && (
             <section id="panel-resources" role="tabpanel" aria-labelledby="tab-resources">
               <ResourcesPanel archiveId={id} canEdit={editor} />
+            </section>
+          )}
+
+          {tab === "coverage" && (
+            <section id="panel-coverage" role="tabpanel" aria-labelledby="tab-coverage">
+              <CoveragePanel archiveId={id} canEdit={editor} />
             </section>
           )}
 

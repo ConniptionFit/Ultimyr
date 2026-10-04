@@ -5,6 +5,7 @@ import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AccountMenu } from "@/components/account-menu";
+import { PrepMenu } from "@/components/prep-menu";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
@@ -55,6 +56,7 @@ export function Header() {
             <Link href="/progress" className="hover:text-ink">
               Progress
             </Link>
+            <PrepMenu />
             <AccountMenu />
           </nav>
         )}

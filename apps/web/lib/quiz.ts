@@ -22,6 +22,7 @@ export interface EditorQuestion {
   explanation: string;
   difficulty: number | null;
   domain: string | null;
+  objectiveId?: string | null;
   weight: number;
   isPretest: boolean;
   status: "draft" | "published";
@@ -36,6 +37,8 @@ export interface PlayQuestion {
   stem: string;
   weight: number;
   domain?: string | null;
+  /** Why a weak-area drill picked this question. */
+  drillReason?: string | null;
   payload: any;
   response: any;
   flagged: boolean;
@@ -60,8 +63,10 @@ export interface AttemptResult {
 }
 export interface Attempt {
   id: string;
+  /** For a weak-area drill this is the archive id. */
   itemId: string;
   archiveId: string;
+  kind?: "quiz" | "drill";
   mode: Mode;
   status: "in_progress" | "submitted" | "expired";
   startedAt: string;

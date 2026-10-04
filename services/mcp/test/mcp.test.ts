@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await boot();
     const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name).sort();
     const reader = await names(["content:read"]);
-    expect(reader).toEqual(["get_archive", "get_deck", "get_guide", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
+    expect(reader).toEqual(["get_archive", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
     const full = await names(["content:read", "content:write", "quiz:read", "quiz:write"]);
     expect(full).toContain("create_quiz_questions");
     expect(full).toContain("get_progress");
@@ -274,6 +274,67 @@ describe("MCP server", () => {
     await boot({}, refusing);
     const res = await fetch(`${url}/mcp`, { method: "POST", headers: { authorization: "Bearer ulk_abcd1234_secretsecretsecretsecretsecretsecret", "content-type": "application/json" }, body: "{}" });
     expect(res.status).toBe(401);
+  });
+
+  it("sets objectives by merge, links material and questions, and writes nothing without the scope", async () => {
+    fresh();
+    await boot();
+    respond = (c) => (c.path.endsWith("/import") ? { added: 2, updated: 0, warnings: [], objectives: [{ id: ID, code: "1.0", title: "D", weightBp: 1500, children: [{ id: ITEM, code: "1.1", title: "O", counts: {} }] }] } : {});
+    const c = await connect(await issuer.token({ scopes: ["content:write", "quiz:write"] }));
+    const set = await c.callTool({ name: "set_objectives", arguments: { archiveId: ID, outline: "## 1.0 D (15%)\n- 1.1 O" } });
+    expect(set.isError).toBeFalsy();
+    expect(calls[0]).toMatchObject({ service: "content", path: `/v1/archives/${ID}/objectives/import`, method: "POST", body: { text: "## 1.0 D (15%)\n- 1.1 O", replace: false } });
+    expect(JSON.parse(text(set)).objectives[0]).toEqual({ id: ID, code: "1.0", title: "D", weightBp: 1500, children: [{ id: ITEM, code: "1.1", title: "O" }] });
+    await c.callTool({ name: "link_objectives", arguments: { archiveId: ID, links: [{ kind: "item", refId: ITEM, objectiveIds: [ID] }, { kind: "resource", refId: ITEM, objectiveIds: [] }] } });
+    expect(calls.slice(1).map((x) => [x.path, x.method, x.body.kind])).toEqual([[`/v1/archives/${ID}/links`, "PUT", "item"], [`/v1/archives/${ID}/links`, "PUT", "resource"]]);
+    await c.callTool({ name: "link_questions", arguments: { links: [{ questionId: ITEM, objectiveId: ID }, { questionId: ID, objectiveId: null }] } });
+    expect(calls.slice(3).map((x) => [x.service, x.path, x.method, x.body.objectiveId])).toEqual([["quiz", `/v1/questions/${ITEM}`, "PATCH", ID], ["quiz", `/v1/questions/${ID}`, "PATCH", null]]);
+    const bad = await c.callTool({ name: "link_objectives", arguments: { archiveId: ID, links: [{ kind: "quiz", refId: ITEM, objectiveIds: [] }] } }).catch((e) => e);
+    expect(bad.isError ?? true).toBe(true);
+    const reader = await connect(await issuer.token({ scopes: ["content:read"] }));
+    const names = (await reader.listTools()).tools.map((t) => t.name);
+    expect(names).not.toContain("set_objectives");
+    expect(names).not.toContain("link_questions");
+  });
+
+  it("reports coverage by joining objectives with question stats, and copes without quiz access", async () => {
+    fresh();
+    await boot();
+    const tree = [{ id: ID, code: "1.0", title: "Basics", weightBp: 10000, counts: { guides: 1, decks: 0, cards: 6, resources: 0 }, children: [
+      { id: ITEM, code: "1.1", title: "One", weightBp: null, counts: { guides: 1, decks: 0, cards: 6, resources: 0 } },
+      { id: "0198d6a0-0000-7000-8000-000000000003", code: "1.2", title: "Two", weightBp: null, counts: { guides: 0, decks: 0, cards: 0, resources: 0 } },
+    ] }];
+    respond = (c) => (c.service === "content" ? { objectives: tree } : { objectives: [{ objectiveId: ITEM, questions: 4, drafts: 0, answered: 5, correct: 2, accuracyBp: 4000 }], unmapped: { questions: 2, drafts: 0, answered: 0, correct: 0, accuracyBp: null } });
+    const c = await connect(await issuer.token({ scopes: ["content:read", "quiz:read"] }));
+    const r = JSON.parse(text(await c.callTool({ name: "get_coverage", arguments: { archiveId: ID } })));
+    expect(calls.map((x) => [x.service, x.path])).toEqual([["content", `/v1/archives/${ID}/objectives`], ["quiz", "/v1/analytics/objectives"]]);
+    expect(calls[1]!.query).toEqual({ archive: ID });
+    expect(r.summary).toMatchObject({ objectives: 2, covered: 1, gap: 1, weak: 1, unmappedQuestions: 2 });
+    expect(r.biggestGaps[0]).toMatchObject({ code: "1.2", status: "gap" });
+    expect(r.rows[0].children[0]).toMatchObject({ status: "covered", mastery: "weak", accuracyBp: 4000 });
+
+    fresh();
+    respond = (x) => (x.service === "content" ? { objectives: tree } : {});
+    const noQuiz = await connect(await issuer.token({ scopes: ["content:read"] }));
+    const r2 = JSON.parse(text(await noQuiz.callTool({ name: "get_coverage", arguments: { archiveId: ID } })));
+    expect(calls.map((x) => x.service)).toEqual(["content"]);
+    expect(r2.summary.covered).toBe(0); // no questions known, so nothing counts as covered yet
+    expect(r2.note).toContain("cannot read quizzes");
+  });
+
+  it("shows credentials without voucher codes, and fetches the countdown plan", async () => {
+    fresh();
+    await boot();
+    respond = (x) => (x.service === "content" ? { alerts: [{ kind: "exam_soon" }], credentials: [{ id: ID, name: "A+", issuer: "CompTIA", status: "scheduled", examDate: "2026-10-14", voucherCode: "SECRET-123", voucherExpires: "2027-01-01", ceuRequired: null, ceuLogged: 0, ceuUnit: "CEU" }] } : { daysLeft: 10, days: [] });
+    const c = await connect(await issuer.token({ scopes: ["content:read", "quiz:read"] }));
+    const cr = text(await c.callTool({ name: "get_credentials", arguments: {} }));
+    expect(cr).not.toContain("SECRET-123");
+    expect(JSON.parse(cr)).toMatchObject({ alerts: [{ kind: "exam_soon" }], credentials: [{ name: "A+", hasVoucher: true, examDate: "2026-10-14" }] });
+    const plan = JSON.parse(text(await c.callTool({ name: "get_exam_plan", arguments: { archiveId: ID, examDate: "2026-10-14", mode: "online" } })));
+    expect(plan.daysLeft).toBe(10);
+    expect(calls[1]).toMatchObject({ service: "quiz", path: "/v1/plan", query: { archive: ID, examDate: "2026-10-14", minutes: 45, mode: "online" } });
+    const bad = await c.callTool({ name: "get_exam_plan", arguments: { archiveId: ID, examDate: "next week" } }).catch((e) => e);
+    expect(bad.isError ?? true).toBe(true);
   });
 
   it("exposes resources and prompts", async () => {
