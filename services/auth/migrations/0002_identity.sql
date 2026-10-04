@@ -129,3 +129,10 @@ CREATE TABLE auth.scim_tokens (
   last_used_at timestamptz,
   revoked_at   timestamptz
 );
+
+-- SAML AuthnRequest ids awaiting a response (InResponseTo validation; single use, shared by all replicas).
+CREATE TABLE auth.saml_request_cache (
+  key        text PRIMARY KEY,
+  value      text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
