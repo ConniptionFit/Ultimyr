@@ -26,6 +26,7 @@ export default function AttemptPage() {
   const skew = useRef(0);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const shownAt = useRef(Date.now());
+  const [reviewing, setReviewing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +54,45 @@ export default function AttemptPage() {
   useEffect(() => {
     if (open && remaining !== null && remaining <= -1000) void load(); // ask the server to close it
   }, [open, remaining, load]);
+
+  // Ask the server for its clock: corrects the display and tells us at once when time is up.
+  const token = state.status === "authenticated" ? state.accessToken : null;
+  const timed = open && !!at?.deadlineAt;
+  useEffect(() => {
+    if (!timed || !token) return;
+    const ctl = new AbortController();
+    (async () => {
+      while (!ctl.signal.aborted) {
+        try {
+          const res = await fetch(`/api/v1/attempts/${id}/events`, { headers: { authorization: `Bearer ${token}` }, signal: ctl.signal });
+          if (!res.ok || !res.body) return; // fall back to the clock we already have
+          const reader = res.body.getReader();
+          const dec = new TextDecoder();
+          let buf = "";
+          for (;;) {
+            const { value, done: end } = await reader.read();
+            if (end) break;
+            buf += dec.decode(value, { stream: true });
+            let cut: number;
+            while ((cut = buf.indexOf("\n\n")) >= 0) {
+              const block = buf.slice(0, cut);
+              buf = buf.slice(cut + 2);
+              const ev = /^event: (.+)$/m.exec(block)?.[1];
+              const data = /^data: (.+)$/m.exec(block)?.[1];
+              if (!ev || !data) continue;
+              const j = JSON.parse(data) as { serverTime?: string };
+              if (j.serverTime) skew.current = new Date(j.serverTime).getTime() - Date.now();
+              if (ev === "closed") return void load();
+            }
+          }
+        } catch {
+          if (ctl.signal.aborted) return;
+        }
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    })();
+    return () => ctl.abort();
+  }, [timed, token, id, load]);
 
   const q = at?.questions?.[idx];
   const patchLocal = (qid: string, p: Partial<PlayQuestion>) => setAt((a) => (a ? { ...a, questions: a.questions!.map((x) => (x.id === qid ? { ...x, ...p } : x)) } : a));
@@ -89,8 +129,7 @@ export default function AttemptPage() {
 
   async function submit() {
     if (!at?.questions) return;
-    const blank = at.questions.filter((x) => !answered(x)).length;
-    if (!confirm(blank ? `${blank} question${blank === 1 ? " is" : "s are"} still unanswered. Submit anyway?` : "Submit your answers?")) return;
+    setReviewing(false);
     for (const [qid, timer] of [...timers.current]) {
       clearTimeout(timer);
       timers.current.delete(qid);
@@ -195,6 +234,34 @@ export default function AttemptPage() {
             </section>
           )}
 
+          {open && reviewing && (
+            <section aria-label="Review before submitting" className="space-y-3 rounded-md border border-line p-5">
+              <h2 className="text-xl">Before you submit</h2>
+              {(() => {
+                const blank = qs.flatMap((x, i) => (answered(x) ? [] : [i]));
+                const flagged = qs.flatMap((x, i) => (x.flagged ? [i] : []));
+                const jump = (list: number[]) =>
+                  list.map((i) => (
+                    <button key={i} className="mr-2 text-accent underline" onClick={() => { setReviewing(false); go(i); }}>
+                      {i + 1}
+                    </button>
+                  ));
+                return (
+                  <>
+                    <p className="text-sm">{blank.length ? <>Unanswered: {jump(blank)}</> : "Every question has an answer."}</p>
+                    <p className="text-sm">{flagged.length ? <>Flagged for review: {jump(flagged)}</> : "Nothing is flagged."}</p>
+                  </>
+                );
+              })()}
+              <div className="flex gap-2">
+                <Button onClick={submit}>Submit now</Button>
+                <Button variant="quiet" onClick={() => setReviewing(false)}>
+                  Keep working
+                </Button>
+              </div>
+            </section>
+          )}
+
           <nav aria-label="Questions" className="flex flex-wrap gap-1">
             {qs.map((x, i) => {
               const out = x.feedback?.outcome;
@@ -247,15 +314,15 @@ export default function AttemptPage() {
                     Check answer
                   </Button>
                 )}
-                {open && idx === qs.length - 1 && <Button onClick={submit}>Submit</Button>}
+                {open && idx === qs.length - 1 && <Button onClick={() => setReviewing(true)}>Review and submit</Button>}
               </div>
             </section>
           )}
           {open && idx !== qs.length - 1 && (
             <p className="text-sm text-muted">
               Ready?{" "}
-              <button className="text-accent underline" onClick={submit}>
-                Submit now
+              <button className="text-accent underline" onClick={() => setReviewing(true)}>
+                Review and submit
               </button>
             </p>
           )}

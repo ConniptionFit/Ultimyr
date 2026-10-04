@@ -139,6 +139,24 @@ Scopes: reads need `quiz:read`, writes (including taking an attempt) need `quiz:
 | POST | `/attempts/:id/items/:questionId/check` | Practice only: grades the question and returns outcome, key and explanation. |
 | POST | `/attempts/:id/submit` | Grades once. Repeating returns the stored result. |
 | GET | `/attempts/:id/review` | Closed attempts only (409 `attempt_open`). |
+| GET | `/attempts/:id/events` | Server-sent events for an open attempt: `tick` (`serverTime`, `deadlineAt`, `remainingMs`) every 10 s, then `closed`. Ends after 5 minutes; reconnect. |
 | GET | `/quizzes/:itemId/attempts`, `/attempts` | Your own attempts, newest first. |
 
 Response shapes: `mcq` `{ choice }`, `multi` `{ choices }`, `fib` `{ blanks }`, `dnd` `{ mapping }`, `pbq` `{ state }`.
+
+## Progress and goals (quiz service)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/analytics?archive=&days=` | `days` 1 to 365 (default 30). Returns `summary`, `daily`, `domains`, `weak`, and, when `archive` is given, `readiness` and `goal`. Your own data only. |
+| GET | `/goals` | All your goals. |
+| GET, PUT, DELETE | `/goals/:archiveId` | PUT `{ targetBp, targetDate? }` (`targetBp` 1 to 10000, so 8000 is 80%). GET returns `{ goal: null }` when none. |
+
+## Daily review (content service)
+Scopes: reads `content:read`, reviews and settings `content:write`. Only published decks the caller can read are included.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/study/queue?archive=&deck=&limit=` | Due cards first, then new cards up to today's allowance. Each card carries `next`: what every rating would schedule. |
+| POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns the new `state`, `due` and `scheduledDays`. |
+| GET | `/study/stats?archive=` | `learning`, `review`, `dueNow`, `reviewedToday`, `retentionBp`, `forecast` (7 days). |
+| GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99) and `newPerDay` (0 to 500). |

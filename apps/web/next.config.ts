@@ -17,11 +17,11 @@ const config: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/v1/auth/:path*", destination: `${AUTH_URL}/v1/auth/:path*` },
-      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access"].flatMap((p) => [
+      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access", "study"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${CONTENT_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${CONTENT_URL}/v1/${p}/:path*` },
       ]),
-      ...["quizzes", "questions", "attempts", "scoring-profiles"].flatMap((p) => [
+      ...["quizzes", "questions", "attempts", "scoring-profiles", "analytics", "goals"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${QUIZ_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${QUIZ_URL}/v1/${p}/:path*` },
       ]),

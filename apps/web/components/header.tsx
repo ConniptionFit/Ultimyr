@@ -35,6 +35,12 @@ export function Header() {
             <Link href="/reading-room" className="hover:text-ink">
               {t("dashboard")}
             </Link>
+            <Link href="/study" className="hover:text-ink">
+              {t("queue")}
+            </Link>
+            <Link href="/progress" className="hover:text-ink">
+              Progress
+            </Link>
             <Link href="/settings" className="flex items-center gap-1 hover:text-ink" aria-label="Settings">
               <UIcon icon={Settings} size={16} />
             </Link>

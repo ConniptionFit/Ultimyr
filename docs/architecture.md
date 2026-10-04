@@ -16,8 +16,8 @@ Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
 ```
 - **web** renders the UI. It holds no secrets and no database access. It forwards API calls to auth, so one proxy host is enough. Proxies that can route by path (Traefik) send `/api/v1/*` straight to auth.
 - **auth** owns users, sessions, MFA, passkeys, API keys, groups, identity providers, SCIM and the audit log. It is the only writer of the `auth` schema.
-- **content** owns archives, guides, decks, versions, grants and search (see [content.md](content.md)). It verifies access tokens with auth's JWKS, so a revoked session keeps working there until its 10 minute token expires.
-- **quiz** owns questions, quiz settings, scoring profiles and attempts (see [quiz.md](quiz.md)). It never copies sharing data: for each request it asks content what the caller may do with the quiz item, using the caller's own token. Grading uses the pure `@ultimyr/scoring` package.
+- **content** owns archives, guides, decks, versions, grants and search (see [content.md](content.md)), and each person's flashcard review schedule (see [study.md](study.md); scheduling by the pure `@ultimyr/fsrs` package). It verifies access tokens with auth's JWKS, so a revoked session keeps working there until its 10 minute token expires.
+- **quiz** owns questions, quiz settings, scoring profiles and attempts (see [quiz.md](quiz.md)). It never copies sharing data: for each request it asks content what the caller may do with the quiz item, using the caller's own token. Grading uses the pure `@ultimyr/scoring` package. It also serves progress analytics and goals, computed from attempts on demand, and a server-sent clock for open attempts.
 - **migrate** is a one-shot container that applies SQL migrations before auth starts.
 - Every service owns one schema and verifies tokens with `@ultimyr/authz` and the JWKS endpoint, never by calling auth per request. The only per-user call is the content service fetching group memberships (cached 30 seconds). Planned: AI gateway, MCP.
 

@@ -110,6 +110,12 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
 
+  packages/fsrs:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^5.0.3
+        version: 5.0.3(vitest@5.0.3)
+
   packages/lore: {}
 
   packages/scoring:
@@ -241,6 +247,9 @@ importers:
       '@ultimyr/db':
         specifier: workspace:^
         version: link:../../packages/db
+      '@ultimyr/fsrs':
+        specifier: workspace:^
+        version: link:../../packages/fsrs
       '@ultimyr/service-kit':
         specifier: workspace:^
         version: link:../../packages/service-kit

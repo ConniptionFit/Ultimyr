@@ -6,6 +6,8 @@ import type { Actor, GroupResolver } from "./access.js";
 export interface Ctx {
   svc: Service;
   pool: Pool;
+  /** The clock. Tests move it. */
+  now(): Date;
   groups: GroupResolver;
   /** Authenticate, check the token scope, and resolve the caller's groups. */
   actor(req: FastifyRequest, scope: "content:read" | "content:write" | "content:share"): Promise<Actor>;
@@ -13,10 +15,11 @@ export interface Ctx {
   requireAuthor(a: Actor): void;
 }
 
-export function createCtx(svc: Service, pool: Pool, groups: GroupResolver): Ctx {
+export function createCtx(svc: Service, pool: Pool, groups: GroupResolver, now: () => Date = () => new Date()): Ctx {
   return {
     svc,
     pool,
+    now,
     groups,
     async actor(req, scope) {
       const principal = await svc.authorize(req, scope);
