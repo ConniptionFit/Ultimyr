@@ -12,6 +12,9 @@
 - `docker compose ps` and `docker compose logs -f auth`.
 - Failed sign-ins, MFA events, key use and admin changes are in the audit log (`GET /api/v1/admin/audit`).
 
+## Services
+`auth` and `content` each have `/healthz` and `/readyz`. Content starts without auth, but until auth is reachable it cannot verify new tokens. Deleted archives and items are purged after 30 days by a job inside the content service (every 6 hours).
+
 ## Backups
 Back up two things:
 - **Postgres**: `docker compose exec postgres pg_dump -U ultimyr ultimyr > ultimyr.sql` (bundled DB), or your own server's usual method.
@@ -43,6 +46,6 @@ The `migrate` container runs first and applies new migrations once. Migrations a
 | `account_exists` after SSO | A local account has that email. Sign in with the password, or enable `trustEmail` on the provider if you trust it to verify emails. |
 | SSO provider rejected with `insecure_idp_url` | Provider URL is `http://`. Use https (dev only: `ULTIMYR_ALLOW_INSECURE_IDP=true`). |
 | Login loops back to the sign-in page behind HTTPS | `COOKIE_SECURE=true` but the proxy is serving http, or the reverse is true. Match them. |
-| `/api/v1/...` returns 404 from web | The web image was built with the wrong `AUTH_URL`. Rebuild: `docker compose build web`. |
+| `/api/v1/...` returns 404 or 502 from web | The web image was built with the wrong `AUTH_URL` or `CONTENT_URL`. Rebuild: `docker compose build web`. |
 | 429 on login or MFA | Rate limit (10 per minute per client) or TOTP lockout after repeated bad codes. Wait and retry. |
 | Locked out of TOTP with no recovery codes | An admin cannot reset it through the API yet. As a last resort delete the row from `auth.totp_factors` for that user in SQL. |

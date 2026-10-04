@@ -1,3 +1,7 @@
+# API reference
+
+The auth service is documented first, then the content service. Each service also answers `/healthz` and `/readyz`.
+
 # Auth service API
 
 Base path: `/api/v1` (the service also answers the same routes under `/v1`). JSON in and out. Errors look like `{ "error": "code", "issues": ["..."] }`.
@@ -47,6 +51,12 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 
 Roles: `platform_admin`, `org_admin`, `author`, `learner`.
 
+### Sharing directory (interactive)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/users/lookup?email=` | Exact email match returns `{ id, displayName }`, otherwise 404. Rate limited. |
+| GET | `/groups` | Group ids and names, for choosing who to share with. |
+
 ## SCIM 2.0
 Base `{ULTIMYR_PUBLIC_URL}/scim/v2`, bearer SCIM token. Supports `ServiceProviderConfig`, `ResourceTypes`, `Schemas`, and `Users` and `Groups` (list, get, create, replace, patch, delete) including Okta and Entra PATCH styles.
 
@@ -56,3 +66,45 @@ Base `{ULTIMYR_PUBLIC_URL}/scim/v2`, bearer SCIM token. Supports `ServiceProvide
 | `/healthz` | Process is up. Not under `/api/v1`. |
 | `/readyz` | Database reachable. |
 | `/.well-known/jwks.json` | Public signing key. |
+
+# Content service API
+
+Scopes: reads need `content:read`, writes `content:write`, sharing `content:share`. Unknown, deleted and forbidden objects all return 404. Lists take `limit` (1 to 100) and `offset`. See [content.md](content.md) for the model.
+
+## Archives
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/archives` | Archives you own or can read. `?q=` text filter, `?scope=all\|mine\|shared`. |
+| POST | `/archives` | Needs author, org admin or platform admin role. `{ title, overview?, vendor?, purchaseLinks?, validityMonths?, quickStats?, iconName?, visibility?, tags? }`. |
+| GET, PATCH, DELETE | `/archives/:id` | GET includes the items you can see and your `relation`. DELETE is a soft delete. |
+| POST | `/archives/:id/restore` | Restore from trash (owner). |
+| GET | `/trash` | Your deleted archives and items. |
+| POST, DELETE | `/archives/:id/icon` | POST raw `image/png`. See limits in content.md. |
+| GET | `/assets/:id` | Icon bytes. No token needed (capability URL). |
+| GET | `/archives/:id/export` | Archive JSON download. |
+
+## Items, versions and cards
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/archives/:id/items` | `{ kind: guide\|deck\|quiz, title, summary?, markdown?, cards?, status?, source? }`. Source `ai` or `mcp` defaults to draft. |
+| GET, PATCH, DELETE | `/items/:id` | PATCH `{ title?, summary?, markdown?, status?, order?, note? }`. A changed `markdown` makes a new version. |
+| POST | `/items/:id/restore` | Restore a deleted item. |
+| GET | `/items/:id/versions`, `/items/:id/versions/:no` | History and one version's body. |
+| POST | `/items/:id/versions/:no/restore` | Copies that version forward as a new one. |
+| GET, POST | `/items/:id/cards` | POST upserts up to 500 cards (`id` updates in place). |
+| POST | `/items/:id/cards/delete` | `{ ids: [...] }` |
+| PATCH | `/cards/:id` | |
+| GET | `/items/:id/export?format=json\|markdown\|anki-csv` | |
+
+## Sharing and access
+| Method | Path | Notes |
+|---|---|---|
+| GET, POST | `/archives/:id/grants`, `/items/:id/grants` | Owner only. `{ subjectType: user\|group, subjectId, relation: attempt\|viewer\|editor\|owner, expiresAt? }`. Needs `content:share` to change. |
+| DELETE | `/archives/:id/grants/:grantId`, `/items/:id/grants/:grantId` | |
+| GET | `/access/archive/:id`, `/access/item/:id` | What can I do here? Any valid token. Used by other services. |
+
+## Search and import
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/search?q=&archive=&type=` | `type` is `archive`, `item`, `section` or `card`. |
+| POST | `/import` | `{ format: archive-json\|markdown\|anki-csv, content, archiveId?, title? }` |

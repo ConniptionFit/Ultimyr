@@ -7,7 +7,7 @@
 #
 # Bundled database:   docker compose --profile bundled-db up -d
 # External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d auth      (skip the web container)
+# API/MCP only:       docker compose up -d auth content   (skip the web container)
 #
 # Secrets are read from ./secrets via Docker secrets (see README).
 
@@ -70,6 +70,22 @@ services:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AUTH_PORT:-4001}:4001"
     restart: unless-stopped
 
+  content:
+    build: { context: ., target: content }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+      # Verifies access tokens (JWKS) and looks up group memberships here.
+      AUTH_URL: http://auth:4001
+      NODE_ENV: production
+    secrets: [pg_password]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_healthy }
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_CONTENT_PORT:-4002}:4002"
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -77,7 +93,8 @@ services:
       args:
         # Baked into the web image: where the web app proxies /api/v1 (the compose service name).
         AUTH_URL: http://auth:4001
-    depends_on: [auth]
+        CONTENT_URL: http://content:4002
+    depends_on: [auth, content]
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped
