@@ -27,7 +27,7 @@ export function Header() {
   return (
     <header className="border-b border-line">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 font-serif text-lg">
+        <Link href={state.status === "authenticated" ? "/reading-room" : "/"} className="flex items-center gap-2 font-serif text-lg">
           <UIcon icon={Library} size={20} />
           Ultimyr
         </Link>

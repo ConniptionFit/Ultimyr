@@ -2,7 +2,7 @@ import { DEFAULT_NAMING, NAMING_COOKIE, parseNamingMode, text } from "@ultimyr/l
 import { UIcon } from "@ultimyr/ui-icons";
 import { BookOpen } from "lucide-react";
 import { cookies } from "next/headers";
-import Link from "next/link";
+import { SplashCta } from "@/components/splash-cta";
 
 export default async function Splash() {
   const mode = parseNamingMode((await cookies()).get(NAMING_COOKIE)?.value ?? DEFAULT_NAMING);
@@ -14,12 +14,7 @@ export default async function Splash() {
         <p className="font-serif text-2xl text-muted">{text("splashTitle", mode)}</p>
         <p className="mx-auto max-w-md text-muted">{text("splashSub", mode)}</p>
         <div className="flex justify-center gap-3 pt-2">
-          <Link
-            href="/login"
-            className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
-          >
-            {text("splashCta", mode)}
-          </Link>
+          <SplashCta label={text("splashCta", mode)} />
         </div>
       </div>
     </main>
