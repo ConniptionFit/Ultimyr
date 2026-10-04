@@ -44,6 +44,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(formbody);
   await app.register(rateLimit, { global: false });
 
+  // Baseline response headers: no sniffing, no referrer leaks, and nothing private is cached unless a route says so.
+  app.addHook("onSend", async (_req, reply, payload) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Referrer-Policy", "no-referrer");
+    if (!reply.hasHeader("Cache-Control")) reply.header("Cache-Control", "no-store");
+    return payload;
+  });
+
   app.setErrorHandler((err: Error & { validation?: string[]; statusCode?: number }, _req, reply) => {
     if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
     if (err.validation) return reply.code(400).send({ error: "invalid_request", issues: err.validation });

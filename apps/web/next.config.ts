@@ -18,7 +18,14 @@ const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
     // The consent page must never be framed (clickjacking).
+    const baseline = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+    ];
     return [
+      { source: "/:path*", headers: baseline },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
       { source: "/connect", headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] },
     ];

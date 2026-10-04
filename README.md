@@ -2,7 +2,7 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 8 (polish and accessibility). Earlier phases: Phase 7 MCP server, Phase 6 AI gateway, Phase 5 daily review and progress, Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** 1.0, all nine phases complete (see [`CHANGELOG.md`](CHANGELOG.md)). Phase 9 hardening and release. Earlier phases: Phase 8 polish and accessibility, Phase 7 MCP server, Phase 6 AI gateway, Phase 5 daily review and progress, Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
@@ -15,6 +15,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - Phase 6 AI: bring your own Gemini, OpenAI or Anthropic key (encrypted per person, never shown again), generate draft guides, decks and quiz questions, and ask a study assistant about the page you are on. AI output is always a draft you review. See [`docs/ai.md`](docs/ai.md).
 - Phase 7 MCP: connect Claude or any MCP app at `https://<your address>/mcp` with OAuth sign in. It can search and read your material, coach you from your progress, and add drafts. Scopes you approve decide which tools exist. See [`docs/mcp.md`](docs/mcp.md).
 - Phase 8 polish: themes, text size, easy-read font, calm and focus modes, declared extra time on timed quizzes, an installable app with an offline page, a small example archive, and a CI performance budget. See [`docs/accessibility.md`](docs/accessibility.md).
+- Phase 9 hardening: security headers, a written security review and deployment checklist, backup and restore scripts, a load check and runbooks. See [`docs/security.md`](docs/security.md) and [`docs/operations.md`](docs/operations.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
