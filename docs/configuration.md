@@ -14,6 +14,7 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `ULTIMYR_CONTENT_PORT` | `4002` | Published content port. |
 | `ULTIMYR_QUIZ_PORT` | `4003` | Published quiz port. |
 | `ULTIMYR_AI_PORT` | `4004` | Published AI gateway port. |
+| `ULTIMYR_MCP_PORT` | `4005` | Published MCP server port. |
 
 ## Database
 Use either `DATABASE_URL` **or** the `PG_*` parts.
@@ -34,7 +35,7 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `PORT`, `HOST` | `4001`, `0.0.0.0` | Listen address. |
 | `AUTH_REGISTRATION` | `open` | `closed` allows only the very first account (the admin). Later users come from SSO, SCIM or an admin. |
 | `COOKIE_SECURE` | true in production | Set `true` once you serve over HTTPS. |
-| `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party and SSO callback URLs. Changing it later orphans passkeys. |
+| `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party, SSO callback URLs and the OAuth issuer for MCP apps. Changing it later orphans passkeys. |
 | `ULTIMYR_ALLOW_INSECURE_IDP` | false in production | Allow `http://` identity providers (otherwise only `https://` is accepted). Local testing only. |
 
 ## Content service
@@ -67,6 +68,15 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `AI_BASE_URL_GEMINI`, `_OPENAI`, `_ANTHROPIC` | provider defaults | Override the provider address (must be https). |
 | `AI_ALLOW_INSECURE_PROVIDER` | false | Allow http provider URLs. Local testing only. |
 
+## MCP server
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT`, `HOST` | `4005`, `0.0.0.0` | Listen address. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`. |
+| `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Names this server in OAuth metadata. Must be the address clients use. Auth uses the same setting as the OAuth issuer. |
+| `MCP_RATE_PER_MINUTE` | `120` | Requests per person per minute. |
+| `MCP_WRITE_PER_MINUTE` | `30` | Write tool calls per person per minute. |
+
 ## Secrets (production required)
 | Secret | Generate | If you lose or change it |
 |---|---|---|
@@ -81,4 +91,4 @@ The AI gateway also uses `ULTIMYR_VAULT_KEK` (`openssl rand -base64 32`). If you
 ## Web app
 | Variable | Where | Purpose |
 |---|---|---|
-| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL`, `AI_URL` | **Build args** | Where Next.js forwards auth, content, quiz and AI API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003` and `http://ai-gateway:4004`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL` | **Build args** | Where Next.js forwards auth, content, quiz, AI and MCP paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`, `http://ai-gateway:4004` and `http://mcp:4005`. |

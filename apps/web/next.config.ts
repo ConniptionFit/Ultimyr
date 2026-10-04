@@ -9,12 +9,17 @@ const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:4001";
 const CONTENT_URL = process.env.CONTENT_URL ?? "http://localhost:4002";
 const QUIZ_URL = process.env.QUIZ_URL ?? "http://localhost:4003";
 const AI_URL = process.env.AI_URL ?? "http://localhost:4004";
+const MCP_URL = process.env.MCP_URL ?? "http://localhost:4005";
 
 const config: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: resolve(import.meta.dirname, "../.."),
   transpilePackages: ["@ultimyr/lore", "@ultimyr/ui-icons"],
   poweredByHeader: false,
+  async headers() {
+    // The consent page must never be framed (clickjacking).
+    return [{ source: "/connect", headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] }];
+  },
   async rewrites() {
     return [
       { source: "/api/v1/auth/:path*", destination: `${AUTH_URL}/v1/auth/:path*` },
@@ -28,6 +33,13 @@ const config: NextConfig = {
       ]),
       { source: "/api/v1/ai", destination: `${AI_URL}/v1/ai` },
       { source: "/api/v1/ai/:path*", destination: `${AI_URL}/v1/ai/:path*` },
+      { source: "/api/v1/oauth/:path*", destination: `${AUTH_URL}/v1/oauth/:path*` },
+      // OAuth for MCP clients: endpoints on auth, the MCP server and its metadata on mcp.
+      { source: "/oauth/:path(register|token|authorize)", destination: `${AUTH_URL}/oauth/:path` },
+      { source: "/.well-known/oauth-authorization-server", destination: `${AUTH_URL}/.well-known/oauth-authorization-server` },
+      { source: "/.well-known/oauth-protected-resource", destination: `${MCP_URL}/.well-known/oauth-protected-resource` },
+      { source: "/.well-known/oauth-protected-resource/mcp", destination: `${MCP_URL}/.well-known/oauth-protected-resource/mcp` },
+      { source: "/mcp", destination: `${MCP_URL}/mcp` },
       { source: "/api/v1/users/lookup", destination: `${AUTH_URL}/v1/users/lookup` },
       { source: "/api/v1/groups", destination: `${AUTH_URL}/v1/groups` },
       { source: "/api/v1/me", destination: `${AUTH_URL}/v1/me` },

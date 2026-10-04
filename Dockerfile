@@ -20,6 +20,7 @@ COPY services/auth/package.json services/auth/
 COPY services/content/package.json services/content/
 COPY services/quiz/package.json services/quiz/
 COPY services/ai-gateway/package.json services/ai-gateway/
+COPY services/mcp/package.json services/mcp/
 COPY packages/scoring/package.json packages/scoring/
 COPY packages/fsrs/package.json packages/fsrs/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
@@ -91,6 +92,21 @@ EXPOSE 4004
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4004/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main.js"]
 
+# ---- mcp service (no database, no migrations) ----
+FROM source AS mcp-build
+RUN pnpm --filter @ultimyr/mcp build \
+ && pnpm --filter @ultimyr/mcp deploy --prod /out/mcp
+
+FROM node:22-slim AS mcp
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=mcp-build /out/mcp/node_modules ./node_modules
+COPY --from=mcp-build /repo/services/mcp/dist ./dist
+USER node
+EXPOSE 4005
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4005/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
+
 # ---- migrate: one-shot job that applies every service's migrations ----
 FROM source AS migrate-build
 RUN pnpm --filter @ultimyr/db build \
@@ -116,7 +132,8 @@ ARG AUTH_URL=http://auth:4001
 ARG CONTENT_URL=http://content:4002
 ARG QUIZ_URL=http://quiz:4003
 ARG AI_URL=http://ai-gateway:4004
-ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL AI_URL=$AI_URL
+ARG MCP_URL=http://mcp:4005
+ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL AI_URL=$AI_URL MCP_URL=$MCP_URL
 RUN pnpm --filter @ultimyr/web build
 
 FROM node:22-slim AS web

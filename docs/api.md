@@ -1,6 +1,6 @@
 # API reference
 
-The auth service is documented first, then the content service, then the quiz service. Each service also answers `/healthz` and `/readyz`.
+The auth service is documented first, then the content service, then the quiz service. The AI gateway is in [ai.md](ai.md#api) and the MCP server in [mcp.md](mcp.md). Each service also answers `/healthz` and `/readyz`.
 
 # Auth service API
 
@@ -50,6 +50,19 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions. |
 
 Roles: `platform_admin`, `org_admin`, `author`, `learner`.
+
+### Connected apps and OAuth (MCP)
+See [mcp.md](mcp.md#oauth-details-for-client-authors) for the flow. Routes marked interactive reject API key and connected-app tokens.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/.well-known/oauth-authorization-server` | Metadata. Not under `/api/v1`. |
+| POST | `/oauth/register` | Dynamic client registration. Not under `/api/v1`. |
+| GET | `/oauth/authorize` | Starts authorization, hands off to the consent page `/connect`. |
+| POST | `/oauth/token` | Code exchange and refresh. Form or JSON. |
+| GET | `/oauth/clients/:id` | **Interactive.** Name and redirects of a registered client (consent page). |
+| POST | `/oauth/consent` | **Interactive.** `{ clientId, redirectUri, scope[], state?, codeChallenge, approve }`. Returns `{ redirectTo }`. |
+| GET, DELETE | `/me/mcp-connections`, `/me/mcp-connections/:id` | **Interactive.** Connected apps. DELETE revokes. |
 
 ### Sharing directory (interactive)
 | Method | Path | Notes |

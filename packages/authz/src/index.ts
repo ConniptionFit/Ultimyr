@@ -21,6 +21,8 @@ export const isScope = (s: string): s is Scope => (SCOPES as readonly string[]).
 
 /** Session ids starting with this prefix belong to API keys, not browser sessions. */
 export const API_KEY_SESSION_PREFIX = "key:";
+/** Session ids starting with this prefix belong to OAuth-connected apps (MCP clients). */
+export const MCP_SESSION_PREFIX = "mcp:";
 
 export const accessClaimsSchema = z.object({
   sub: z.string().min(1),

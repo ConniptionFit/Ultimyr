@@ -2,7 +2,7 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 6 (AI gateway). Earlier phases: Phase 5 daily review and progress, Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** Phase 7 (MCP server). Earlier phases: Phase 6 AI gateway, Phase 5 daily review and progress, Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
@@ -13,6 +13,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - Phase 4 quizzes: five question types (multiple choice, select all, fill in, matching, scenario labs), practice mode with instant feedback, timed attempts with a server-owned clock, review screens, and an exact, versioned scoring engine with honest fidelity labels. See [`docs/quiz.md`](docs/quiz.md).
 - Phase 5 study: a daily flashcard review scheduled by FSRS-5 spaced repetition, a progress page (accuracy by day and domain, streak, study stats, 7 day forecast), goals with a readiness estimate, and a live server clock with a review panel for timed exams. See [`docs/study.md`](docs/study.md).
 - Phase 6 AI: bring your own Gemini, OpenAI or Anthropic key (encrypted per person, never shown again), generate draft guides, decks and quiz questions, and ask a study assistant about the page you are on. AI output is always a draft you review. See [`docs/ai.md`](docs/ai.md).
+- Phase 7 MCP: connect Claude or any MCP app at `https://<your address>/mcp` with OAuth sign in. It can search and read your material, coach you from your progress, and add drafts. Scopes you approve decide which tools exist. See [`docs/mcp.md`](docs/mcp.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -41,11 +42,11 @@ Set `ULTIMYR_PUBLIC_URL` in `.env` to the address you browse to (needed for pass
 
 That is the whole setup: the web container forwards `/api/v1/*` to the auth service itself, so you need no custom locations. NPM on a different host? Use the published port instead: forward to `<docker-host-ip>:3000` and set `ULTIMYR_BIND=0.0.0.0` (keep it firewalled to NPM).
 
-**Headless (API and MCP only):** `docker compose up -d auth`. In NPM, create a Proxy Host forwarding to `ultimyr-auth:4001`. Auth answers both `/v1/...` and `/api/v1/...`, so no path rewriting is needed.
+**Headless (API and MCP only):** `docker compose up -d auth content quiz mcp`. In NPM, create a Proxy Host forwarding to `ultimyr-auth:4001` (and, for MCP, send `/mcp` and `/.well-known/oauth-protected-resource` to `ultimyr-mcp:4005` with a custom location). Auth answers both `/v1/...` and `/api/v1/...`, so no path rewriting is needed.
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, `/api/v1/ai` goes to the AI gateway, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, `/api/v1/ai` goes to the AI gateway, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
@@ -64,6 +65,7 @@ pnpm dev:auth                              # http://localhost:4001
 pnpm --filter @ultimyr/content dev         # http://localhost:4002
 pnpm --filter @ultimyr/quiz dev            # http://localhost:4003
 pnpm --filter @ultimyr/ai-gateway dev       # http://localhost:4004 (set ULTIMYR_VAULT_KEK to enable AI)
+pnpm --filter @ultimyr/mcp dev              # http://localhost:4005/mcp
 pnpm dev:web                               # http://localhost:3000 (proxies /api/v1 to auth)
 pnpm typecheck && pnpm test
 ```
@@ -75,6 +77,7 @@ apps/web              Next.js UI
 services/auth         Auth service (Fastify + Drizzle), owns the `auth` schema
 services/content      Content service (Fastify + SQL), owns the `content` schema
 services/quiz         Quiz service (Fastify + SQL), owns the `quiz` schema
+services/mcp          MCP server (stateless, no database): tools, resources, prompts
 services/ai-gateway   AI gateway: key vault, generation jobs, assistant. Owns the `ai` schema
 packages/scoring      Pure scoring library (question types, profiles, grading)
 packages/fsrs         Pure FSRS-5 spaced repetition scheduler
@@ -99,6 +102,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
 | Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study` |
+| MCP | `/mcp` (Streamable HTTP), `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/me/mcp-connections` |
 | AI | `/ai/status`, `/ai/credentials`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads` |
 | Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |

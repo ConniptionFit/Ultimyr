@@ -7,7 +7,7 @@
 #
 # Bundled database:   docker compose --profile bundled-db up -d
 # External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d auth content quiz ai-gateway   (skip the web container)
+# API/MCP only:       docker compose up -d auth content quiz ai-gateway mcp   (skip the web container)
 #
 # Secrets are read from ./secrets via Docker secrets (see README).
 
@@ -128,6 +128,25 @@ services:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AI_PORT:-4004}:4004"
     restart: unless-stopped
 
+  mcp:
+    build: { context: ., target: mcp }
+    environment:
+      # Verifies tokens (JWKS) at auth and calls content and quiz as the signed in person. No database, no secrets.
+      AUTH_URL: http://auth:4001
+      CONTENT_URL: http://content:4002
+      QUIZ_URL: http://quiz:4003
+      ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
+      MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-120}
+      MCP_WRITE_PER_MINUTE: ${MCP_WRITE_PER_MINUTE:-30}
+      NODE_ENV: production
+    depends_on:
+      auth: { condition: service_healthy }
+      content: { condition: service_healthy }
+      quiz: { condition: service_healthy }
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_MCP_PORT:-4005}:4005"
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -138,7 +157,8 @@ services:
         CONTENT_URL: http://content:4002
         QUIZ_URL: http://quiz:4003
         AI_URL: http://ai-gateway:4004
-    depends_on: [auth, content, quiz, ai-gateway]
+        MCP_URL: http://mcp:4005
+    depends_on: [auth, content, quiz, ai-gateway, mcp]
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped

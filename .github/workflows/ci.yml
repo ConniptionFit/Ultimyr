@@ -42,6 +42,7 @@ jobs:
           docker build --target content -t ultimyr-content .
           docker build --target quiz -t ultimyr-quiz .
           docker build --target ai-gateway -t ultimyr-ai .
+          docker build --target mcp -t ultimyr-mcp .
           docker build --target migrate -t ultimyr-migrate .
           docker build --target web -t ultimyr-web .
       - name: Validate compose file

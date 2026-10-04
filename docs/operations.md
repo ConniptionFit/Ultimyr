@@ -13,7 +13,7 @@
 - Failed sign-ins, MFA events, key use and admin changes are in the audit log (`GET /api/v1/admin/audit`).
 
 ## Services
-`auth`, `content`, `quiz` and `ai-gateway` each have `/healthz` and `/readyz`. Quiz needs content to authorise requests: while content is unreachable, quiz answers 503 (attempts already in progress are not lost, and their clocks keep running). Content starts without auth, but until auth is reachable it cannot verify new tokens. The AI gateway needs auth, content and quiz to be reachable to verify tokens and save drafts. It starts without a vault key, with AI features answering 503. Deleted archives and items are purged after 30 days by a job inside the content service (every 6 hours).
+`auth`, `content`, `quiz`, `ai-gateway` and `mcp` each have `/healthz` and `/readyz`. Quiz needs content to authorise requests: while content is unreachable, quiz answers 503 (attempts already in progress are not lost, and their clocks keep running). Content starts without auth, but until auth is reachable it cannot verify new tokens. The AI gateway needs auth, content and quiz to be reachable to verify tokens and save drafts. It starts without a vault key, with AI features answering 503. Deleted archives and items are purged after 30 days by a job inside the content service (every 6 hours).
 
 ## Backups
 Back up two things:
@@ -48,6 +48,7 @@ The `migrate` container runs first and applies new migrations once. Migrations a
 | SSO provider rejected with `insecure_idp_url` | Provider URL is `http://`. Use https (dev only: `ULTIMYR_ALLOW_INSECURE_IDP=true`). |
 | Login loops back to the sign-in page behind HTTPS | `COOKIE_SECURE=true` but the proxy is serving http, or the reverse is true. Match them. |
 | `/api/v1/...` returns 404 or 502 from web | The web image was built with the wrong `AUTH_URL`, `CONTENT_URL` or `QUIZ_URL`. Rebuild: `docker compose build web`. |
+| Claude cannot connect to MCP | See [mcp.md](mcp.md#troubleshooting). The proxy must forward `/mcp`, `/oauth/*` and `/.well-known/*` and the site must be https. |
 | AI features say "not set up" | `vault_kek` is missing. Run `scripts/init-secrets.sh` and restart `ai-gateway`. |
 | 429 on login or MFA | Rate limit (10 per minute per client) or TOTP lockout after repeated bad codes. Wait and retry. |
 | Locked out of TOTP with no recovery codes | An admin cannot reset it through the API yet. As a last resort delete the row from `auth.totp_factors` for that user in SQL. |
