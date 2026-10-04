@@ -5,12 +5,13 @@ import { z } from "zod";
 import { ARCHIVE_REL, RANK, loadArchive, need, type Actor } from "../access.js";
 import type { Ctx } from "../ctx.js";
 import { guessKind, isSafeHttpsUrl, normalizeUrl, providerFor } from "../links.js";
+import { parseOutline, type OutlineStep } from "../outline.js";
 
 export const RESOURCE_KINDS = ["video", "playlist", "article", "course", "docs", "practice", "book", "podcast", "other"] as const;
 const MAX_STAGES = 30;
 const MAX_STEPS_PER_STAGE = 60;
-const MAX_STEPS = 300;
-const MAX_RESOURCES = 500;
+const MAX_STEPS = 1000;
+const MAX_RESOURCES = 1500;
 const source = z.enum(["human", "ai", "mcp", "import"]);
 const minutes = z.number().int().min(1).max(6000);
 
@@ -41,18 +42,25 @@ const resourcePatch = z.object({
   order: z.number().int().min(0).max(100_000).optional(),
 });
 
-const stepInput = z
-  .object({
-    id: z.uuid().optional().describe("Keep a step's id to keep people's progress on it."),
-    itemId: z.uuid().optional(),
-    resourceId: z.uuid().optional(),
-    resource: resourceInput.optional(),
-    milestone: z.string().trim().min(1).max(160).optional(),
-    note: z.string().max(1000).default(""),
-    required: z.boolean().default(true),
-    minutes: minutes.nullable().optional(),
-  })
-  .refine((s) => [s.itemId, s.resourceId, s.resource, s.milestone].filter((x) => x !== undefined).length === 1, "give exactly one of itemId, resourceId, resource or milestone");
+const MAX_DEPTH = 3;
+const stepFields = {
+  id: z.uuid().optional().describe("Keep a step's id to keep people's progress on it."),
+  itemId: z.uuid().optional(),
+  resourceId: z.uuid().optional(),
+  resource: resourceInput.optional(),
+  milestone: z.string().trim().min(1).max(160).optional(),
+  note: z.string().max(1000).default(""),
+  required: z.boolean().default(true),
+  minutes: minutes.nullable().optional(),
+};
+const oneTarget = (s: { itemId?: string; resourceId?: string; resource?: unknown; milestone?: string }) =>
+  [s.itemId, s.resourceId, s.resource, s.milestone].filter((x) => x !== undefined).length === 1;
+const ONE = "give exactly one of itemId, resourceId, resource or milestone";
+// Three levels, written out so the schema stays a plain (non recursive) shape for JSON Schema consumers.
+const stepLeaf = z.strictObject(stepFields).refine(oneTarget, ONE); // strict: a fourth level is an error, not silently dropped
+const stepMid = z.object({ ...stepFields, steps: z.array(stepLeaf).max(60).optional() }).refine(oneTarget, ONE);
+const stepInput = z.object({ ...stepFields, steps: z.array(stepMid).max(60).optional() }).refine(oneTarget, ONE);
+export type StepInput = z.infer<typeof stepInput>;
 const stageInput = z.object({
   id: z.uuid().optional(),
   title: z.string().trim().min(1).max(160),
@@ -121,6 +129,58 @@ export interface RoadmapView {
   next: { stepId: string; title: string; kind: string } | null;
 }
 
+interface Node {
+  row: Row;
+  out: Row;
+  children: Node[];
+}
+interface Calc {
+  minutes: number;
+  left: number;
+  leaves: number;
+  done: number;
+  required: number;
+  doneRequired: number;
+}
+const zero = (): Calc => ({ minutes: 0, left: 0, leaves: 0, done: 0, required: 0, doneRequired: 0 });
+const titleOf = (s: Row) => (s.kind === "milestone" ? s.title : s.kind === "item" ? s.item_title : s.r_title);
+
+/**
+ * Totals for one step. Only leaves carry ticks; a parent is done when everything it requires is done, and its own
+ * minutes count only when the steps under it carry none (so a course of 90 minutes without timed lessons still counts).
+ * A step is required only if every step above it is, so an optional course makes all its lessons optional.
+ */
+function calc(n: Node, parentRequired: boolean, next: { hit: Row | null }): Calc {
+  const req = parentRequired && n.row.required;
+  const own = stepMinutes(n.row) ?? 0;
+  if (!n.children.length) {
+    const done = !!n.row.done_at;
+    n.out.done = done;
+    n.out.effectiveRequired = req;
+    if (req && !done) next.hit ??= n.row;
+    return { minutes: own, left: req && !done ? own : 0, leaves: 1, done: done ? 1 : 0, required: req ? 1 : 0, doneRequired: req && done ? 1 : 0 };
+  }
+  const sum = zero();
+  for (const ch of n.children) {
+    const c = calc(ch, req, next);
+    sum.minutes += c.minutes;
+    sum.left += c.left;
+    sum.leaves += c.leaves;
+    sum.done += c.done;
+    sum.required += c.required;
+    sum.doneRequired += c.doneRequired;
+  }
+  if (sum.minutes === 0 && own > 0) {
+    sum.minutes = own;
+    sum.left = sum.required ? Math.round((own * (sum.required - sum.doneRequired)) / sum.required) : 0;
+  }
+  n.out.done = sum.required > 0 ? sum.doneRequired === sum.required : sum.done === sum.leaves;
+  n.out.effectiveRequired = req;
+  n.out.progress = { done: sum.done, total: sum.leaves };
+  n.out.minutesTotal = sum.minutes || null;
+  return sum;
+}
+
 /** The roadmap as one person sees it: only what they may read, with their own ticks and totals. */
 export async function buildRoadmap(pool: Pool, userId: string, archiveId: string, rel: number): Promise<RoadmapView> {
   const editor = rel >= RANK.editor;
@@ -144,7 +204,8 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
       ORDER BY sg.ord, st.ord`,
     [archiveId, userId, editor],
   );
-  const byStage = new Map<string, Row[]>();
+  // Build the tree. A step whose parent is hidden from this person is hidden with it.
+  const nodes = new Map<string, Node>();
   for (const s of steps) {
     const out: Row = {
       id: s.id,
@@ -154,27 +215,37 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
       note: s.note,
       done: !!s.done_at,
       doneAt: s.done_at ?? null,
+      children: [],
     };
     if (s.kind === "milestone") out.title = s.title;
     if (s.kind === "item") out.item = { id: s.item_id, kind: s.item_kind, title: s.item_title, summary: s.item_summary, status: s.item_status };
     if (s.kind === "resource") out.resource = { id: s.resource_id, kind: s.r_kind, title: s.r_title, url: s.r_url, provider: s.r_provider, summary: s.r_summary, minutes: s.r_minutes, tags: s.r_tags, status: s.r_status };
-    (byStage.get(s.stage_id) ?? byStage.set(s.stage_id, []).get(s.stage_id)!).push(out);
+    nodes.set(s.id, { row: s, out, children: [] });
   }
-  const totals = { steps: steps.length, required: 0, done: 0, doneRequired: 0, percent: 0, minutes: 0, minutesLeft: 0 };
-  let next: RoadmapView["next"] = null;
+  const roots = new Map<string, Node[]>();
   for (const s of steps) {
-    const m = stepMinutes(s) ?? 0;
-    totals.minutes += m;
-    if (s.done_at) totals.done++;
-    if (s.required) {
-      totals.required++;
-      if (s.done_at) totals.doneRequired++;
-      else {
-        totals.minutesLeft += m;
-        next ??= { stepId: s.id, kind: s.kind, title: s.kind === "milestone" ? s.title : s.kind === "item" ? s.item_title : s.r_title };
-      }
-    }
+    const n = nodes.get(s.id)!;
+    if (s.parent_id) nodes.get(s.parent_id)?.children.push(n);
+    else (roots.get(s.stage_id) ?? roots.set(s.stage_id, []).get(s.stage_id)!).push(n);
   }
+  const totals = { steps: 0, required: 0, done: 0, doneRequired: 0, percent: 0, minutes: 0, minutesLeft: 0 };
+  const next = { hit: null as Row | null };
+  const outStages = stages.map((st) => {
+    const sum = zero();
+    const top = roots.get(st.id) ?? [];
+    for (const n of top) {
+      const c = calc(n, true, next);
+      for (const k of Object.keys(sum) as (keyof Calc)[]) sum[k] += c[k];
+    }
+    totals.steps += sum.leaves;
+    totals.required += sum.required;
+    totals.done += sum.done;
+    totals.doneRequired += sum.doneRequired;
+    totals.minutes += sum.minutes;
+    totals.minutesLeft += sum.left;
+    const attach = (n: Node): Row => ({ ...n.out, children: n.children.map(attach) });
+    return { id: st.id, title: st.title, summary: st.summary, progress: { done: sum.done, total: sum.leaves }, steps: top.map(attach) };
+  });
   totals.percent = totals.required ? Math.round((100 * totals.doneRequired) / totals.required) : totals.steps ? Math.round((100 * totals.done) / totals.steps) : 0;
   return {
     archiveId,
@@ -183,15 +254,17 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
     summary: road.summary,
     source: road.source,
     updatedAt: road.updated_at,
-    stages: stages.map((st) => ({ id: st.id, title: st.title, summary: st.summary, steps: byStage.get(st.id) ?? [] })),
+    stages: outStages,
     totals,
-    next,
+    next: next.hit ? { stepId: next.hit.id, kind: next.hit.kind, title: titleOf(next.hit) } : null,
   };
 }
 
+const countSteps = (steps: StepInput[] | undefined): number => (steps ?? []).reduce((n, s) => n + 1 + countSteps((s as { steps?: StepInput[] }).steps), 0);
+
 /** Replace an archive's roadmap. Stage and step ids that are kept keep their progress; anything left out is removed. */
 export async function saveRoadmap(pool: Pool, archiveId: string, userId: string, body: RoadmapInput): Promise<void> {
-  const total = body.stages.reduce((n, s) => n + s.steps.length, 0);
+  const total = body.stages.reduce((n, s) => n + countSteps(s.steps), 0);
   if (total > MAX_STEPS) throw new HttpError(409, "too_many_steps", { max: MAX_STEPS });
   const status = body.status ?? (body.source === "ai" || body.source === "mcp" ? "draft" : "published");
   await tx(pool, async (c) => {
@@ -206,19 +279,15 @@ export async function saveRoadmap(pool: Pool, archiveId: string, userId: string,
 
     const keepStage = new Set<string>();
     const keepStep = new Set<string>();
-    let stageOrd = 0;
-    for (const st of body.stages) {
-      const stageId = st.id && haveStage.has(st.id) ? st.id : uuidv7();
-      if (keepStage.has(stageId)) throw new HttpError(400, "invalid_request", { issues: ["stages: the same stage id appears twice"] });
-      keepStage.add(stageId);
-      if (haveStage.has(stageId)) await c.query("UPDATE content.roadmap_stages SET ord = $2, title = $3, summary = $4 WHERE id = $1", [stageId, stageOrd, st.title, st.summary]);
-      else await c.query("INSERT INTO content.roadmap_stages (id, master_item_id, ord, title, summary) VALUES ($1,$2,$3,$4,$5)", [stageId, archiveId, stageOrd, st.title, st.summary]);
-      stageOrd++;
+
+    // Parents are written before their children, so a child's parent_id always points at a row that exists.
+    async function writeSteps(list: StepInput[] | undefined, stageId: string, parentId: string | null): Promise<void> {
       let ord = 0;
-      for (const s of st.steps) {
+      for (const s of list ?? []) {
         let kind: "item" | "resource" | "milestone";
         let itemId: string | null = null;
         let resourceId: string | null = null;
+        const kids = (s as { steps?: StepInput[] }).steps;
         if (s.itemId) {
           if (!itemIds.has(s.itemId)) throw new HttpError(400, "invalid_request", { issues: [`itemId ${s.itemId}: not an item in this archive`] });
           kind = "item";
@@ -228,7 +297,9 @@ export async function saveRoadmap(pool: Pool, archiveId: string, userId: string,
           kind = "resource";
           resourceId = s.resourceId;
         } else if (s.resource) {
-          const { row } = await upsertResource(c, archiveId, userId, s.resource, body.source);
+          // A link that has lessons under it is a course unless the author said otherwise.
+          const input = kids?.length && !s.resource.kind && guessKind(s.resource.url) === "article" ? { ...s.resource, kind: "course" as const } : s.resource;
+          const { row } = await upsertResource(c, archiveId, userId, input, body.source);
           resIds.add(row.id);
           kind = "resource";
           resourceId = row.id;
@@ -236,13 +307,25 @@ export async function saveRoadmap(pool: Pool, archiveId: string, userId: string,
         const stepId = s.id && haveStep.has(s.id) ? s.id : uuidv7();
         if (keepStep.has(stepId)) throw new HttpError(400, "invalid_request", { issues: ["steps: the same step id appears twice"] });
         keepStep.add(stepId);
-        const vals = [stepId, archiveId, stageId, ord++, kind, itemId, resourceId, s.milestone ?? "", s.note, s.required, s.minutes ?? null];
+        const vals = [stepId, archiveId, stageId, ord++, kind, itemId, resourceId, s.milestone ?? "", s.note, s.required, s.minutes ?? null, parentId];
         if (haveStep.has(stepId)) {
-          await c.query("UPDATE content.roadmap_steps SET stage_id = $3, ord = $4, kind = $5, item_id = $6, resource_id = $7, title = $8, note = $9, required = $10, minutes = $11 WHERE id = $1 AND master_item_id = $2", vals);
+          await c.query("UPDATE content.roadmap_steps SET stage_id = $3, ord = $4, kind = $5, item_id = $6, resource_id = $7, title = $8, note = $9, required = $10, minutes = $11, parent_id = $12 WHERE id = $1 AND master_item_id = $2", vals);
         } else {
-          await c.query("INSERT INTO content.roadmap_steps (id, master_item_id, stage_id, ord, kind, item_id, resource_id, title, note, required, minutes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", vals);
+          await c.query("INSERT INTO content.roadmap_steps (id, master_item_id, stage_id, ord, kind, item_id, resource_id, title, note, required, minutes, parent_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)", vals);
         }
+        await writeSteps(kids, stageId, stepId);
       }
+    }
+
+    let stageOrd = 0;
+    for (const st of body.stages) {
+      const stageId = st.id && haveStage.has(st.id) ? st.id : uuidv7();
+      if (keepStage.has(stageId)) throw new HttpError(400, "invalid_request", { issues: ["stages: the same stage id appears twice"] });
+      keepStage.add(stageId);
+      if (haveStage.has(stageId)) await c.query("UPDATE content.roadmap_stages SET ord = $2, title = $3, summary = $4 WHERE id = $1", [stageId, stageOrd, st.title, st.summary]);
+      else await c.query("INSERT INTO content.roadmap_stages (id, master_item_id, ord, title, summary) VALUES ($1,$2,$3,$4,$5)", [stageId, archiveId, stageOrd, st.title, st.summary]);
+      stageOrd++;
+      await writeSteps(st.steps, stageId, null);
     }
     await c.query("DELETE FROM content.roadmap_steps WHERE master_item_id = $1 AND NOT (id = ANY($2::uuid[]))", [archiveId, [...keepStep]]);
     await c.query("DELETE FROM content.roadmap_stages WHERE master_item_id = $1 AND NOT (id = ANY($2::uuid[]))", [archiveId, [...keepStage]]);
@@ -253,6 +336,26 @@ export async function saveRoadmap(pool: Pool, archiveId: string, userId: string,
     );
     await c.query("UPDATE content.master_items SET updated_at = now() WHERE id = $1", [archiveId]);
   });
+}
+
+
+/** The stored roadmap in the shape `saveRoadmap` takes, with every id kept (nothing is filtered by who is asking). */
+export async function loadRoadmapInput(pool: Pool, archiveId: string): Promise<{ exists: boolean; status: "draft" | "published"; summary: string; stages: RoadmapInput["stages"] }> {
+  const { rows: rm } = await pool.query("SELECT summary, status FROM content.roadmaps WHERE master_item_id = $1", [archiveId]);
+  if (!rm[0]) return { exists: false, status: "published", summary: "", stages: [] };
+  const { rows: stages } = await pool.query("SELECT id, title, summary FROM content.roadmap_stages WHERE master_item_id = $1 ORDER BY ord", [archiveId]);
+  const { rows: steps } = await pool.query("SELECT * FROM content.roadmap_steps WHERE master_item_id = $1 ORDER BY ord", [archiveId]);
+  const make = (r: Row): StepInput => {
+    const kids = steps.filter((x) => x.parent_id === r.id).map(make);
+    const target = r.kind === "item" ? { itemId: r.item_id } : r.kind === "resource" ? { resourceId: r.resource_id } : { milestone: r.title };
+    return { id: r.id, ...target, note: r.note, required: r.required, minutes: r.minutes, ...(kids.length ? { steps: kids } : {}) } as StepInput;
+  };
+  return {
+    exists: true,
+    status: rm[0].status,
+    summary: rm[0].summary,
+    stages: stages.map((st) => ({ id: st.id, title: st.title, summary: st.summary, steps: steps.filter((x) => x.stage_id === st.id && !x.parent_id).map(make) })),
+  };
 }
 
 export function roadmapRoutes(ctx: Ctx) {
@@ -361,6 +464,37 @@ export function roadmapRoutes(ctx: Ctx) {
       return buildRoadmap(pool, a.userId, row.id, RANK.editor);
     });
 
+
+    /** Paste an outline (see outline.ts) to add to the roadmap, or replace it. Item titles in [[double brackets]] are matched to this archive's material. */
+    r.post("/v1/archives/:id/roadmap/outline", async (req) => {
+      const { a, row } = await archiveFor(req, "content:write", RANK.editor);
+      const body = parse(z.object({ outline: z.string().min(1).max(200_000), mode: z.enum(["append", "replace"]).default("append"), status: z.enum(["draft", "published"]).optional(), source: source.default("human") }), req.body);
+      const outline = parseOutline(body.outline);
+      const { rows: items } = await pool.query("SELECT id, title FROM content.sub_items WHERE master_item_id = $1 AND deleted_at IS NULL", [row.id]);
+      const byTitle = new Map(items.map((x) => [String(x.title).trim().toLowerCase(), x.id as string]));
+      const warnings = [...outline.warnings];
+      const convert = (o: OutlineStep): StepInput => {
+        const common = { note: o.note, required: o.required, minutes: o.minutes ?? undefined };
+        const kids = o.steps.length ? { steps: o.steps.map(convert) as never } : {};
+        if (o.itemTitle) {
+          const id = byTitle.get(o.itemTitle.toLowerCase());
+          if (id) return { ...common, itemId: id, ...kids } as StepInput;
+          warnings.push(`"${o.itemTitle}" is not a guide, deck or quiz in this archive, so it became a checkpoint.`);
+          return { ...common, milestone: o.itemTitle.slice(0, 160), ...kids } as StepInput;
+        }
+        if (o.link) return { note: o.note, required: o.required, resource: { url: o.link.url, title: o.link.title, summary: "", minutes: o.minutes }, ...kids } as StepInput;
+        return { ...common, milestone: o.milestone ?? "Checkpoint", ...kids } as StepInput;
+      };
+      const added = outline.stages.map((st) => ({ title: st.title, summary: st.summary, steps: st.steps.map(convert) }));
+      if (!added.length) throw new HttpError(400, "invalid_request", { issues: ["outline: no stages or list items found"] });
+      const existing = body.mode === "append" ? await loadRoadmapInput(pool, row.id) : null;
+      const stages = [...(existing?.stages ?? []), ...added] as RoadmapInput["stages"];
+      if (stages.length > MAX_STAGES) throw new HttpError(409, "too_many_stages", { max: MAX_STAGES });
+      const status = body.status ?? (body.source === "ai" || body.source === "mcp" ? "draft" : existing?.exists ? existing.status : "published");
+      await saveRoadmap(pool, row.id, a.userId, { summary: existing?.summary || outline.summary, stages, status, source: body.source });
+      return { ...(await buildRoadmap(pool, a.userId, row.id, RANK.editor)), warnings };
+    });
+
     r.patch("/v1/archives/:id/roadmap", async (req) => {
       const { a, row } = await archiveFor(req, "content:write", RANK.editor);
       const body = parse(z.object({ status: z.enum(["draft", "published"]) }), req.body);
@@ -386,11 +520,24 @@ export function roadmapRoutes(ctx: Ctx) {
       if (!rows[0]) throw new HttpError(404, "not_found");
       const { rel, row } = await loadArchive(pool, a, rows[0].master_item_id);
       need(rel, RANK.viewer);
-      // Only steps this person can see can be ticked: published roadmap, published target.
+      // Only steps this person can see can be ticked. A parent ticks everything under it.
       const view = await buildRoadmap(pool, a.userId, row.id, rel);
-      if (!view.stages.some((s) => s.steps.some((x: Row) => x.id === idParam(req)))) throw new HttpError(404, "not_found");
-      if (body.done) await pool.query("INSERT INTO content.step_progress (user_id, step_id, archive_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING", [a.userId, idParam(req), row.id]);
-      else await pool.query("DELETE FROM content.step_progress WHERE user_id = $1 AND step_id = $2", [a.userId, idParam(req)]);
+      const find = (steps: Row[]): Row | undefined => {
+        for (const x of steps) {
+          if (x.id === idParam(req)) return x;
+          const hit = find(x.children);
+          if (hit) return hit;
+        }
+        return undefined;
+      };
+      let target: Row | undefined;
+      for (const st of view.stages) target ??= find(st.steps);
+      if (!target) throw new HttpError(404, "not_found");
+      const leaves: string[] = [];
+      const walk = (x: Row) => (x.children.length ? x.children.forEach(walk) : leaves.push(x.id));
+      walk(target);
+      if (body.done) await pool.query("INSERT INTO content.step_progress (user_id, step_id, archive_id) SELECT $1, unnest($2::uuid[]), $3 ON CONFLICT DO NOTHING", [a.userId, leaves, row.id]);
+      else await pool.query("DELETE FROM content.step_progress WHERE user_id = $1 AND step_id = ANY($2::uuid[])", [a.userId, leaves]);
       const fresh = await buildRoadmap(pool, a.userId, row.id, rel);
       return { done: body.done, totals: fresh.totals, next: fresh.next };
     });

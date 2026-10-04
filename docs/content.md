@@ -18,8 +18,8 @@ An archive can carry a **roadmap** (themed name: Path) and a library of **resour
 |---|---|
 | **Resource** | A link to something outside Ultimyr: a video, playlist, article, course, docs page, practice site, book or podcast. Has a title, provider, estimated minutes and a short note on what you get from it. Only `https` links are accepted, with no username or password. The same link is stored once per archive (tracking parameters such as `utm_*` and `si` are dropped). |
 | **Roadmap** | One ordered path per archive: **stages** (for example "Week 1: Foundations") made of **steps**. |
-| **Step** | One of: a guide, deck or quiz from the same archive; a resource; or a **milestone** (a checkpoint with no link, such as "Take a practice exam"). Each step can be required or optional, carry a note and its own time estimate. |
-| **Progress** | Each person ticks steps off for themselves. Nobody sees anyone else's ticks. The roadmap shows percent of required steps done, minutes left, and the next step. The dashboard shows where you are on every roadmap you can read. |
+| **Step** | One of: a guide, deck or quiz from the same archive; a resource; or a **milestone** (a checkpoint with no link, such as "Take a practice exam"). Each step can be required or optional, carry a note and its own time estimate. A step can hold **steps of its own**, up to three levels: a course holds lessons, a lesson holds pages or videos. |
+| **Progress** | Each person ticks steps off for themselves. Only the innermost steps (leaves) carry a tick. A parent shows how many of its steps are done and counts as done when everything it requires is done; ticking a parent ticks everything under it, and a parent that is optional makes everything inside it optional. A course's own minutes are used only when its lessons have none. Nobody sees anyone else's ticks. The roadmap shows percent of required steps done, minutes left, and the next step. The dashboard shows where you are on every roadmap you can read. |
 
 Ultimyr **never opens the links you save**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host, and nothing is embedded from other sites. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
 
@@ -30,10 +30,35 @@ The prep hub for Claude Certified Architect Foundations (`https://anthropic-part
 2. Open **Roadmap**, then **Build roadmap**. Add a stage, then use **Add from this course** to pick your guides, decks, quizzes and saved links, or **New link** to add one on the spot.
 3. Reorder with the arrows, mark extras as optional, add checkpoints, then **Save**. The same thing can be done through [MCP](mcp.md) (`add_resources`, `set_roadmap`).
 
+### Pasting an outline
+To load a whole certification at once, open **Roadmap**, then **Paste an outline**. The same text works through MCP (`import_outline`) and the API.
+
+```
+## Week 1: Foundations
+Short description of the stage (optional).
+- [Claude Certified Architect prep hub](https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification) 90m
+  - [Lesson 1: Overview](https://www.youtube.com/watch?v=abc) 12m
+  - [Lesson 2: Prompts](https://www.youtube.com/watch?v=def) 20m -- watch twice
+  - [[Foundations guide]]
+- Take practice exam 1 (optional) -- aim for 70%
+```
+| Write | Means |
+|---|---|
+| `## Title` | A stage |
+| `- item`, `1. item` | A step. Indent by two or more spaces to put it inside the step above (three levels at most; deeper lines move up a level and you are told) |
+| `[Title](https://...)` | A link step. A link with steps under it is saved as a `course` |
+| `[[Title]]` | One of this archive's guides, decks or quizzes, matched by title. No match becomes a checkpoint and you are told |
+| `12m`, `1h30m`, `2 hours` | Minutes |
+| `(optional)` | Not required |
+| `-- text` or ` — text` | A note for the learner |
+| Anything else | A checkpoint |
+
+Links that are not `https` become checkpoints (with a warning). The import adds to the end of the roadmap and keeps everyone's progress; **Replace the roadmap** starts again and drops progress.
+
 ### Drafts and sharing
 Roadmaps and resources follow the same draft rule as guides. Writes from MCP or AI are saved as drafts that only editors see, until a person presses **Publish** (on the roadmap, and on each draft link). Learners need at least `viewer` access to the archive to see the roadmap; people who were only lent one quiz do not see it. Steps pointing at a draft guide or link are hidden from learners until that target is published.
 
-Editing a roadmap keeps people's ticks on every step whose id is kept. Removing a step, or deleting a resource, also removes its ticks. Limits: 30 stages, 60 steps per stage, 300 steps and 500 resources per archive.
+Editing a roadmap keeps people's ticks on every step whose id is kept. Removing a step, or deleting a resource, also removes its ticks. Limits: 30 stages, 60 steps per level, 1,000 steps and 1,500 resources per archive.
 
 ## Drafts
 Material written by AI or through MCP lands as a **draft**: only editors can see it. Publishing it (a person clicking Publish, or `PATCH status=published`) marks it `reviewed`. Human and import writes publish immediately.
@@ -65,7 +90,7 @@ People are found by **exact email** (never listed), groups by name. Group member
 | Markdown | A guide, or a deck as Q and A | Becomes a guide (title from the first `#`) |
 | Anki CSV | A deck as `front,back,tags` | Becomes a deck (comma or tab separated, quoted fields) |
 
-In the archive file, roadmap steps point at items by position and at resources by link, so it carries no database ids; steps on quizzes are left out because quizzes are not part of the file, and progress is never exported. Import and export never include other people's data. There is no lock-in: export an archive any time.
+In the archive file, roadmap steps point at items by position and at resources by link, so it carries no database ids; steps on quizzes become checkpoints with the quiz's title (quizzes are not part of the file), and progress is never exported. Import and export never include other people's data. There is no lock-in: export an archive any time.
 
 ## Icons
 Pick a Lucide icon by name, or upload a **PNG with transparency** (16 to 1024 px, up to 512 KB). Uploads are re-written server side keeping only image chunks, so EXIF, text and color profile metadata are stripped. Icons are served by unguessable id with `nosniff` and a locked-down CSP, because `<img>` tags cannot send tokens.

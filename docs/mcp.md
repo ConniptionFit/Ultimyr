@@ -33,7 +33,8 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `list_resources` | `content:read` | The external links saved in an archive |
 | `get_roadmap` | `content:read` | The roadmap with step ids, your progress and the next step |
 | `add_resources` | `content:write` | Save up to 50 links (YouTube, Anthropic training pages, docs). A link already saved is updated, not duplicated. Saved as drafts |
-| `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
+| `import_outline` | `content:write` | Add a whole nested outline to the roadmap in one call: `## Stage` lines and bulleted steps with `[Title](https://link) 20m`, `[[Guide title]]` and `(optional)`. The easiest way to load a certification. Saved as a draft |
+| `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
 | `share_item` | `content:share` | Give a person or group access. Off unless you grant sharing |
 

@@ -61,16 +61,20 @@ const resource = z.object({
   minutes: z.number().int().min(1).max(6000).optional().describe("Roughly how long it takes."),
   tags: z.array(z.string().max(40)).max(10).optional(),
 });
-const step = z.object({
+const stepFields = {
   id: z.uuid().optional().describe("A step id from get_roadmap. Keep it to keep people's progress on that step."),
   itemId: z.uuid().optional().describe("A guide, deck or quiz in this archive."),
   resourceId: z.uuid().optional().describe("A resource already added with add_resources."),
-  resource: resource.optional().describe("A new link to add and use in one go."),
+  resource: resource.optional().describe("A new link to add and use in one go. A link with steps under it becomes a course."),
   milestone: z.string().min(1).max(160).optional().describe("A checkpoint such as 'Take a practice exam' with no link."),
   note: z.string().max(1000).optional().describe("A short instruction for the learner, such as 'Watch up to 12:00'."),
   required: z.boolean().default(true),
   minutes: z.number().int().min(1).max(6000).optional(),
-});
+};
+// A step can hold steps (a course holds lessons, a lesson holds pages), three levels deep.
+const stepLeaf = z.object(stepFields);
+const stepMid = z.object({ ...stepFields, steps: z.array(stepLeaf).max(60).optional() });
+const step = z.object({ ...stepFields, steps: z.array(stepMid).max(60).optional().describe("Steps inside this one, for example the lessons of a course.") });
 const stage = z.object({
   id: z.uuid().optional(),
   title: z.string().min(1).max(160).describe("For example 'Week 1: Foundations'."),
@@ -218,16 +222,20 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   tool("list_resources", "content:read", "read", { title: "List resources", description: "The external links (videos, articles, courses) saved in an archive.", input: { archiveId: id, kind: z.enum(["video", "playlist", "article", "course", "docs", "practice", "book", "podcast", "other"]).optional() } }, async (a) =>
     get("content", `/v1/archives/${a.archiveId}/resources`, { kind: a.kind }),
   );
-  tool("get_roadmap", "content:read", "read", { title: "Get a roadmap", description: "The archive's roadmap: stages and steps in order, with the person's own progress, totals and the next step. Includes step ids to pass back to set_roadmap.", input: { archiveId: id } }, async (a) =>
+  tool("get_roadmap", "content:read", "read", { title: "Get a roadmap", description: "The archive's roadmap: stages and nested steps in order (a step's children are its lessons), with the person's own progress, totals and the next step. Includes step ids to pass back to set_roadmap.", input: { archiveId: id } }, async (a) =>
     get("content", `/v1/archives/${a.archiveId}/roadmap`),
   );
   tool("add_resources", "content:write", "write", { title: "Add resources", description: "Save external links (YouTube videos, Anthropic training pages, docs) in an archive. A link already saved is updated, not duplicated. Saved as drafts for a person to review. Only add links that really exist.", input: { archiveId: id, resources: z.array(resource).min(1).max(50) } }, async (a) => {
     const r = await send("content", `/v1/archives/${a.archiveId}/resources/bulk`, { resources: a.resources, source: "mcp" });
     return { resources: r.resources.map((x: any) => ({ id: x.id, title: x.title, provider: x.provider, kind: x.kind, created: x.created })), note: "Saved as drafts. A person must review and publish them in Ultimyr. Use the ids as resourceId in set_roadmap." };
   });
-  tool("set_roadmap", "content:write", "write", { title: "Set a roadmap", description: "Replace the archive's roadmap: ordered stages of steps, each a guide/deck/quiz (itemId), a link (resourceId or a new resource) or a milestone. Whatever you leave out is removed, so call get_roadmap first and keep step ids. Saved as a draft for a person to publish.", input: { archiveId: id, summary: z.string().max(2000).optional().describe("Who it is for and how long it takes."), stages: z.array(stage).max(30), holdForReview: holdFlag } }, async (a) => {
+  tool("import_outline", "content:write", "write", { title: "Import a roadmap outline", description: "Add a whole outline to the roadmap in one call (or replace the roadmap with it). Format: '## Stage title' lines, then nested bullet lists up to three levels. A bullet is '[Title](https://link) 20m' for a link with minutes, '[[Guide title]]' for one of this archive's own guides, decks or quizzes, or plain text for a checkpoint. Add '(optional)' to make a step optional and ' -- text' for a note. Example: '## Week 1' / '- [Course](https://example.com/c) 90m' / '  - [Lesson 1](https://youtu.be/x) 12m'. Only use links you were given or have opened. Saved as a draft. Appends by default and keeps existing progress; mode 'replace' removes the old roadmap and its progress.", input: { archiveId: id, outline: z.string().min(1).max(200_000), mode: z.enum(["append", "replace"]).default("append"), holdForReview: holdFlag } }, async (a) => {
+    const r = await send("content", `/v1/archives/${a.archiveId}/roadmap/outline`, { outline: a.outline, mode: a.mode, source: "mcp", status: a.holdForReview ? "draft" : "published" });
+    return { status: r.status, stages: r.stages.map((x: any) => ({ id: x.id, title: x.title, steps: x.progress.total })), totals: r.totals, warnings: r.warnings, note: r.status === "draft" ? "Saved as a draft. A person must publish the roadmap in Ultimyr before learners see it." : undefined };
+  });
+  tool("set_roadmap", "content:write", "write", { title: "Set a roadmap", description: "Replace the archive's roadmap: ordered stages of steps, each a guide/deck/quiz (itemId), a link (resourceId or a new resource) or a milestone, and each able to hold steps of its own (a course holds lessons). Whatever you leave out is removed, so call get_roadmap first and keep step ids. For a big outline, import_outline is easier. Saved as a draft for a person to publish.", input: { archiveId: id, summary: z.string().max(2000).optional().describe("Who it is for and how long it takes."), stages: z.array(stage).max(30), holdForReview: holdFlag } }, async (a) => {
     const r = await send("content", `/v1/archives/${a.archiveId}/roadmap`, { summary: a.summary ?? "", stages: a.stages, source: "mcp", status: a.holdForReview ? "draft" : "published" }, "PUT");
-    return { status: r.status, stages: r.stages.map((x: any) => ({ id: x.id, title: x.title, steps: x.steps.length })), totals: r.totals, note: r.status === "draft" ? "Saved as a draft. A person must publish the roadmap in Ultimyr before learners see it." : undefined };
+    return { status: r.status, stages: r.stages.map((x: any) => ({ id: x.id, title: x.title, steps: x.progress.total })), totals: r.totals, note: r.status === "draft" ? "Saved as a draft. A person must publish the roadmap in Ultimyr before learners see it." : undefined };
   });
 
   // ---- progress ------------------------------------------------------------

@@ -177,4 +177,131 @@ describe.skipIf(!testDbUrl)("roadmaps and resources", () => {
     expect(copy.stages[0].steps.map((s: any) => s.kind)).toEqual(["item", "resource", "milestone"]);
     expect(copy.stages[0].steps[1].resource.title).toBe("Intro to Claude");
   });
+
+  it("nests steps: a course holds lessons, only lessons are ticked, and ticking the course ticks them all", async () => {
+    const { archive, guide } = await setup();
+    const v = json(
+      await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, {
+        stages: [
+          {
+            title: "Prep",
+            steps: [
+              {
+                resource: { url: "https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification", title: "Prep hub", minutes: 90 },
+                steps: [
+                  { resource: { url: "https://youtu.be/one", title: "Lesson 1" }, minutes: 10, steps: [{ milestone: "Take notes" }] },
+                  { resource: { url: "https://youtu.be/two", title: "Lesson 2" }, minutes: 20 },
+                  { itemId: guide, required: false },
+                ],
+              },
+              { milestone: "Practice exam" },
+            ],
+          },
+        ],
+      }),
+    );
+    const hub = v.stages[0].steps[0];
+    expect(hub.resource.kind).toBe("course"); // a link with lessons under it is a course
+    expect(hub.children).toHaveLength(3);
+    expect(hub.children[0].children[0].title).toBe("Take notes");
+    // Leaves: "Take notes", Lesson 2, the optional guide, "Practice exam".
+    expect(v.totals).toMatchObject({ steps: 4, required: 3, done: 0 });
+    expect(v.stages[0].progress).toEqual({ done: 0, total: 4 });
+
+    const lesson2 = hub.children[1].id;
+    let t = json(await call(bob, "PUT", `/v1/roadmap/steps/${lesson2}/progress`, { done: true }));
+    expect(t.totals).toMatchObject({ done: 1, doneRequired: 1, required: 3 });
+    let view = json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`));
+    expect(view.stages[0].steps[0].done).toBe(false);
+    expect(view.stages[0].steps[0].progress).toEqual({ done: 1, total: 3 });
+
+    t = json(await call(bob, "PUT", `/v1/roadmap/steps/${hub.id}/progress`, { done: true }));
+    expect(t.totals).toMatchObject({ done: 3, doneRequired: 2, required: 3 });
+    view = json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`));
+    expect(view.stages[0].steps[0].done).toBe(true); // everything required under it is done
+    expect(view.stages[0].steps[0].children[0].done).toBe(true);
+    expect(t.next.title).toBe("Practice exam");
+
+    t = json(await call(bob, "PUT", `/v1/roadmap/steps/${hub.id}/progress`, { done: false }));
+    expect(t.totals.done).toBe(0);
+  });
+
+  it("counts a course's own minutes only when its lessons carry none, and makes children of an optional parent optional", async () => {
+    const { archive } = await setup();
+    const v = json(
+      await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, {
+        stages: [
+          { title: "A", steps: [{ resource: { url: "https://example.com/c1", title: "Untimed lessons", minutes: 60 }, steps: [{ milestone: "x" }, { milestone: "y" }] }] },
+          { title: "B", steps: [{ resource: { url: "https://example.com/c2", title: "Timed", minutes: 999 }, steps: [{ milestone: "z", minutes: 5 }] }] },
+          { title: "C", steps: [{ milestone: "Extra", required: false, steps: [{ milestone: "child" }] }] },
+        ],
+      }),
+    );
+    expect(v.totals).toMatchObject({ minutes: 65, minutesLeft: 65, required: 3, steps: 4 });
+    expect(v.stages[0].steps[0].minutesTotal).toBe(60);
+    expect(v.stages[1].steps[0].minutesTotal).toBe(5);
+    expect(v.stages[2].steps[0].children[0].effectiveRequired).toBe(false);
+    // Tick one of the two untimed lessons: half of the course's minutes are left.
+    const x = v.stages[0].steps[0].children[0].id;
+    const t = json(await call(bob, "PUT", `/v1/roadmap/steps/${x}/progress`, { done: true }));
+    expect(t.totals.minutesLeft).toBe(30 + 5);
+  });
+
+  it("hides the children of a step a learner cannot see", async () => {
+    const { archive, guide } = await setup();
+    await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, { stages: [{ title: "S", steps: [{ itemId: guide, steps: [{ milestone: "inside" }] }] }] });
+    expect(json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`)).totals.steps).toBe(1);
+    await call(alice, "PATCH", `/v1/items/${guide}`, { status: "draft" });
+    expect(json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`)).totals.steps).toBe(0);
+  });
+
+  it("keeps progress when a step is moved under another parent, and rejects more than three levels", async () => {
+    const { archive } = await setup();
+    const v1 = json(await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, { stages: [{ title: "S", steps: [{ milestone: "A" }, { milestone: "B", steps: [{ milestone: "leaf" }] }] }] }));
+    const [a, b] = v1.stages[0].steps;
+    const leaf = b.children[0];
+    await call(bob, "PUT", `/v1/roadmap/steps/${leaf.id}/progress`, { done: true });
+    const v2 = json(await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, { stages: [{ id: v1.stages[0].id, title: "S", steps: [{ id: a.id, milestone: "A", steps: [{ id: leaf.id, milestone: "leaf" }] }, { id: b.id, milestone: "B" }] }] }));
+    expect(v2.stages[0].steps[0].children[0].id).toBe(leaf.id);
+    expect(json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`)).stages[0].steps[0].children[0].done).toBe(true);
+    const deep = { milestone: "1", steps: [{ milestone: "2", steps: [{ milestone: "3", steps: [{ milestone: "4" }] }] }] };
+    expect((await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, { stages: [{ title: "S", steps: [deep] }] })).statusCode).toBe(400);
+  });
+
+  it("imports an outline: appends by default, keeps progress, matches guides by title and reports problems", async () => {
+    const { archive } = await setup();
+    const first = await call(alice, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "## Week 1\n- [Hub](https://example.com/hub) 30m\n  - [Lesson](https://youtu.be/x) 10m\n  - [[Foundations]]\n- [[No such guide]]\n- [Old](http://example.com)\n" });
+    expect(first.statusCode).toBe(200);
+    const v = json(first);
+    expect(v.stages[0].steps[0].resource).toMatchObject({ kind: "course", minutes: 30 });
+    expect(v.stages[0].steps[0].children.map((c: any) => c.kind)).toEqual(["resource", "item"]);
+    expect(v.warnings).toHaveLength(2);
+    const lesson = v.stages[0].steps[0].children[0].id;
+    await call(bob, "PUT", `/v1/roadmap/steps/${lesson}/progress`, { done: true });
+
+    const more = json(await call(alice, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "## Week 2\n- Practice exam" }));
+    expect(more.stages.map((s: any) => s.title)).toEqual(["Week 1", "Week 2"]);
+    expect(json(await call(bob, "GET", `/v1/archives/${archive}/roadmap`)).stages[0].steps[0].children[0].done).toBe(true);
+
+    const replaced = json(await call(alice, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "## Only\n- one", mode: "replace" }));
+    expect(replaced.stages.map((s: any) => s.title)).toEqual(["Only"]);
+    expect((await call(alice, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "just words" })).statusCode).toBe(400);
+    expect((await call(bob, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "## x\n- y" })).statusCode).toBe(403);
+    expect(json(await call(alice, "POST", `/v1/archives/${archive}/roadmap/outline`, { outline: "## x\n- y", source: "mcp" })).status).toBe("draft");
+  });
+
+  it("round trips a nested roadmap through export and import, keeping quiz steps as checkpoints", async () => {
+    const { archive, guide } = await setup();
+    const quiz = json(await call(alice, "POST", `/v1/archives/${archive}/items`, { kind: "quiz", title: "Trial run" })).id as string;
+    await call(alice, "PUT", `/v1/archives/${archive}/roadmap`, {
+      stages: [{ title: "S", steps: [{ resource: yt, steps: [{ itemId: guide }, { itemId: quiz, note: "Aim for 70%" }] }] }],
+    });
+    const exp = json(await call(alice, "GET", `/v1/archives/${archive}/export`));
+    expect(exp.roadmap.stages[0].steps[0].steps).toMatchObject([{ itemIndex: 0 }, { milestone: "Trial run", note: "Aim for 70%" }]);
+    const imp = json(await call(alice, "POST", "/v1/import", { format: "archive-json", content: exp }));
+    const copy = json(await call(alice, "GET", `/v1/archives/${imp.archiveId}/roadmap`));
+    const hub = copy.stages[0].steps[0];
+    expect(hub.resource.title).toBe("Intro to Claude");
+    expect(hub.children.map((c: any) => c.kind)).toEqual(["item", "milestone"]);
+  });
 });
