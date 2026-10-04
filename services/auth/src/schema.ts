@@ -152,6 +152,7 @@ export const ssoStates = auth.table("sso_states", {
   providerId: uuid("provider_id").notNull(),
   nonce: text("nonce"),
   codeVerifier: text("code_verifier"),
+  redirectTo: text("redirect_to"),
   expiresAt: ts("expires_at").notNull(),
 });
 

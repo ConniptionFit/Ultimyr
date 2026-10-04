@@ -13,6 +13,7 @@ import { keyRoutes } from "./routes/keys.js";
 import { mfaRoutes } from "./routes/mfa.js";
 import { passkeyRoutes } from "./routes/passkeys.js";
 import { scimRoutes } from "./routes/scim.js";
+import { ssoRoutes } from "./routes/sso.js";
 import { createSecrets } from "./secrets.js";
 
 export { REFRESH_COOKIE } from "./ctx.js";
@@ -28,7 +29,7 @@ export interface AppDeps {
 type RouteModule = (ctx: Ctx) => (r: FastifyInstance) => Promise<void>;
 
 /** Route modules, each registered at `/...` and `/api/...` so proxies can forward /api/v1/* untouched. */
-const modules: RouteModule[] = [coreRoutes, mfaRoutes, passkeyRoutes, keyRoutes, adminRoutes, scimRoutes];
+const modules: RouteModule[] = [coreRoutes, mfaRoutes, passkeyRoutes, keyRoutes, adminRoutes, scimRoutes, ssoRoutes];
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { pool, config, keys } = deps;

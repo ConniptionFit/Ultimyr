@@ -116,6 +116,7 @@ CREATE TABLE auth.sso_states (
   provider_id   uuid NOT NULL REFERENCES auth.idp_providers (id) ON DELETE CASCADE,
   nonce         text,
   code_verifier text,
+  redirect_to   text,
   expires_at    timestamptz NOT NULL
 );
 
