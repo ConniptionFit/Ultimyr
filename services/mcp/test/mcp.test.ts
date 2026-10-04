@@ -91,6 +91,19 @@ describe("MCP server", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("can create and rename an archive so material has somewhere to go", async () => {
+    fresh();
+    await boot();
+    respond = (c) => ({ id: ID, title: "Claude Architect", slug: "claude-architect", visibility: "private", overview: "", vendor: null, tags: [] , path: c.path });
+    const c = await connect(await issuer.token({ scopes: ["content:write"] }));
+    const r = await c.callTool({ name: "create_archive", arguments: { title: "Claude Architect", overview: "Foundations" } });
+    expect(r.isError).toBeFalsy();
+    expect(JSON.parse(text(r))).toMatchObject({ id: ID, visibility: "private" });
+    expect(calls[0]).toMatchObject({ service: "content", path: "/v1/archives", method: "POST", body: { title: "Claude Architect", overview: "Foundations" } });
+    await c.callTool({ name: "update_archive", arguments: { archiveId: ID, vendor: "Anthropic" } });
+    expect(calls[1]).toMatchObject({ path: `/v1/archives/${ID}`, method: "PATCH", body: { vendor: "Anthropic" } });
+  });
+
   it("writes land as MCP drafts", async () => {
     fresh();
     await boot();

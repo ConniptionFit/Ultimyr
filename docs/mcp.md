@@ -23,6 +23,7 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | Tool | Scope | Purpose |
 |---|---|---|
 | `list_archives`, `get_archive` | `content:read` | Browse archives and what is in them |
+| `create_archive`, `update_archive` | `content:write` | Create an archive (private, owned by the person) to hold material, and edit its title, overview, vendor, validity and tags. Cannot change sharing or delete |
 | `search_materials` | `content:read` | Full text search of archives, guide sections and cards |
 | `get_guide`, `get_deck` | `content:read` | Read material |
 | `get_quiz` | `quiz:read` | Quiz and questions (questions only for editors) |
