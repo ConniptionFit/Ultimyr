@@ -32,12 +32,12 @@ Admin only. `POST /api/v1/admin/idp-providers` with a bearer token.
 - `kind: "oauth2"` is for providers without OIDC (needs `authorizeUrl`, `tokenUrl`, `userinfoUrl`).
 - `kind: "saml"`: give `entryPoint`, `idpCert` (PEM) and ideally `idpIssuer`. SP metadata: `{PUBLIC_URL}/api/v1/auth/saml/{slug}/metadata`. ACS URL: `{PUBLIC_URL}/api/v1/auth/saml/{slug}/acs`.
 - `groupClaim` (OIDC) or `groupsAttr` (SAML) maps IdP groups to Ultimyr groups, prefixed with the provider name.
-- IdP URLs must be https and public. For local testing only, set `ULTIMYR_ALLOW_INSECURE_IDP=true`.
+- IdP URLs must be https. For local testing only, set `ULTIMYR_ALLOW_INSECURE_IDP=true`.
 
 ## SCIM 2.0 provisioning
 1. Create a token: `POST /api/v1/admin/scim-tokens` (shown once).
 2. Point your IdP at `{PUBLIC_URL}/scim/v2` with that bearer token.
-3. Users and Groups are supported, including the Okta and Entra PATCH styles. SCIM-managed users cannot be edited locally.
+3. Users and Groups are supported, including the Okta and Entra PATCH styles. SCIM-managed users are flagged `scim_managed`.
 
 ## API keys
 Created under Settings > Security. A key (`ulk_...`) is exchanged at `POST /api/v1/auth/token` for a short lived access token limited to the key's scopes. Key tokens can never change account security settings.

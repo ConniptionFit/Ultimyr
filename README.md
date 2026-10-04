@@ -41,7 +41,7 @@ That is the whole setup: the web container forwards `/api/v1/*` to the auth serv
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me` and `/.well-known` go to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/scim/v2` and `/.well-known` go to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
@@ -71,18 +71,21 @@ packages/db           Pool and SQL migration runner
 packages/authz        Roles and token verification (shared by every service)
 packages/lore         Themed and plain names, micro-copy
 packages/ui-icons     Lucide icon utilities and animations
-docs/                 Architecture plan and ADRs
+docs/                 Guides, API reference, architecture plan and ADRs
 ```
 
-## Public API (Phase 1)
+## Documentation
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/api/v1/auth/register` | First account becomes platform admin |
-| POST | `/api/v1/auth/login` | Rate limited, identical error for unknown user and wrong password |
-| POST | `/api/v1/auth/refresh` | Rotates the httpOnly refresh cookie |
-| POST | `/api/v1/auth/logout` | Revokes the session |
-| GET | `/api/v1/me` | Bearer access token |
-| GET | `/.well-known/jwks.json` | Public signing key |
+Start at [`docs/README.md`](docs/README.md): [configuration](docs/configuration.md), [identity setup](docs/identity.md), [API reference](docs/api.md), [architecture](docs/architecture.md), [operations](docs/operations.md). Also [CONTRIBUTING](CONTRIBUTING.md) and [SECURITY](SECURITY.md).
 
-Phase 2 adds `/api/v1/auth/mfa/verify`, `/api/v1/auth/passkeys/*`, `/api/v1/auth/sso/*`, `/api/v1/auth/saml/*`, `/api/v1/auth/token`, `/api/v1/me/*` (MFA, passkeys, API keys, sessions, groups), `/api/v1/admin/*` and `/scim/v2`. Details in [`docs/identity.md`](docs/identity.md).
+## API at a glance
+
+Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.md`](docs/api.md).
+
+| Area | Paths |
+|---|---|
+| Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
+| Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
+| Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
+| Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |
+| Keys and health | `/.well-known/jwks.json`, `/healthz`, `/readyz` |
