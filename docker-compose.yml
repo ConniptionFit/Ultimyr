@@ -1,0 +1,97 @@
+# Ultimyr: Phase 1 stack (edge, web, auth, one-shot migrations, optional bundled Postgres).
+#
+# Bundled database:   docker compose --profile bundled-db up -d
+# External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
+# API/MCP only:       docker compose up -d traefik auth          (no web container)
+#
+# Secrets are read from ./secrets via Docker secrets (see README).
+
+name: ultimyr
+
+x-db-env: &db-env
+  DATABASE_URL: ${DATABASE_URL:-}
+  PG_HOST: ${PG_HOST:-}
+  PG_PORT: ${PG_PORT:-5432}
+  PG_USER: ${PG_USER:-}
+  PG_DATABASE: ${PG_DATABASE:-}
+  PG_SSLMODE: ${PG_SSLMODE:-disable}
+
+services:
+  traefik:
+    image: traefik:v3.2
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --ping=true
+    ports:
+      - "${ULTIMYR_HTTP_PORT:-8080}:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
+  postgres:
+    profiles: ["bundled-db"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${PG_USER:-ultimyr}
+      POSTGRES_DB: ${PG_DATABASE:-ultimyr}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ., target: migrate }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    restart: "no"
+
+  auth:
+    build: { context: ., target: auth }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+      ULTIMYR_JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      AUTH_REGISTRATION: ${AUTH_REGISTRATION:-open}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      NODE_ENV: production
+    secrets: [pg_password, jwt_private_key]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/me`) || PathPrefix(`/.well-known`)
+      - traefik.http.routers.auth.priority=100
+      - traefik.http.routers.auth.middlewares=auth-strip
+      - traefik.http.middlewares.auth-strip.stripprefix.prefixes=/api
+      - traefik.http.services.auth.loadbalancer.server.port=4001
+    restart: unless-stopped
+
+  web:
+    build: { context: ., target: web }
+    depends_on: [auth]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=PathPrefix(`/`)
+      - traefik.http.routers.web.priority=1
+      - traefik.http.services.web.loadbalancer.server.port=3000
+    restart: unless-stopped
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password
+  jwt_private_key:
+    file: ./secrets/jwt_private_key.pem
+
+volumes:
+  pgdata:
