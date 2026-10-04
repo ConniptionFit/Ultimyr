@@ -55,10 +55,15 @@ services:
       <<: *db-env
       PG_PASSWORD_FILE: /run/secrets/pg_password
       ULTIMYR_JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      ULTIMYR_AUTH_ENC_KEY_FILE: /run/secrets/auth_enc_key
+      ULTIMYR_API_KEY_PEPPER_FILE: /run/secrets/api_key_pepper
+      # Public origin users reach Ultimyr on. Drives passkey (WebAuthn) binding and SSO callback URLs.
+      ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
+      ULTIMYR_ALLOW_INSECURE_IDP: ${ULTIMYR_ALLOW_INSECURE_IDP:-false}
       AUTH_REGISTRATION: ${AUTH_REGISTRATION:-open}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       NODE_ENV: production
-    secrets: [pg_password, jwt_private_key]
+    secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper]
     depends_on:
       migrate: { condition: service_completed_successfully }
     ports:
@@ -82,6 +87,10 @@ secrets:
     file: ./secrets/pg_password
   jwt_private_key:
     file: ./secrets/jwt_private_key.pem
+  auth_enc_key:
+    file: ./secrets/auth_enc_key
+  api_key_pepper:
+    file: ./secrets/api_key_pepper
 
 volumes:
   pgdata:

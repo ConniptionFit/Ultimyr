@@ -19,7 +19,7 @@ services:
   auth:
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/me`) || PathPrefix(`/.well-known`)
+      - traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/me`) || PathPrefix(`/api/v1/admin`) || PathPrefix(`/scim/v2`) || PathPrefix(`/.well-known`)
       - traefik.http.routers.auth.priority=100
       - traefik.http.services.auth.loadbalancer.server.port=4001
 

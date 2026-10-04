@@ -2,12 +2,13 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 1 (platform skeleton and auth core). See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** Phase 2 (identity hardening). Phase 1 is the skeleton and auth core. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
 - `web`: Next.js splash page, sign in, sign up, empty "Reading Room", and a settings page with a **themed names toggle**.
 - `auth`: local accounts (argon2id), rotating refresh sessions with theft detection, EdDSA access tokens, JWKS endpoint, first-user admin bootstrap, audit log.
+- Phase 2 identity: TOTP and recovery codes, passkeys, API keys, OIDC/OAuth2/SAML sign-in, SCIM 2.0, groups, admin API. See [`docs/identity.md`](docs/identity.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -19,7 +20,7 @@ cp .env.example .env            # defaults to the Nginx Proxy Manager overlay
 docker compose --profile bundled-db up -d --build    # bundled Postgres
 ```
 
-The first account you create becomes the admin. Ultimyr needs a reverse proxy for HTTPS and a hostname. Pick one with `COMPOSE_FILE` in `.env`:
+Set `ULTIMYR_PUBLIC_URL` in `.env` to the address you browse to (needed for passkeys and SSO). The first account you create becomes the admin. Ultimyr needs a reverse proxy for HTTPS and a hostname. Pick one with `COMPOSE_FILE` in `.env`:
 
 | Proxy | `COMPOSE_FILE` | Notes |
 |---|---|---|
@@ -83,3 +84,5 @@ docs/                 Architecture plan and ADRs
 | POST | `/api/v1/auth/logout` | Revokes the session |
 | GET | `/api/v1/me` | Bearer access token |
 | GET | `/.well-known/jwks.json` | Public signing key |
+
+Phase 2 adds `/api/v1/auth/mfa/verify`, `/api/v1/auth/passkeys/*`, `/api/v1/auth/sso/*`, `/api/v1/auth/saml/*`, `/api/v1/auth/token`, `/api/v1/me/*` (MFA, passkeys, API keys, sessions, groups), `/api/v1/admin/*` and `/scim/v2`. Details in [`docs/identity.md`](docs/identity.md).

@@ -16,6 +16,10 @@ const config: NextConfig = {
     return [
       { source: "/api/v1/auth/:path*", destination: `${AUTH_URL}/v1/auth/:path*` },
       { source: "/api/v1/me", destination: `${AUTH_URL}/v1/me` },
+      { source: "/api/v1/me/:path*", destination: `${AUTH_URL}/v1/me/:path*` },
+      { source: "/api/v1/admin/:path*", destination: `${AUTH_URL}/v1/admin/:path*` },
+      { source: "/scim/v2/:path*", destination: `${AUTH_URL}/scim/v2/:path*` },
+      { source: "/.well-known/jwks.json", destination: `${AUTH_URL}/.well-known/jwks.json` },
     ];
   },
 };
