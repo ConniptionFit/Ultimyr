@@ -13,8 +13,8 @@ describe("lore", () => {
       expect(v.themed + v.plain).not.toMatch(/\u2014/);
     }
   });
-  it("falls back to themed on unknown values", () => {
-    expect(parseNamingMode("nonsense")).toBe("themed");
+  it("falls back to plain on unknown values", () => {
+    expect(parseNamingMode("nonsense")).toBe("plain");
     expect(parseNamingMode("plain")).toBe("plain");
     expect(term("guide", "plain")).toBe("Study guide");
   });
