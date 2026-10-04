@@ -11,6 +11,7 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `ULTIMYR_BIND` | `127.0.0.1` | Interface for published web and auth ports. |
 | `ULTIMYR_WEB_PORT` | `3000` | Published web port. |
 | `ULTIMYR_AUTH_PORT` | `4001` | Published auth port. |
+| `ULTIMYR_CONTENT_PORT` | `4002` | Published content port. |
 
 ## Database
 Use either `DATABASE_URL` **or** the `PG_*` parts.
@@ -34,6 +35,13 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party and SSO callback URLs. Changing it later orphans passkeys. |
 | `ULTIMYR_ALLOW_INSECURE_IDP` | false in production | Allow `http://` identity providers (otherwise only `https://` is accepted). Local testing only. |
 
+## Content service
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT`, `HOST` | `4002`, `0.0.0.0` | Listen address. |
+| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys (`/.well-known/jwks.json`) and group memberships. Compose sets `http://auth:4001`. |
+| `CONTENT_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job instead. |
+
 ## Secrets (production required)
 | Secret | Generate | If you lose or change it |
 |---|---|---|
@@ -46,4 +54,4 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 ## Web app
 | Variable | Where | Purpose |
 |---|---|---|
-| `AUTH_URL` | **Build arg** | Where Next.js forwards `/api/v1/*`, `/scim/v2` and the JWKS path. Rewrites are fixed at build time, so rebuild the web image to change it. Compose sets `http://auth:4001`. |
+| `AUTH_URL`, `CONTENT_URL` | **Build args** | Where Next.js forwards auth and content API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001` and `http://content:4002`. |

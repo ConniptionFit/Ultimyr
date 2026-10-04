@@ -15,7 +15,9 @@ COPY packages/db/package.json packages/db/
 COPY packages/authz/package.json packages/authz/
 COPY packages/lore/package.json packages/lore/
 COPY packages/ui-icons/package.json packages/ui-icons/
+COPY packages/service-kit/package.json packages/service-kit/
 COPY services/auth/package.json services/auth/
+COPY services/content/package.json services/content/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS source
@@ -37,6 +39,22 @@ EXPOSE 4001
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main.js"]
 
+# ---- content service ----
+FROM source AS content-build
+RUN pnpm --filter @ultimyr/content build \
+ && pnpm --filter @ultimyr/content deploy --prod /out/content
+
+FROM node:22-slim AS content
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=content-build /out/content/node_modules ./node_modules
+COPY --from=content-build /repo/services/content/dist ./dist
+COPY --from=content-build /repo/services/content/migrations ./migrations
+USER node
+EXPOSE 4002
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4002/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
+
 # ---- migrate: one-shot job that applies every service's migrations ----
 FROM source AS migrate-build
 RUN pnpm --filter @ultimyr/db build \
@@ -48,6 +66,7 @@ WORKDIR /app
 COPY --from=migrate-build /out/db/node_modules ./node_modules
 COPY --from=migrate-build /repo/packages/db/dist ./dist
 COPY --from=migrate-build /repo/services/auth/migrations ./services/auth/migrations
+COPY --from=migrate-build /repo/services/content/migrations ./services/content/migrations
 USER node
 CMD ["node", "dist/migrate-cli.js"]
 
@@ -56,7 +75,8 @@ FROM source AS web-build
 ENV NEXT_TELEMETRY_DISABLED=1
 # next.config rewrites are fixed at build time: this is where the web app forwards /api/v1.
 ARG AUTH_URL=http://auth:4001
-ENV AUTH_URL=$AUTH_URL
+ARG CONTENT_URL=http://content:4002
+ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL
 RUN pnpm --filter @ultimyr/web build
 
 FROM node:22-slim AS web

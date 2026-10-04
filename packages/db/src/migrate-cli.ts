@@ -1,11 +1,14 @@
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createPool, migrate } from "./index.js";
 
 /**
  * Usage: migrate-cli [service=dir ...]
- * Defaults to the auth service shipped in this repository. Each service owns
- * its own migrations directory and Postgres schema.
+ * Defaults to every service shipped in this repository, in dependency order.
+ * Each service owns its own migrations directory and Postgres schema.
  */
+/** Services that own a schema, in the order their migrations run. */
+const SERVICES = ["auth", "content"];
 const root = process.env.ULTIMYR_ROOT ?? resolve(import.meta.dirname, "../../..");
 const targets = process.argv.slice(2).length
   ? process.argv.slice(2).map((a) => {
@@ -13,7 +16,7 @@ const targets = process.argv.slice(2).length
       if (!service || !dir) throw new Error(`Bad target "${a}", expected service=dir`);
       return { service, dir: resolve(dir) };
     })
-  : [{ service: "auth", dir: resolve(root, "services/auth/migrations") }];
+  : SERVICES.map((service) => ({ service, dir: resolve(root, `services/${service}/migrations`) })).filter((t) => existsSync(t.dir));
 
 const pool = createPool();
 try {

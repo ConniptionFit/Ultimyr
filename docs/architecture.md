@@ -7,14 +7,17 @@ The approved plan is [architecture-plan.md](architecture-plan.md). This page cov
 Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
               │
               ├─► web (Next.js, :3000) ── rewrites /api/v1/*, /scim/v2, JWKS ─┐
-              └─► auth (Fastify, :4001)  ◄─────────────────────────────────────┘
-                     │
-                     └─► Postgres (schema `auth`)
+              ├─► auth (Fastify, :4001)  ◄──────────────────────────────────────┤
+              └─► content (Fastify, :4002) ◄────────────────────────────────────┘
+                     │            │  verifies tokens via auth's JWKS,
+                     │            └─ asks auth for group memberships
+                     └─► Postgres (schemas `auth`, `content`)
 ```
 - **web** renders the UI. It holds no secrets and no database access. It forwards API calls to auth, so one proxy host is enough. Proxies that can route by path (Traefik) send `/api/v1/*` straight to auth.
 - **auth** owns users, sessions, MFA, passkeys, API keys, groups, identity providers, SCIM and the audit log. It is the only writer of the `auth` schema.
+- **content** owns archives, guides, decks, versions, grants and search (see [content.md](content.md)). It verifies access tokens with auth's JWKS, so a revoked session keeps working there until its 10 minute token expires.
 - **migrate** is a one-shot container that applies SQL migrations before auth starts.
-- Planned services (content, quiz, AI gateway, MCP, worker) will each own a schema and verify tokens with `@ultimyr/authz` and the JWKS endpoint, never by calling auth per request.
+- Every service owns one schema and verifies tokens with `@ultimyr/authz` and the JWKS endpoint, never by calling auth per request. The only per-user call is the content service fetching group memberships (cached 30 seconds). Planned: quiz, AI gateway, MCP.
 
 ## Tokens and sessions
 1. Login (password, MFA, passkey or SSO) creates a `sessions` row and sets the refresh cookie `ultimyr_rt` (httpOnly, SameSite=Lax, path `/api/v1/auth`, 30 days).
@@ -33,6 +36,7 @@ Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
 |---|---|
 | `@ultimyr/config` | Env parsing, `_FILE` secrets, database config |
 | `@ultimyr/db` | Pool and migration runner (`pnpm migrate`) |
+| `@ultimyr/service-kit` | Fastify setup shared by every service: error format, health routes, token verification, scope checks, `/api` double mounting, transactions, test token issuer |
 | `@ultimyr/authz` | Roles, scopes, token claims and verification. Shared by every service |
 | `@ultimyr/lore` | Themed and plain names and micro-copy |
 | `@ultimyr/ui-icons` | Lucide helpers and animations |

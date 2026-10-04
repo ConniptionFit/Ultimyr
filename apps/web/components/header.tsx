@@ -1,14 +1,16 @@
 "use client";
 
-import { Library, LogOut, Settings } from "lucide-react";
+import { Library, LogOut, Search, Settings } from "lucide-react";
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 
 export function Header() {
   const { state, signOut } = useAuth();
   const { t } = useNaming();
+  const router = useRouter();
   return (
     <header className="border-b border-line">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
@@ -18,6 +20,18 @@ export function Header() {
         </Link>
         {state.status === "authenticated" && (
           <nav className="flex items-center gap-4 text-sm text-muted">
+            <form
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+                if (q) router.push(`/search?q=${encodeURIComponent(q)}`);
+              }}
+              className="flex items-center gap-1"
+            >
+              <UIcon icon={Search} size={14} aria-hidden />
+              <input name="q" type="search" aria-label="Search" placeholder="Search" className="w-24 rounded border border-line bg-transparent px-2 py-0.5 text-ink focus:w-40" />
+            </form>
             <Link href="/reading-room" className="hover:text-ink">
               {t("dashboard")}
             </Link>

@@ -1,104 +1,135 @@
 "use client";
 
 import { ArchiveIcon, StatusIcon } from "@ultimyr/ui-icons";
-import { Plus, Library } from "lucide-react";
+import { Library, Plus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
+import type { Archive } from "@/lib/types";
 
-interface DraftArchive {
-  id: string;
-  name: string;
-}
-
-// Local-only until the content service lands (Phase 3); not synced across devices.
-const STORE = "ultimyr_draft_archives";
-
-function loadDrafts(): DraftArchive[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORE) ?? "[]") as unknown;
-    return Array.isArray(raw) ? (raw as DraftArchive[]) : [];
-  } catch {
-    return [];
-  }
-}
+// Archives created before the content service existed were kept in this browser only.
+const LEGACY_STORE = "ultimyr_draft_archives";
 
 export default function ReadingRoom() {
-  const [drafts, setDrafts] = useState<DraftArchive[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
-  useEffect(() => setDrafts(loadDrafts()), []);
-
-  function create(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const next = [...drafts, { id: crypto.randomUUID(), name: trimmed }];
-    setDrafts(next);
-    try {
-      localStorage.setItem(STORE, JSON.stringify(next));
-    } catch {
-      // Storage unavailable: the list still shows for this visit.
-    }
-    setName("");
-    setCreating(false);
-  }
-
-  const { state } = useAuth();
+  const { state, api } = useAuth();
   const { t, copy } = useNaming();
   const router = useRouter();
+  const [archives, setArchives] = useState<Archive[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setArchives((await api<{ archives: Archive[] }>("GET", "archives")).archives);
+    } catch {
+      setArchives([]);
+      setError("Could not load your list. Is the content service running?");
+    }
+  }, [api]);
 
   useEffect(() => {
     if (state.status === "anonymous") router.replace("/login");
-  }, [state.status, router]);
+    if (state.status !== "authenticated") return;
+    (async () => {
+      // One-time move of locally stored drafts into the real service.
+      try {
+        const raw = JSON.parse(localStorage.getItem(LEGACY_STORE) ?? "[]") as { name?: string }[];
+        if (Array.isArray(raw) && raw.length) {
+          for (const d of raw) if (d.name) await api("POST", "archives", { title: d.name.slice(0, 120) });
+          localStorage.removeItem(LEGACY_STORE);
+        }
+      } catch {
+        // Nothing to migrate, or the service is down: the list below reports that.
+      }
+      await load();
+    })();
+  }, [state.status, router, api, load]);
+
+  async function create(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setBusy(true);
+    setError(null);
+    try {
+      const a = await api<Archive>("POST", "archives", { title: String(f.get("title")).trim(), vendor: String(f.get("vendor") ?? "").trim() || null });
+      router.push(`/archives/${a.id}`);
+    } catch {
+      setError("Could not create it. You may not have permission to create new material.");
+      setBusy(false);
+    }
+  }
 
   return (
     <>
       <Header />
       <Shell>
-        {state.status !== "authenticated" ? (
+        {state.status !== "authenticated" || archives === null ? (
           <StatusIcon status="loading" size={22} />
         ) : (
-          <div className="ulti-fade space-y-10">
-            <div>
-              <h1 className="text-3xl">{t("dashboard")}</h1>
-              <p className="text-muted">Welcome, {state.user.displayName}.</p>
-            </div>
-            <section className="rounded-lg border border-dashed border-line p-10 text-center">
-              <div className="mx-auto mb-4 flex justify-center text-muted">
-                <ArchiveIcon fallback={Library} size={32} />
+          <div className="ulti-fade space-y-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h1 className="text-3xl">{t("dashboard")}</h1>
+                <p className="text-muted">Welcome, {state.user.displayName}.</p>
               </div>
-              <h2 className="text-xl">{t("archives")}</h2>
-              {drafts.length === 0 ? (
-                <p className="mx-auto mt-2 max-w-sm text-muted">{copy("emptyArchives")}</p>
+              {!creating && (
+                <Button onClick={() => setCreating(true)}>
+                  <Plus size={16} aria-hidden /> New {t("archive").toLowerCase()}
+                </Button>
+              )}
+            </div>
+            {creating && (
+              <form onSubmit={create} className="space-y-3 rounded-md border border-line p-4">
+                <Field id="archive-title" name="title" label="Name" placeholder="CompTIA A+ Core 1" required maxLength={120} autoFocus />
+                <Field id="archive-vendor" name="vendor" label="Vendor (optional)" maxLength={120} />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={busy}>
+                    Create
+                  </Button>
+                  <Button type="button" variant="quiet" onClick={() => setCreating(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
+            <section>
+              <h2 className="mb-3 text-xl">{t("archives")}</h2>
+              {archives.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-line p-10 text-center">
+                  <div className="mx-auto mb-4 flex justify-center text-muted">
+                    <ArchiveIcon fallback={Library} size={32} />
+                  </div>
+                  <p className="mx-auto max-w-sm text-muted">{copy("emptyArchives")}</p>
+                </div>
               ) : (
-                <ul className="mx-auto mt-3 max-w-sm divide-y divide-line rounded-md border border-line text-left">
-                  {drafts.map((d) => (
-                    <li key={d.id} className="px-3 py-2">
-                      {d.name}
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {archives.map((a) => (
+                    <li key={a.id}>
+                      <Link href={`/archives/${a.id}`} className="flex h-full gap-3 rounded-md border border-line p-4 hover:bg-surface">
+                        <span className="mt-0.5 text-accent">
+                          <ArchiveIcon pngUrl={a.icon.url} fallback={iconFor(a.icon.name)} size={28} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-serif text-lg">{a.title}</span>
+                          <span className="block text-sm text-muted">
+                            {[a.vendor, `${a.itemCount ?? 0} items`, a.relation === "owner" ? null : "shared with you"].filter(Boolean).join(" · ")}
+                          </span>
+                        </span>
+                      </Link>
                     </li>
                   ))}
                 </ul>
-              )}
-              {creating ? (
-                <form onSubmit={create} className="mx-auto mt-5 max-w-xs space-y-3 text-left">
-                  <Field id="archive-name" label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={80} />
-                  <div className="flex gap-2">
-                    <Button type="submit" disabled={!name.trim()}>
-                      Create
-                    </Button>
-                    <Button type="button" variant="quiet" onClick={() => setCreating(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <Button variant="quiet" className="mt-5" onClick={() => setCreating(true)}>
-                  <Plus size={16} aria-hidden /> New {t("archive").toLowerCase()}
-                </Button>
               )}
             </section>
           </div>

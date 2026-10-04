@@ -2,13 +2,14 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 2 (identity hardening). Phase 1 is the skeleton and auth core. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** Phase 3 (content). Earlier phases: Phase 1 skeleton and auth core, Phase 2 identity hardening. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
 - `web`: Next.js splash page, sign in, sign up, empty "Reading Room", and a settings page with a **themed names toggle**.
 - `auth`: local accounts (argon2id), rotating refresh sessions with theft detection, EdDSA access tokens, JWKS endpoint, first-user admin bootstrap, audit log.
 - Phase 2 identity: TOTP and recovery codes, passkeys, API keys, OIDC/OAuth2/SAML sign-in, SCIM 2.0, groups, admin API. See [`docs/identity.md`](docs/identity.md).
+- Phase 3 content: archives with icons and quick stats, Markdown guides with sections and version history, flashcard decks, sharing to people and groups, full text search, Markdown/Anki/JSON import and export, trash with 30 day recovery. See [`docs/content.md`](docs/content.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -41,7 +42,7 @@ That is the whole setup: the web container forwards `/api/v1/*` to the auth serv
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/scim/v2` and `/.well-known` go to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
@@ -57,6 +58,7 @@ export DATABASE_URL=postgres://postgres:postgres@localhost:5432/ultimyr
 export TEST_DATABASE_URL=$DATABASE_URL     # enables the auth integration tests
 pnpm migrate                               # applies service migrations
 pnpm dev:auth                              # http://localhost:4001
+pnpm --filter @ultimyr/content dev         # http://localhost:4002
 pnpm dev:web                               # http://localhost:3000 (proxies /api/v1 to auth)
 pnpm typecheck && pnpm test
 ```
@@ -66,9 +68,11 @@ pnpm typecheck && pnpm test
 ```
 apps/web              Next.js UI
 services/auth         Auth service (Fastify + Drizzle), owns the `auth` schema
+services/content      Content service (Fastify + SQL), owns the `content` schema
 packages/config       Env parsing, Docker secrets (_FILE), database config
 packages/db           Pool and SQL migration runner
 packages/authz        Roles and token verification (shared by every service)
+packages/service-kit  Fastify base, errors, health, auth guard shared by services
 packages/lore         Themed and plain names, micro-copy
 packages/ui-icons     Lucide icon utilities and animations
 docs/                 Guides, API reference, architecture plan and ADRs
@@ -85,6 +89,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 | Area | Paths |
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
+| Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
 | Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |
