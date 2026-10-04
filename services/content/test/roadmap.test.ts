@@ -9,6 +9,8 @@ describe("links", () => {
     expect(normalizeUrl("https://example.com/")).toBe("https://example.com");
     expect(providerFor("https://www.youtube.com/watch?v=1")).toBe("YouTube");
     expect(providerFor("https://anthropic.skilljar.com/x")).toBe("Anthropic Academy");
+    expect(providerFor("https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep")).toBe("Anthropic Academy");
+    expect(normalizeUrl("https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep")).toBe("https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep");
     expect(providerFor("https://www.example.org/x")).toBe("example.org");
     expect(guessKind("https://www.youtube.com/playlist?list=PL1")).toBe("playlist");
     expect(guessKind("https://youtu.be/abc")).toBe("video");

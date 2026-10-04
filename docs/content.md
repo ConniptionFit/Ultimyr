@@ -24,6 +24,8 @@ An archive can carry a **roadmap** (themed name: Path) and a library of **resour
 Ultimyr **never opens the links you save**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host, and nothing is embedded from other sites. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
 
 ### Example: Claude's training pages and YouTube videos
+The prep hub for Claude Certified Architect Foundations (`https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep`) is a good first resource: add it as a `course`, then place it in an early stage of the roadmap, followed by your guides and decks, optional YouTube videos, and a milestone for each practice test.
+
 1. Open the archive, then **Resources**, then **Add a link**. Paste the address, give it a title and rough minutes.
 2. Open **Roadmap**, then **Build roadmap**. Add a stage, then use **Add from this course** to pick your guides, decks, quizzes and saved links, or **New link** to add one on the spot.
 3. Reorder with the arrows, mark extras as optional, add checkpoints, then **Save**. The same thing can be done through [MCP](mcp.md) (`add_resources`, `set_roadmap`).
