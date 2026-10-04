@@ -1,6 +1,6 @@
 # API reference
 
-The auth service is documented first, then the content service, then the quiz service. The AI gateway is in [ai.md](ai.md#api) and the MCP server in [mcp.md](mcp.md). Each service also answers `/healthz` and `/readyz`.
+The auth service is documented first, then the content service, then the quiz service. The AI gateway is in [ai.md](ai.md#api), the notes service in [Notes](#notes-service) and the MCP server in [mcp.md](mcp.md). Each service also answers `/healthz` and `/readyz`.
 
 # Auth service API
 
@@ -37,7 +37,7 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 | GET, DELETE | `/me/sessions`, `/me/sessions/:id` | List and revoke devices. |
 | GET | `/me/groups`, `/me/identities` | Group memberships, linked SSO identities. |
 
-Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:write`, `ai:use`.
+Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:write`, `ai:use`, `notes:use`.
 
 ## Admin
 | Method | Path | Notes |
@@ -185,6 +185,22 @@ Response shapes: `mcq` `{ choice }`, `multi` `{ choices }`, `fib` `{ blanks }`, 
 
 ## AI gateway
 See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
+
+## Notes service
+Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-obsidian)). Scope `notes:use`. Answers 503 `notes_disabled` when `FNS_URL` or the vault key is not set. The token is write-only.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/notes/connection` | `{ enabled, server, connected, vault }` |
+| PUT | `/notes/connection` | `{ token, vault }`. Checks the token and that the vault exists (400 `vault_not_found` lists the vaults), then stores the token sealed. |
+| DELETE | `/notes/connection` | Removes the connection and the step to note mapping. Notes in the vault stay. |
+| GET | `/notes/archives/:id` | `{ enabled, connected, scaffolded, steps: { [stepId]: { path, obsidianUrl } } }` |
+| POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Returns `{ total, created, existing, failed, indexUrl }`. Safe to repeat. |
+| GET | `/notes/steps/:stepId` | `{ path, exists, content, hash, obsidianUrl }` |
+| PUT | `/notes/steps/:stepId` | `{ content, baseHash }`. 409 `conflict` if the note changed since `hash`. |
+| POST | `/notes/steps/:stepId/status` | `{ status: todo, reading or done }`. Patches only the `status` property. |
+
+Errors: 409 `not_connected`, `fns_token_rejected`, `conflict`; 404 `no_note` (step has no note yet); 502 `fns_unreachable`.
 
 ## Daily review (content service)
 Scopes: reads `content:read`, reviews and settings `content:write`. Only published decks the caller can read are included.

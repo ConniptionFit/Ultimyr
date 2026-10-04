@@ -4,6 +4,7 @@ import { terms, type TermKey } from "@ultimyr/lore";
 import { AiPanel } from "@/components/ai-panel";
 import { DisplayPanel } from "@/components/display-panel";
 import { McpPanel } from "@/components/mcp-panel";
+import { NotesPanel } from "@/components/notes-panel";
 import { SecurityPanel } from "@/components/security-panel";
 import { Pane } from "@/components/side-nav";
 import { Toggle } from "@/components/ui";
@@ -14,6 +15,7 @@ const SECTIONS = [
   { id: "display", label: "Display" },
   { id: "security", label: "Security" },
   { id: "ai", label: "AI keys" },
+  { id: "notes", label: "Notes" },
   { id: "apps", label: "Connected apps" },
   { id: "names", label: "Themed names" },
 ];
@@ -49,6 +51,9 @@ export default function Settings() {
         </div>
         <div id="ai" className="scroll-mt-6 [&>section]:pt-0">
           <AiPanel />
+        </div>
+        <div id="notes" className="scroll-mt-6 [&>section]:pt-0">
+          <NotesPanel />
         </div>
         <div id="apps" className="scroll-mt-6 [&>section]:pt-0">
           <McpPanel />

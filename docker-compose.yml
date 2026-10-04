@@ -7,7 +7,7 @@
 #
 # Bundled database:   docker compose --profile bundled-db up -d
 # External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d auth content quiz ai-gateway mcp   (skip the web container)
+# API/MCP only:       docker compose up -d auth content quiz ai-gateway mcp notes   (skip the web container)
 #
 # Secrets are read from ./secrets via Docker secrets (see README).
 
@@ -128,6 +128,30 @@ services:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AI_PORT:-4004}:4004"
     restart: unless-stopped
 
+  notes:
+    build: { context: ., target: notes }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+      # Seals each person's Fast Note Sync token (same master key as the AI vault).
+      ULTIMYR_VAULT_KEK_FILE: /run/secrets/vault_kek
+      ULTIMYR_VAULT_KEK_VERSION: ${ULTIMYR_VAULT_KEK_VERSION:-1}
+      ULTIMYR_VAULT_KEK_PREVIOUS: ${ULTIMYR_VAULT_KEK_PREVIOUS:-}
+      # Your Fast Note Sync server. Leave empty and notes stay switched off (everything else works).
+      # Bundled one: docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d   (then FNS_URL=http://fns:9000)
+      FNS_URL: ${FNS_URL:-}
+      AUTH_URL: http://auth:4001
+      CONTENT_URL: http://content:4002
+      NODE_ENV: production
+    secrets: [pg_password, vault_kek]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_healthy }
+      content: { condition: service_healthy }
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_NOTES_PORT:-4006}:4006"
+    restart: unless-stopped
+
   mcp:
     build: { context: ., target: mcp }
     environment:
@@ -158,7 +182,8 @@ services:
         QUIZ_URL: http://quiz:4003
         AI_URL: http://ai-gateway:4004
         MCP_URL: http://mcp:4005
-    depends_on: [auth, content, quiz, ai-gateway, mcp]
+        NOTES_URL: http://notes:4006
+    depends_on: [auth, content, quiz, ai-gateway, mcp, notes]
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped

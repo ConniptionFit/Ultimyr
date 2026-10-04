@@ -1,0 +1,22 @@
+# Optional: run your own Fast Note Sync server next to Ultimyr (the Obsidian note sync backend).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d
+#   echo "FNS_URL=http://fns:9000" >> .env        # then recreate the notes service
+#
+# Open http://localhost:9000 once to create your account and a vault, install the "Fast Note Sync" plugin in
+# Obsidian and paste its config. Then in Ultimyr: Settings, Notes, paste the API token and vault name.
+# Already run Fast Note Sync somewhere else? Skip this file and set FNS_URL to that server instead.
+
+services:
+  fns:
+    image: haierkeys/fast-note-sync-service:latest
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_FNS_PORT:-9000}:9000"
+    volumes:
+      - fns-storage:/fast-note-sync/storage/
+      - fns-config:/fast-note-sync/config/
+    restart: unless-stopped
+
+volumes:
+  fns-storage:
+  fns-config:

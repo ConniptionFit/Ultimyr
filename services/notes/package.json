@@ -1,0 +1,25 @@
+{
+  "name": "@ultimyr/notes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ultimyr/authz": "workspace:^",
+    "@ultimyr/config": "workspace:^",
+    "@ultimyr/db": "workspace:^",
+    "@ultimyr/service-kit": "workspace:^",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

@@ -21,6 +21,7 @@ COPY services/content/package.json services/content/
 COPY services/quiz/package.json services/quiz/
 COPY services/ai-gateway/package.json services/ai-gateway/
 COPY services/mcp/package.json services/mcp/
+COPY services/notes/package.json services/notes/
 COPY packages/scoring/package.json packages/scoring/
 COPY packages/fsrs/package.json packages/fsrs/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
@@ -107,6 +108,22 @@ EXPOSE 4005
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4005/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main.js"]
 
+# ---- notes service ----
+FROM source AS notes-build
+RUN pnpm --filter @ultimyr/notes build \
+ && pnpm --filter @ultimyr/notes deploy --prod /out/notes
+
+FROM node:22-slim AS notes
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=notes-build /out/notes/node_modules ./node_modules
+COPY --from=notes-build /repo/services/notes/dist ./dist
+COPY --from=notes-build /repo/services/notes/migrations ./migrations
+USER node
+EXPOSE 4006
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4006/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
+
 # ---- migrate: one-shot job that applies every service's migrations ----
 FROM source AS migrate-build
 RUN pnpm --filter @ultimyr/db build \
@@ -121,6 +138,7 @@ COPY --from=migrate-build /repo/services/auth/migrations ./services/auth/migrati
 COPY --from=migrate-build /repo/services/content/migrations ./services/content/migrations
 COPY --from=migrate-build /repo/services/quiz/migrations ./services/quiz/migrations
 COPY --from=migrate-build /repo/services/ai-gateway/migrations ./services/ai-gateway/migrations
+COPY --from=migrate-build /repo/services/notes/migrations ./services/notes/migrations
 USER node
 CMD ["node", "dist/migrate-cli.js"]
 
@@ -133,7 +151,8 @@ ARG CONTENT_URL=http://content:4002
 ARG QUIZ_URL=http://quiz:4003
 ARG AI_URL=http://ai-gateway:4004
 ARG MCP_URL=http://mcp:4005
-ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL AI_URL=$AI_URL MCP_URL=$MCP_URL
+ARG NOTES_URL=http://notes:4006
+ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL AI_URL=$AI_URL MCP_URL=$MCP_URL NOTES_URL=$NOTES_URL
 RUN pnpm --filter @ultimyr/web build
 
 FROM node:22-slim AS web

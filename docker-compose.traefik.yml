@@ -44,6 +44,13 @@ services:
       - traefik.http.routers.ai.priority=100
       - traefik.http.services.ai.loadbalancer.server.port=4004
 
+  notes:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.notes.rule=PathPrefix(`/api/v1/notes`)
+      - traefik.http.routers.notes.priority=100
+      - traefik.http.services.notes.loadbalancer.server.port=4006
+
   mcp:
     labels:
       - traefik.enable=true

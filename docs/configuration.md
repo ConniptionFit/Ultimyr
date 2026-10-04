@@ -70,6 +70,15 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 | `AI_BASE_URL_GEMINI`, `_OPENAI`, `_ANTHROPIC` | provider defaults | Override the provider address (must be https). |
 | `AI_ALLOW_INSECURE_PROVIDER` | false | Allow http provider URLs. Local testing only. |
 
+## Notes service
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT`, `HOST` | `4006`, `0.0.0.0` | Listen address. |
+| `AUTH_URL`, `CONTENT_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`. |
+| `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Operator only: people cannot change it. Empty means notes are off. See [notes.md](notes.md#sync-with-obsidian). |
+| `ULTIMYR_VAULT_KEK`, `_VERSION`, `_PREVIOUS` | as the AI gateway | The same master key. It seals each person's sync token. Without it notes are off. |
+| `NOTES_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
+
 ## MCP server
 | Variable | Default | Purpose |
 |---|---|---|
