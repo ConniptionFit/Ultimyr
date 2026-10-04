@@ -5,6 +5,7 @@ import { terms, type TermKey } from "@ultimyr/lore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "@/components/header";
+import { AiPanel } from "@/components/ai-panel";
 import { SecurityPanel } from "@/components/security-panel";
 import { Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +31,7 @@ export default function Settings() {
             <h1 className="text-3xl">Settings</h1>
             <h2 className="text-xl">Security</h2>
             <SecurityPanel />
+            <AiPanel />
             <section className="space-y-4 border-t border-line pt-8">
               <div className="flex items-start justify-between gap-6">
                 <div>

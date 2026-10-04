@@ -5,6 +5,7 @@ import { Download, History, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AssistantPanel } from "@/components/assistant-panel";
 import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { QuizPanel } from "@/components/quiz/quiz-panel";
@@ -188,6 +189,8 @@ export default function ItemPage() {
           {it.kind === "guide" && (editing ? <GuideEditor it={it} onSubmit={saveGuide} onCancel={() => setEditing(false)} /> : <GuideReader it={it} />)}
           {it.kind === "deck" && <Deck it={it} editor={editor} studying={studying} setStudying={setStudying} reload={load} fail={fail} />}
           {it.kind === "quiz" && <QuizPanel itemId={id} editor={editor} published={it.status === "published"} />}
+
+          {it.kind !== "quiz" && it.status === "published" && <AssistantPanel context={{ type: "item", id }} label="Ask about this" />}
 
           {editor && (
             <div className="flex flex-wrap items-start gap-3 border-t border-line pt-4">

@@ -13,6 +13,7 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `ULTIMYR_AUTH_PORT` | `4001` | Published auth port. |
 | `ULTIMYR_CONTENT_PORT` | `4002` | Published content port. |
 | `ULTIMYR_QUIZ_PORT` | `4003` | Published quiz port. |
+| `ULTIMYR_AI_PORT` | `4004` | Published AI gateway port. |
 
 ## Database
 Use either `DATABASE_URL` **or** the `PG_*` parts.
@@ -52,6 +53,20 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `QUIZ_SSE_INTERVAL_MS` | `10000` | How often the live exam clock (`/attempts/:id/events`) sends the time. Lower it only for testing. |
 | `QUIZ_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
 
+## AI gateway
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT`, `HOST` | `4004`, `0.0.0.0` | Listen address. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`. |
+| `ULTIMYR_VAULT_KEK` | none | **Secret.** Master key (`openssl rand -base64 32`). Without it every AI route answers 503. |
+| `ULTIMYR_VAULT_KEK_VERSION` | `1` | Version number of the current master key. |
+| `ULTIMYR_VAULT_KEK_PREVIOUS` | none | Older keys still needed to read data, as `1:<base64>,2:<base64>`. See [ai.md](ai.md). |
+| `AI_DAILY_REQUESTS` | `200` | Per person per day. |
+| `AI_MAX_OUTPUT_TOKENS` | `8192` | Cap per request. |
+| `AI_DEFAULT_MODEL_GEMINI`, `_OPENAI`, `_ANTHROPIC` | `gemini-2.5-flash`, `gpt-4.1-mini`, `claude-haiku-4-5-20251001` | Used when a person has not chosen a model. |
+| `AI_BASE_URL_GEMINI`, `_OPENAI`, `_ANTHROPIC` | provider defaults | Override the provider address (must be https). |
+| `AI_ALLOW_INSECURE_PROVIDER` | false | Allow http provider URLs. Local testing only. |
+
 ## Secrets (production required)
 | Secret | Generate | If you lose or change it |
 |---|---|---|
@@ -59,9 +74,11 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `ULTIMYR_AUTH_ENC_KEY` | `openssl rand -base64 32` | TOTP seeds and IdP client secrets become unreadable. Users re-enrol TOTP, admins re-enter IdP secrets. |
 | `ULTIMYR_API_KEY_PEPPER` | `openssl rand -base64 32` | Every API key stops working. |
 
-`scripts/init-secrets.sh` creates all of these plus the DB password, and never overwrites existing files. In development the last two fall back to insecure built-in values, so never run `NODE_ENV=production` without real ones (the service refuses to start).
+The AI gateway also uses `ULTIMYR_VAULT_KEK` (`openssl rand -base64 32`). If you lose it, stored AI keys become unreadable and people add them again. It is optional: without it AI is simply off.
+
+`scripts/init-secrets.sh` creates all of these plus the vault key and the DB password, and never overwrites existing files. In development the last two fall back to insecure built-in values, so never run `NODE_ENV=production` without real ones (the service refuses to start).
 
 ## Web app
 | Variable | Where | Purpose |
 |---|---|---|
-| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | **Build args** | Where Next.js forwards auth, content and quiz API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002` and `http://quiz:4003`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL`, `AI_URL` | **Build args** | Where Next.js forwards auth, content, quiz and AI API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003` and `http://ai-gateway:4004`. |

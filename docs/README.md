@@ -8,10 +8,11 @@
 | [content.md](content.md) | Understand archives, guides, decks, versions, sharing, search and import/export |
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
-| [api.md](api.md) | Call the auth, content and quiz service APIs |
+| [ai.md](ai.md) | Connect AI keys, generate drafts, understand the key vault, rotate the master key |
+| [api.md](api.md) | Call the auth, content, quiz and AI service APIs |
 | [architecture.md](architecture.md) | Understand how the services, tokens and data fit together (as built) |
 | [operations.md](operations.md) | Back up, upgrade, monitor and troubleshoot |
 | [architecture-plan.md](architecture-plan.md) | See the full approved plan and roadmap (phases 0 to 9) |
 | [adr/](adr) | See why key decisions were made |
 
-Docs describe what is built today. Planned services (AI gateway, MCP, worker) are only in the plan.
+Docs describe what is built today. Planned services (MCP) are only in the plan.

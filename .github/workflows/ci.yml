@@ -41,11 +41,12 @@ jobs:
           docker build --target auth -t ultimyr-auth .
           docker build --target content -t ultimyr-content .
           docker build --target quiz -t ultimyr-quiz .
+          docker build --target ai-gateway -t ultimyr-ai .
           docker build --target migrate -t ultimyr-migrate .
           docker build --target web -t ultimyr-web .
       - name: Validate compose file
         run: |
-          mkdir secrets && echo ci > secrets/pg_password && openssl genpkey -algorithm ed25519 -out secrets/jwt_private_key.pem && echo ci > secrets/auth_enc_key && echo ci > secrets/api_key_pepper
+          mkdir secrets && echo ci > secrets/pg_password && openssl genpkey -algorithm ed25519 -out secrets/jwt_private_key.pem && echo ci > secrets/auth_enc_key && echo ci > secrets/api_key_pepper && echo ci > secrets/vault_kek
           docker compose -f docker-compose.yml config --quiet
           docker network create proxy
           docker compose -f docker-compose.yml -f docker-compose.npm.yml config --quiet

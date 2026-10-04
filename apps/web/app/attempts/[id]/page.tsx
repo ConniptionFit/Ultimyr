@@ -5,6 +5,7 @@ import { Flag } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AssistantPanel } from "@/components/assistant-panel";
 import { Header } from "@/components/header";
 import { FeedbackView, QuestionView } from "@/components/quiz/question-view";
 import { Button, Shell } from "@/components/ui";
@@ -230,6 +231,7 @@ export default function AttemptPage() {
                   </tbody>
                 </table>
               )}
+              <AssistantPanel context={{ type: "attempt", id }} label="Explain my mistakes" />
               <Button onClick={() => router.push(`/items/${at.itemId}`)}>Done</Button>
             </section>
           )}

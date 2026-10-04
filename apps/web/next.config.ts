@@ -8,6 +8,7 @@ import type { NextConfig } from "next";
 const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:4001";
 const CONTENT_URL = process.env.CONTENT_URL ?? "http://localhost:4002";
 const QUIZ_URL = process.env.QUIZ_URL ?? "http://localhost:4003";
+const AI_URL = process.env.AI_URL ?? "http://localhost:4004";
 
 const config: NextConfig = {
   output: "standalone",
@@ -25,6 +26,8 @@ const config: NextConfig = {
         { source: `/api/v1/${p}`, destination: `${QUIZ_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${QUIZ_URL}/v1/${p}/:path*` },
       ]),
+      { source: "/api/v1/ai", destination: `${AI_URL}/v1/ai` },
+      { source: "/api/v1/ai/:path*", destination: `${AI_URL}/v1/ai/:path*` },
       { source: "/api/v1/users/lookup", destination: `${AUTH_URL}/v1/users/lookup` },
       { source: "/api/v1/groups", destination: `${AUTH_URL}/v1/groups` },
       { source: "/api/v1/me", destination: `${AUTH_URL}/v1/me` },

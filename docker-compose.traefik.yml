@@ -37,6 +37,13 @@ services:
       - traefik.http.routers.quiz.priority=100
       - traefik.http.services.quiz.loadbalancer.server.port=4003
 
+  ai-gateway:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ai.rule=PathPrefix(`/api/v1/ai`)
+      - traefik.http.routers.ai.priority=100
+      - traefik.http.services.ai.loadbalancer.server.port=4004
+
   web:
     labels:
       - traefik.enable=true
