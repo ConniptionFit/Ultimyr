@@ -89,3 +89,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
 | Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |
 | Keys and health | `/.well-known/jwks.json`, `/healthz`, `/readyz` |
+
+## License
+
+[MIT](LICENSE).
