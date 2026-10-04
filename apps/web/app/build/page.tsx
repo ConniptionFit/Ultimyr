@@ -1,0 +1,68 @@
+"use client";
+
+import type { Depth } from "@ultimyr/coverage";
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { PromptBox } from "@/components/build/prompt-box";
+import { DEPTH_WORDS, startPrompt } from "@/lib/build-prompt";
+import { useNaming } from "@/lib/naming";
+import { RequireSession } from "@/lib/require-session";
+
+const input = "w-full rounded-md border border-line bg-surface px-3 py-2 text-ink";
+const STEPS = [
+  "Connect your assistant once (the address is under the prompt).",
+  "Paste the prompt. The assistant asks you for the official exam objectives, so have the vendor's exam guide handy.",
+  "It saves the objectives, a roadmap, guides, flashcards and questions, in small batches, as drafts.",
+  "Open the archive, check the Coverage tab, then review and publish the drafts.",
+];
+
+function Build() {
+  const { t } = useNaming();
+  const [name, setName] = useState("");
+  const [depth, setDepth] = useState<Depth>("standard");
+  return (
+    <div className="ulti-fade max-w-2xl space-y-8">
+      <div>
+        <h1 className="flex items-center gap-2 text-3xl">
+          <Sparkles aria-hidden /> {t("build")}
+        </h1>
+        <p className="mt-1 text-sm text-muted">Describe the certification once and let Claude, or any assistant that supports MCP, build the whole study archive for you. Everything it writes is a draft until you publish it.</p>
+      </div>
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-ink">
+        {STEPS.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      <div className="space-y-4">
+        <label className="block text-sm text-ink">
+          Certification
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="CompTIA A+ 220-1201" maxLength={200} className={`${input} mt-1`} />
+        </label>
+        <fieldset>
+          <legend className="text-sm text-ink">How much to build</legend>
+          <div className="mt-1 flex flex-wrap gap-4">
+            {(Object.keys(DEPTH_WORDS) as Depth[]).map((d) => (
+              <label key={d} className="flex items-center gap-2 text-sm text-ink">
+                <input type="radio" name="depth" checked={depth === d} onChange={() => setDepth(d)} /> {DEPTH_WORDS[d].label}
+                <span className="text-muted">({DEPTH_WORDS[d].detail})</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <PromptBox label="Prompt to paste" prompt={startPrompt(name, depth)} />
+      </div>
+      <p className="text-sm text-muted">
+        Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are in the <Link href="/reading-room" className="underline">Reading Room</Link>.
+      </p>
+    </div>
+  );
+}
+
+export default function BuildPage() {
+  return (
+    <RequireSession>
+      <Build />
+    </RequireSession>
+  );
+}

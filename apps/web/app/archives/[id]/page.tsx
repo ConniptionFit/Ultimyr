@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
+import { BuildPanel } from "@/components/build/build-panel";
 import { CoveragePanel } from "@/components/coverage/coverage-panel";
 import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
@@ -299,7 +300,8 @@ export default function ArchivePage() {
           )}
 
           {tab === "coverage" && (
-            <section id="panel-coverage" role="tabpanel" aria-labelledby="tab-coverage">
+            <section id="panel-coverage" role="tabpanel" aria-labelledby="tab-coverage" className="space-y-6">
+              {editor && <BuildPanel archiveId={id} archiveTitle={a.title} />}
               <CoveragePanel archiveId={id} canEdit={editor} />
             </section>
           )}

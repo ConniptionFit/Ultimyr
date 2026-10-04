@@ -39,5 +39,8 @@ Merge by code or title keeps links when you re-import.
 - Phases: build, consolidate, sharpen, taper, exam day. Daily tasks fit your minutes per day.
 - Advice and the checklist change with the exam mode (test center or online). Checklist ticks are saved in your browser.
 
+## Build with an AI assistant
+**Where:** Exam prep > Build with an AI assistant, and the Coverage tab of an archive. It gives you a prompt that has Claude (or another MCP assistant) build objectives, a roadmap, guides, flashcards and questions as drafts, and tracks progress. See [mcp.md](mcp.md#build-a-whole-certification-from-one-prompt).
+
 ## API and MCP
 See [api.md](api.md) and [mcp.md](mcp.md).
