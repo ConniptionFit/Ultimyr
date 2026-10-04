@@ -7,6 +7,7 @@ import type { NextConfig } from "next";
 // NOTE: rewrites are resolved at build time, so AUTH_URL and CONTENT_URL (and the quiz, AI and MCP URLs) are Docker build args.
 const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:4001";
 const CONTENT_URL = process.env.CONTENT_URL ?? "http://localhost:4002";
+const QUIZ_URL = process.env.QUIZ_URL ?? "http://localhost:4003";
 
 const config: NextConfig = {
   output: "standalone",
@@ -19,6 +20,10 @@ const config: NextConfig = {
       ...["archives", "items", "cards", "search", "import", "trash", "assets", "access"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${CONTENT_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${CONTENT_URL}/v1/${p}/:path*` },
+      ]),
+      ...["quizzes", "questions", "attempts", "scoring-profiles"].flatMap((p) => [
+        { source: `/api/v1/${p}`, destination: `${QUIZ_URL}/v1/${p}` },
+        { source: `/api/v1/${p}/:path*`, destination: `${QUIZ_URL}/v1/${p}/:path*` },
       ]),
       { source: "/api/v1/users/lookup", destination: `${AUTH_URL}/v1/users/lookup` },
       { source: "/api/v1/groups", destination: `${AUTH_URL}/v1/groups` },

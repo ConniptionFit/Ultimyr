@@ -1,6 +1,6 @@
 # API reference
 
-The auth service is documented first, then the content service. Each service also answers `/healthz` and `/readyz`.
+The auth service is documented first, then the content service, then the quiz service. Each service also answers `/healthz` and `/readyz`.
 
 # Auth service API
 
@@ -108,3 +108,37 @@ Scopes: reads need `content:read`, writes `content:write`, sharing `content:shar
 |---|---|---|
 | GET | `/search?q=&archive=&type=` | `type` is `archive`, `item`, `section` or `card`. |
 | POST | `/import` | `{ format: archive-json\|markdown\|anki-csv, content, archiveId?, title? }` |
+
+# Quiz service API
+
+Scopes: reads need `quiz:read`, writes (including taking an attempt) need `quiz:write`. Who may attempt or edit a quiz is decided by the content service from the quiz item's sharing; unknown or forbidden objects return 404. Question keys are only ever returned to editors. See [quiz.md](quiz.md) for behaviour.
+
+## Questions and settings (editors)
+| Method | Path | Notes |
+|---|---|---|
+| GET, POST | `/quizzes/:itemId/questions` | List (with keys and drafts) or add one. Body: `type`, `stem`, `payload`, `key`, optional `explanation`, `difficulty`, `domain`, `weight`, `isPretest`, `source`, `status`. `ai` and `mcp` sources default to `draft`. |
+| POST | `/quizzes/:itemId/questions/bulk` | `{ questions: [...] }`, up to 200, all or nothing. Errors name the failing `index`. |
+| GET, PATCH, DELETE | `/questions/:id` | To change `type`, `payload` or `key`, send all three together. |
+| GET, PUT | `/quizzes/:itemId/config` | `mode`, `timeLimitSeconds`, `questionCount`, `shuffleQuestions`, `shuffleOptions`, `scoringProfileId`, `graceSeconds`. GET is open to anyone who may attempt (no keys). |
+
+## Scoring profiles
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/scoring-profiles` | Built-in plus your own. Each shows `fidelity`, `source`, `checksum`. |
+| GET | `/scoring-profiles/:id` | |
+| POST | `/scoring-profiles` | `{ definition }`. Authors only. Same name makes the next version. Profiles never change once saved. |
+| POST | `/scoring-profiles/simulate` | `{ profile, questions, responses }` returns the full grade without saving anything. |
+| POST | `/scoring-profiles/:id/simulate` | Same, with a saved profile. |
+
+## Attempts
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/quizzes/:itemId/attempts` | `{ mode?: "practice", includeDrafts?, restart? }`. 201 with the questions (no keys), or 200 with `resumed: true` if one is open. 409 `no_questions` if nothing is published. Rate limited. |
+| GET | `/attempts/:id` | Resume. Includes `serverTime` and `deadlineAt`. A past-deadline attempt is closed and graded on the spot. |
+| PUT | `/attempts/:id/items/:questionId` | `{ response?, flagged?, timeMs? }`. 409 `attempt_closed` after the deadline plus grace, 409 `already_revealed` for a checked practice answer. |
+| POST | `/attempts/:id/items/:questionId/check` | Practice only: grades the question and returns outcome, key and explanation. |
+| POST | `/attempts/:id/submit` | Grades once. Repeating returns the stored result. |
+| GET | `/attempts/:id/review` | Closed attempts only (409 `attempt_open`). |
+| GET | `/quizzes/:itemId/attempts`, `/attempts` | Your own attempts, newest first. |
+
+Response shapes: `mcq` `{ choice }`, `multi` `{ choices }`, `fib` `{ blanks }`, `dnd` `{ mapping }`, `pbq` `{ state }`.

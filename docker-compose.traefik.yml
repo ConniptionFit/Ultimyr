@@ -30,6 +30,13 @@ services:
       - traefik.http.routers.content.priority=100
       - traefik.http.services.content.loadbalancer.server.port=4002
 
+  quiz:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`)
+      - traefik.http.routers.quiz.priority=100
+      - traefik.http.services.quiz.loadbalancer.server.port=4003
+
   web:
     labels:
       - traefik.enable=true

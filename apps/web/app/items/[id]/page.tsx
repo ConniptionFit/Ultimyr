@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
+import { QuizPanel } from "@/components/quiz/quiz-panel";
 import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -186,7 +187,7 @@ export default function ItemPage() {
 
           {it.kind === "guide" && (editing ? <GuideEditor it={it} onSubmit={saveGuide} onCancel={() => setEditing(false)} /> : <GuideReader it={it} />)}
           {it.kind === "deck" && <Deck it={it} editor={editor} studying={studying} setStudying={setStudying} reload={load} fail={fail} />}
-          {it.kind === "quiz" && <p className="text-muted">Questions for this {t("quiz").toLowerCase()} are managed in the quiz area.</p>}
+          {it.kind === "quiz" && <QuizPanel itemId={id} editor={editor} published={it.status === "published"} />}
 
           {editor && (
             <div className="flex flex-wrap items-start gap-3 border-t border-line pt-4">

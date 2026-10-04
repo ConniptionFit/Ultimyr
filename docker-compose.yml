@@ -7,7 +7,7 @@
 #
 # Bundled database:   docker compose --profile bundled-db up -d
 # External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d auth content   (skip the web container)
+# API/MCP only:       docker compose up -d auth content quiz   (skip the web container)
 #
 # Secrets are read from ./secrets via Docker secrets (see README).
 
@@ -86,6 +86,24 @@ services:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_CONTENT_PORT:-4002}:4002"
     restart: unless-stopped
 
+  quiz:
+    build: { context: ., target: quiz }
+    environment:
+      <<: *db-env
+      PG_PASSWORD_FILE: /run/secrets/pg_password
+      # Verifies access tokens (JWKS) here, and asks content who may attempt or edit a quiz.
+      AUTH_URL: http://auth:4001
+      CONTENT_URL: http://content:4002
+      NODE_ENV: production
+    secrets: [pg_password]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_healthy }
+      content: { condition: service_healthy }
+    ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_QUIZ_PORT:-4003}:4003"
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -94,7 +112,8 @@ services:
         # Baked into the web image: where the web app proxies /api/v1 (the compose service name).
         AUTH_URL: http://auth:4001
         CONTENT_URL: http://content:4002
-    depends_on: [auth, content]
+        QUIZ_URL: http://quiz:4003
+    depends_on: [auth, content, quiz]
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped

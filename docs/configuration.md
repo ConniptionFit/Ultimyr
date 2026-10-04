@@ -12,6 +12,7 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `ULTIMYR_WEB_PORT` | `3000` | Published web port. |
 | `ULTIMYR_AUTH_PORT` | `4001` | Published auth port. |
 | `ULTIMYR_CONTENT_PORT` | `4002` | Published content port. |
+| `ULTIMYR_QUIZ_PORT` | `4003` | Published quiz port. |
 
 ## Database
 Use either `DATABASE_URL` **or** the `PG_*` parts.
@@ -42,6 +43,14 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys (`/.well-known/jwks.json`) and group memberships. Compose sets `http://auth:4001`. |
 | `CONTENT_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job instead. |
 
+## Quiz service
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT`, `HOST` | `4003`, `0.0.0.0` | Listen address. |
+| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys. Compose sets `http://auth:4001`. |
+| `CONTENT_URL` | `http://localhost:4002` | Asked, per request, whether the caller may attempt or edit a quiz. If content is down, quiz requests answer 503. Compose sets `http://content:4002`. |
+| `QUIZ_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
+
 ## Secrets (production required)
 | Secret | Generate | If you lose or change it |
 |---|---|---|
@@ -54,4 +63,4 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 ## Web app
 | Variable | Where | Purpose |
 |---|---|---|
-| `AUTH_URL`, `CONTENT_URL` | **Build args** | Where Next.js forwards auth and content API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001` and `http://content:4002`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | **Build args** | Where Next.js forwards auth, content and quiz API paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002` and `http://quiz:4003`. |

@@ -2,7 +2,7 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 3 (content). Earlier phases: Phase 1 skeleton and auth core, Phase 2 identity hardening. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** Phase 4 (quizzes and scoring). Earlier phases: Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
@@ -10,6 +10,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - `auth`: local accounts (argon2id), rotating refresh sessions with theft detection, EdDSA access tokens, JWKS endpoint, first-user admin bootstrap, audit log.
 - Phase 2 identity: TOTP and recovery codes, passkeys, API keys, OIDC/OAuth2/SAML sign-in, SCIM 2.0, groups, admin API. See [`docs/identity.md`](docs/identity.md).
 - Phase 3 content: archives with icons and quick stats, Markdown guides with sections and version history, flashcard decks, sharing to people and groups, full text search, Markdown/Anki/JSON import and export, trash with 30 day recovery. See [`docs/content.md`](docs/content.md).
+- Phase 4 quizzes: five question types (multiple choice, select all, fill in, matching, scenario labs), practice mode with instant feedback, timed attempts with a server-owned clock, review screens, and an exact, versioned scoring engine with honest fidelity labels. See [`docs/quiz.md`](docs/quiz.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -59,6 +60,7 @@ export TEST_DATABASE_URL=$DATABASE_URL     # enables the auth integration tests
 pnpm migrate                               # applies service migrations
 pnpm dev:auth                              # http://localhost:4001
 pnpm --filter @ultimyr/content dev         # http://localhost:4002
+pnpm --filter @ultimyr/quiz dev            # http://localhost:4003
 pnpm dev:web                               # http://localhost:3000 (proxies /api/v1 to auth)
 pnpm typecheck && pnpm test
 ```
@@ -69,6 +71,8 @@ pnpm typecheck && pnpm test
 apps/web              Next.js UI
 services/auth         Auth service (Fastify + Drizzle), owns the `auth` schema
 services/content      Content service (Fastify + SQL), owns the `content` schema
+services/quiz         Quiz service (Fastify + SQL), owns the `quiz` schema
+packages/scoring      Pure scoring library (question types, profiles, grading)
 packages/config       Env parsing, Docker secrets (_FILE), database config
 packages/db           Pool and SQL migration runner
 packages/authz        Roles and token verification (shared by every service)
@@ -90,6 +94,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
 | Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access` |
+| Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
 | Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |
