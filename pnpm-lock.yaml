@@ -106,6 +106,37 @@ importers:
 
   packages/lore: {}
 
+  packages/service-kit:
+    dependencies:
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
+      '@ultimyr/authz':
+        specifier: workspace:^
+        version: link:../authz
+      '@ultimyr/config':
+        specifier: workspace:^
+        version: link:../config
+      '@ultimyr/db':
+        specifier: workspace:^
+        version: link:../db
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+
   packages/ui-icons:
     dependencies:
       lucide-react:
@@ -182,6 +213,34 @@ importers:
       xml-crypto:
         specifier: ^6.3.2
         version: 6.3.2
+
+  services/content:
+    dependencies:
+      '@ultimyr/authz':
+        specifier: workspace:^
+        version: link:../../packages/authz
+      '@ultimyr/config':
+        specifier: workspace:^
+        version: link:../../packages/config
+      '@ultimyr/db':
+        specifier: workspace:^
+        version: link:../../packages/db
+      '@ultimyr/service-kit':
+        specifier: workspace:^
+        version: link:../../packages/service-kit
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
 
 packages:
 
