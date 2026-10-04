@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import type { Actor, Ctx } from "../ctx.js";
+import { selectDrill, type Candidate, type QuestionStats } from "../drill.js";
 import { DEFAULT_PROFILE_NAME } from "../profiles.js";
 import { DEFAULT_CONFIG } from "./questions.js";
 
@@ -18,6 +19,16 @@ const startBody = z.object({
   /** Extra time on timed attempts, as a percentage of the quiz's limit. Self declared; it is recorded on the attempt. */
   extraTimePct: z.union([z.literal(0), z.literal(25), z.literal(50), z.literal(100)]).default(0),
 });
+const drillBody = z.object({
+  archiveId: z.uuid(),
+  count: z.number().int().min(3).max(50).default(15),
+  /** mixed: weak spots and fresh questions. weak: the weakest areas only. missed: only what you got wrong last time. */
+  focus: z.enum(["mixed", "weak", "missed"]).default("mixed"),
+  /** Narrow the drill to one exam objective. */
+  objectiveId: z.uuid().optional(),
+  restart: z.boolean().default(false),
+});
+const MAX_DRILL_POOL = 5000;
 const saveBody = z.object({
   response: z.unknown().optional(),
   flagged: z.boolean().optional(),
@@ -73,6 +84,8 @@ export function attemptRoutes(ctx: Ctx) {
     id: a.id,
     itemId: a.item_id,
     archiveId: a.archive_id,
+    kind: a.kind ?? "quiz",
+    ...(a.kind === "drill" ? { drill: { focus: a.drill?.focus, count: a.drill?.count, objectiveId: a.drill?.objectiveId ?? null } } : {}),
     mode: a.mode,
     status: a.status,
     startedAt: a.started_at,
@@ -102,6 +115,7 @@ export function attemptRoutes(ctx: Ctx) {
       questions: rows.map((i) => ({
         id: i.question_id,
         order: i.ord,
+        ...(a.kind === "drill" ? { drillReason: a.drill?.reasons?.[i.question_id] ?? null } : {}),
         ...(i.presented as object),
         response: i.response,
         flagged: i.flagged,
@@ -160,6 +174,73 @@ export function attemptRoutes(ctx: Ctx) {
           const snap: Snap = { id: q.id, type: q.type, weight: q.weight, domain: q.domain, isPretest: q.is_pretest, payload: q.payload, key: q.answer_key, stem: q.stem, explanation: q.explanation } as Snap;
           const shown = { ...presentQuestion(toQuestion(snap), seed, cfg.shuffle_options), stem: q.stem };
           // The learner never sees which questions are unscored pretests.
+          delete (shown as Record<string, unknown>).isPretest;
+          await c.query("INSERT INTO quiz.attempt_items (attempt_id, question_id, ord, question, presented) VALUES ($1,$2,$3,$4,$5)", [attemptId, q.id, ord, snap, shown]);
+        }
+      });
+      const { rows } = await pool.query("SELECT * FROM quiz.attempts WHERE id = $1", [attemptId]);
+      return reply.code(201).send(await view(rows[0]));
+    });
+
+    /**
+     * A weak-area drill: a practice attempt built from the questions this person is weakest on, across every quiz in an
+     * archive they may attempt. Feedback is instant, like practice mode. Drills count in analytics but not in the readiness estimate.
+     * Questions left unanswered (an abandoned drill, a skipped item) are not evidence either way, so they do not count as misses.
+     */
+    r.post("/v1/drills", { config: ctx.svc.limit }, async (req, reply) => {
+      const a = await ctx.actor(req, "quiz:write");
+      const body = parse(drillBody, req.body ?? {});
+      const arc = await ctx.archiveAccess(a, body.archiveId);
+
+      const { rows: open } = await pool.query("SELECT * FROM quiz.attempts WHERE user_id = $1 AND item_id = $2 AND kind = 'drill' AND status = 'in_progress'", [a.userId, body.archiveId]);
+      for (const o of open) {
+        if (body.restart) await tx(pool, (c) => finish(c, o, "expired"));
+        else return reply.code(200).send({ ...(await view(o)), resumed: true });
+      }
+
+      const itemIds = arc.quizzes.filter((q) => q.canAttempt && (q.status === "published" || q.canWrite)).map((q) => q.id);
+      if (!itemIds.length) throw new HttpError(409, "no_questions");
+      const { rows: pool_ } = await pool.query(
+        `SELECT q.*, st.answered, st.correct, st.last_outcome, st.last_at
+           FROM quiz.questions q
+           LEFT JOIN LATERAL (
+             SELECT count(*)::int AS answered, count(*) FILTER (WHERE ai.outcome = 'correct')::int AS correct,
+                    (array_agg(ai.outcome ORDER BY att.started_at DESC))[1] AS last_outcome, max(att.started_at) AS last_at
+               FROM quiz.attempt_items ai JOIN quiz.attempts att ON att.id = ai.attempt_id
+              WHERE ai.question_id = q.id AND att.user_id = $1 AND ai.outcome IN ('correct', 'partial', 'incorrect')) st ON true
+          WHERE q.item_id = ANY($2::uuid[]) AND q.status = 'published' AND NOT q.is_pretest AND ($3::uuid IS NULL OR q.objective_id = $3)
+          ORDER BY q.created_at LIMIT ${MAX_DRILL_POOL}`,
+        [a.userId, itemIds, body.objectiveId ?? null],
+      );
+      if (!pool_.length) throw new HttpError(409, "no_questions");
+
+      const byId = new Map<string, Row>(pool_.map((q) => [q.id as string, q]));
+      const cands: Candidate[] = pool_.map((q) => ({
+        id: q.id,
+        area: q.objective_id ? `o:${q.objective_id}` : q.domain ? `d:${q.domain}` : null,
+        stats: { answered: q.answered ?? 0, correct: q.correct ?? 0, lastOutcome: q.last_outcome ?? null, lastAt: q.last_at ? new Date(q.last_at).getTime() : null } as QuestionStats,
+      }));
+      const now = ctx.now();
+      const seed = randomBytes(12).toString("hex");
+      const picks = selectDrill(cands, { count: body.count, focus: body.focus, now: now.getTime(), seed });
+      if (!picks.length) throw new HttpError(409, "nothing_to_drill", { issues: [body.focus === "missed" ? "no questions to redo: nothing was missed last time" : "no questions match"] });
+      const chosen = selectQuestions(picks.map((p) => byId.get(p.id)!) as Array<Row & { id: string }>, { count: null, shuffle: true, seed });
+
+      const profileRow = (await pool.query("SELECT * FROM quiz.scoring_profiles WHERE is_official AND name = $1 ORDER BY version DESC LIMIT 1", [DEFAULT_PROFILE_NAME])).rows[0];
+      if (!profileRow) throw new HttpError(500, "internal_error");
+      const profile: ScoringProfile = parseProfile(profileRow.definition);
+      const attemptId = uuidv7();
+      const drill = { focus: body.focus, count: chosen.length, objectiveId: body.objectiveId ?? null, reasons: Object.fromEntries(picks.map((p) => [p.id, p.reason])) };
+
+      await tx(pool, async (c) => {
+        await c.query(
+          `INSERT INTO quiz.attempts (id, user_id, item_id, archive_id, mode, kind, drill, profile_id, profile_snapshot, seed, started_at, grace_s, extra_time_pct)
+           VALUES ($1,$2,$3,$3,'practice','drill',$4,$5,$6,$7,$8,0,0)`,
+          [attemptId, a.userId, body.archiveId, drill, profileRow.id, profile, seed, now],
+        );
+        for (const [ord, q] of chosen.entries()) {
+          const snap: Snap = { id: q.id, type: q.type, weight: q.weight, domain: q.domain, isPretest: false, payload: q.payload, key: q.answer_key, stem: q.stem, explanation: q.explanation } as Snap;
+          const shown = { ...presentQuestion(toQuestion(snap), seed, true), stem: q.stem };
           delete (shown as Record<string, unknown>).isPretest;
           await c.query("INSERT INTO quiz.attempt_items (attempt_id, question_id, ord, question, presented) VALUES ($1,$2,$3,$4,$5)", [attemptId, q.id, ord, snap, shown]);
         }

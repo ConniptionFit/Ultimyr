@@ -12,6 +12,7 @@ import { FeedbackView, QuestionView } from "@/components/quiz/question-view";
 import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
+import { REASON_LABEL } from "@/lib/certs";
 import { FIDELITY_LABEL, MODE_LABEL, formatClock, pct, type Attempt, type PlayQuestion } from "@/lib/quiz";
 
 const answered = (q: PlayQuestion) => q.response !== null && q.response !== undefined && JSON.stringify(q.response) !== "{}";
@@ -172,18 +173,20 @@ export default function AttemptPage() {
   const closed = at.status !== "in_progress";
   const qs = at.questions;
   const low = remaining !== null && remaining < 60_000;
+  const drill = at.kind === "drill";
+  const home = drill ? `/archives/${at.archiveId}` : `/items/${at.itemId}`;
 
   return (
     <>
       <Header />
       <Shell>
         <div className="ulti-fade space-y-6">
-          <Link href={`/items/${at.itemId}`} className="text-sm text-muted hover:text-ink">
-            ← Back to the {t("quiz").toLowerCase()}
+          <Link href={home} className="text-sm text-muted hover:text-ink">
+            ← Back to the {drill ? t("archive").toLowerCase() : t("quiz").toLowerCase()}
           </Link>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl">
-              {MODE_LABEL[at.mode]}
+              {drill ? "Weak-area drill" : MODE_LABEL[at.mode]}
               {closed ? " results" : ""}
             </h1>
             <div className="flex items-center gap-3">
@@ -204,18 +207,22 @@ export default function AttemptPage() {
           {closed && summary && (
             <section className="space-y-4 rounded-md border border-line p-5" aria-label="Result">
               <p className="text-3xl">
-                {summary.scaled !== null ? summary.scaled : pct(summary.rawBp)}
-                <span className={`ml-3 text-base ${summary.pass ? "text-accent" : "text-danger"}`}>{summary.pass ? "Pass" : "Not yet"}</span>
+                {drill ? pct(summary.rawBp) : summary.scaled !== null ? summary.scaled : pct(summary.rawBp)}
+                {!drill && <span className={`ml-3 text-base ${summary.pass ? "text-accent" : "text-danger"}`}>{summary.pass ? "Pass" : "Not yet"}</span>}
               </p>
               <p className="text-sm text-muted">
                 {pct(summary.rawBp)} of marks ({summary.earned / 1000} of {summary.max / 1000}). {summary.counts.correct} correct, {summary.counts.partial} partly, {summary.counts.incorrect} incorrect, {summary.counts.unanswered} unanswered.
                 {at.status === "expired" ? " Time ran out, so this was graded as it stood at the deadline." : ""}
               </p>
               {summary.counts.incorrect + summary.counts.partial > 0 && <p className="text-sm">{copy("attemptGap")}</p>}
-              <p className="text-xs text-muted">
-                {at.extraTimePct ? `Taken with ${at.extraTimePct}% extra time. ` : ""}Scored with “{at.profile.name}” ({FIDELITY_LABEL[at.profile.fidelity]}).
-                {at.profile.fidelity !== "published_formula" && " This is not an official exam score."}
-              </p>
+              {drill ? (
+                <p className="text-xs text-muted">A drill is built from the questions you miss most, so it is meant to feel harder than the real thing. It does not change your readiness estimate.</p>
+              ) : (
+                <p className="text-xs text-muted">
+                  {at.extraTimePct ? `Taken with ${at.extraTimePct}% extra time. ` : ""}Scored with “{at.profile.name}” ({FIDELITY_LABEL[at.profile.fidelity]}).
+                  {at.profile.fidelity !== "published_formula" && " This is not an official exam score."}
+                </p>
+              )}
               {summary.domains.length > 1 && (
                 <table className="w-full text-sm">
                   <thead className="text-left text-muted">
@@ -237,7 +244,14 @@ export default function AttemptPage() {
                 </table>
               )}
               <AssistantPanel context={{ type: "attempt", id }} label="Explain my mistakes" />
-              <Button onClick={() => router.push(`/items/${at.itemId}`)}>Done</Button>
+              <div className="flex gap-2">
+                <Button onClick={() => router.push(home)}>Done</Button>
+                {drill && (
+                  <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
+                    Another drill
+                  </Button>
+                )}
+              </div>
             </section>
           )}
 
@@ -287,6 +301,7 @@ export default function AttemptPage() {
               <p className="mb-2 text-sm text-muted">
                 Question {idx + 1} of {qs.length}
               </p>
+              {drill && q.drillReason && REASON_LABEL[q.drillReason] && <p className="mb-2 text-xs text-muted">{REASON_LABEL[q.drillReason]}</p>}
               <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">

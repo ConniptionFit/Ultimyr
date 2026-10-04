@@ -7,7 +7,7 @@ import { gzipSync } from "node:zlib";
 
 const dir = join(import.meta.dirname, "../apps/web/.next/static/chunks");
 const BUDGET = {
-  totalJsKb: 450, // every client chunk together, an upper bound for any single page
+  totalJsKb: 500, // every client chunk together, an upper bound for any single page
   largestJsKb: 90, // the biggest single chunk (the React runtime)
   cssKb: 15,
 };

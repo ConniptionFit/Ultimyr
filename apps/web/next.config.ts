@@ -15,7 +15,7 @@ const NOTES_URL = process.env.NOTES_URL ?? "http://localhost:4006";
 const config: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: resolve(import.meta.dirname, "../.."),
-  transpilePackages: ["@ultimyr/lore", "@ultimyr/ui-icons"],
+  transpilePackages: ["@ultimyr/lore", "@ultimyr/ui-icons", "@ultimyr/coverage"],
   poweredByHeader: false,
   async headers() {
     // The consent page must never be framed (clickjacking).
@@ -34,11 +34,11 @@ const config: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/v1/auth/:path*", destination: `${AUTH_URL}/v1/auth/:path*` },
-      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access", "study", "resources", "roadmap", "roadmaps"].flatMap((p) => [
+      ...["archives", "items", "cards", "search", "import", "trash", "assets", "access", "study", "resources", "roadmap", "roadmaps", "credentials"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${CONTENT_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${CONTENT_URL}/v1/${p}/:path*` },
       ]),
-      ...["quizzes", "questions", "attempts", "scoring-profiles", "analytics", "goals"].flatMap((p) => [
+      ...["quizzes", "questions", "attempts", "scoring-profiles", "analytics", "goals", "drills", "plan"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${QUIZ_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${QUIZ_URL}/v1/${p}/:path*` },
       ]),

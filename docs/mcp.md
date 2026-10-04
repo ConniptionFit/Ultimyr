@@ -37,6 +37,13 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
 | `get_step_note`, `get_step_flashcards` | `notes:use` | Read the note for a roadmap step from your Obsidian vault, and the `Question :: Answer` lines in it (hand them to `create_deck`) |
 | `append_step_note` | `notes:use` | Add text to the END of a step note. Never edits or removes what you wrote |
+| `get_objectives` | `content:read` | The exam objectives (domains and topics with weights) and what is linked to each |
+| `set_objectives` | `content:write` | Add or update objectives from an outline. Merges by code or title, never deletes |
+| `link_objectives` | `content:write` | Link guides, decks, cards or resources to objectives |
+| `link_questions` | `quiz:write` | Tag questions with an objective |
+| `get_coverage` | `content:read`, `quiz:read` | Per objective: cards, questions, your accuracy, and the biggest gaps |
+| `get_credentials` | `content:read` | Your credentials with exam dates, renewals, CEU totals and current alerts. Voucher codes are never returned |
+| `get_exam_plan` | `quiz:read` | The day by day plan to an exam date |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
 | `share_item` | `content:share` | Give a person or group access. Off unless you grant sharing |
 

@@ -83,7 +83,20 @@ export function grantRoutes(ctx: Ctx) {
       let rel: number;
       let extra: Record<string, unknown> = {};
       if (type === "archive") {
-        rel = (await loadArchive(pool, a, idParam(req))).rel;
+        const archiveId = idParam(req);
+        const arc = await loadArchive(pool, a, archiveId);
+        rel = arc.rel;
+        // The quizzes inside it the caller may attempt, so the quiz service can build practice sets across them.
+        const { rows: qs } = await pool.query(
+          `SELECT s.id, s.status, s.title, GREATEST($4::int, ${ITEM_GRANT}) AS rel FROM content.sub_items s
+            WHERE s.master_item_id = $3 AND s.kind = 'quiz' AND s.deleted_at IS NULL`,
+          [a.userId, a.groups, archiveId, rel],
+        );
+        extra = {
+          quizzes: qs
+            .filter((q) => Number(q.rel) >= RANK.attempt && (q.status === "published" || Number(q.rel) >= RANK.editor))
+            .map((q) => ({ id: q.id, title: q.title, status: q.status, canAttempt: true, canWrite: Number(q.rel) >= RANK.editor })),
+        };
       } else if (type === "item") {
         const it = await loadItem(pool, a, idParam(req));
         rel = it.rel;
