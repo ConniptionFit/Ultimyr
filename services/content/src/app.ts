@@ -4,9 +4,11 @@ import type { FastifyInstance } from "fastify";
 import type { GroupResolver } from "./access.js";
 import { createCtx } from "./ctx.js";
 import { archiveRoutes } from "./routes/archives.js";
+import { credentialRoutes } from "./routes/credentials.js";
 import { grantRoutes } from "./routes/grants.js";
 import { ioRoutes } from "./routes/io.js";
 import { itemRoutes } from "./routes/items.js";
+import { objectiveRoutes } from "./routes/objectives.js";
 import { roadmapRoutes } from "./routes/roadmap.js";
 import { searchRoutes } from "./routes/search.js";
 import { studyRoutes } from "./routes/study.js";
@@ -22,7 +24,7 @@ export interface AppDeps {
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const svc = await createService({ name: "content", pool: deps.pool, keySource: deps.keySource, logger: deps.logger });
   const ctx = createCtx(svc, deps.pool, deps.groups, deps.now);
-  for (const mod of [archiveRoutes, itemRoutes, grantRoutes, searchRoutes, ioRoutes, studyRoutes, roadmapRoutes]) await svc.mount(mod(ctx));
+  for (const mod of [archiveRoutes, itemRoutes, grantRoutes, searchRoutes, ioRoutes, studyRoutes, roadmapRoutes, credentialRoutes, objectiveRoutes]) await svc.mount(mod(ctx));
   return svc.app;
 }
 

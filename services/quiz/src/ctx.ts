@@ -1,7 +1,7 @@
 import { hasRole } from "@ultimyr/authz";
 import { HttpError, type Pool, type Principal, type Service } from "@ultimyr/service-kit";
 import type { FastifyRequest } from "fastify";
-import type { AccessChecker, ItemAccess } from "./access.js";
+import type { AccessChecker, ArchiveAccess, ItemAccess } from "./access.js";
 
 export interface Actor {
   userId: string;
@@ -16,6 +16,8 @@ export interface Ctx {
   actor(req: FastifyRequest, scope: "quiz:read" | "quiz:write"): Promise<Actor>;
   /** The quiz item, if the caller may reach it at all. Unknown and forbidden both read as 404. */
   quizItem(a: Actor, itemId: string, need: "attempt" | "write"): Promise<ItemAccess>;
+  /** The archive, if the caller may reach it at all. Unknown and forbidden both read as 404. */
+  archiveAccess(a: Actor, archiveId: string): Promise<ArchiveAccess>;
   isAuthor(a: Actor): boolean;
 }
 
@@ -32,6 +34,11 @@ export function createCtx(svc: Service, pool: Pool, access: AccessChecker, now: 
       const it = await access.item(a.bearer, itemId);
       if (!it || it.kind !== "quiz" || (need === "attempt" ? !it.canAttempt : !it.canWrite)) throw new HttpError(404, "not_found");
       return it;
+    },
+    async archiveAccess(a, archiveId) {
+      const ar = await access.archive(a.bearer, archiveId);
+      if (!ar) throw new HttpError(404, "not_found");
+      return ar;
     },
     isAuthor: (a) => hasRole(a.principal, "author", "org_admin", "platform_admin"),
   };

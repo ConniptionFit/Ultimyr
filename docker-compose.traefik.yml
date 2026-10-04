@@ -26,14 +26,14 @@ services:
   content:
     labels:
       - traefik.enable=true
-      - traefik.http.routers.content.rule=PathPrefix(`/api/v1/archives`) || PathPrefix(`/api/v1/items`) || PathPrefix(`/api/v1/cards`) || PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/import`) || PathPrefix(`/api/v1/trash`) || PathPrefix(`/api/v1/assets`) || PathPrefix(`/api/v1/access`) || PathPrefix(`/api/v1/study`) || PathPrefix(`/api/v1/resources`) || PathPrefix(`/api/v1/roadmap`)
+      - traefik.http.routers.content.rule=PathPrefix(`/api/v1/archives`) || PathPrefix(`/api/v1/items`) || PathPrefix(`/api/v1/cards`) || PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/import`) || PathPrefix(`/api/v1/trash`) || PathPrefix(`/api/v1/assets`) || PathPrefix(`/api/v1/access`) || PathPrefix(`/api/v1/study`) || PathPrefix(`/api/v1/resources`) || PathPrefix(`/api/v1/roadmap`) || PathPrefix(`/api/v1/credentials`)
       - traefik.http.routers.content.priority=100
       - traefik.http.services.content.loadbalancer.server.port=4002
 
   quiz:
     labels:
       - traefik.enable=true
-      - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`) || PathPrefix(`/api/v1/analytics`) || PathPrefix(`/api/v1/goals`)
+      - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`) || PathPrefix(`/api/v1/analytics`) || PathPrefix(`/api/v1/goals`) || PathPrefix(`/api/v1/drills`) || PathPrefix(`/api/v1/plan`)
       - traefik.http.routers.quiz.priority=100
       - traefik.http.services.quiz.loadbalancer.server.port=4003
 
