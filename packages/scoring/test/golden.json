@@ -1,0 +1,566 @@
+{
+  "note": "Hand-computed vectors. Changing an expected value here means changing what past attempts would score: bump the profile version instead.",
+  "vectors": [
+    {
+      "name": "simple percent: one of each, mixed answers",
+      "profile": {
+        "name": "t",
+        "pass": {
+          "kind": "percent",
+          "minBp": 7000
+        }
+      },
+      "questions": [
+        {
+          "id": "a",
+          "type": "mcq",
+          "weight": 1,
+          "domain": "Net",
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": "x"
+              },
+              {
+                "id": "2",
+                "text": "y"
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        },
+        {
+          "id": "b",
+          "type": "multi",
+          "weight": 2,
+          "domain": "Net",
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              },
+              {
+                "id": "3",
+                "text": ""
+              },
+              {
+                "id": "4",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": [
+              "1",
+              "2"
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "type": "fib",
+          "weight": 1,
+          "domain": "Sec",
+          "payload": {
+            "blanks": 2
+          },
+          "key": {
+            "blanks": [
+              {
+                "accepted": [
+                  "tcp"
+                ]
+              },
+              {
+                "accepted": [
+                  "udp",
+                  "UDP"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "type": "dnd",
+          "weight": 3,
+          "domain": "Sec",
+          "payload": {
+            "items": [
+              {
+                "id": "i1",
+                "text": ""
+              },
+              {
+                "id": "i2",
+                "text": ""
+              },
+              {
+                "id": "i3",
+                "text": ""
+              }
+            ],
+            "targets": [
+              {
+                "id": "t1",
+                "text": ""
+              },
+              {
+                "id": "t2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "mapping": {
+              "i1": "t1",
+              "i2": "t2",
+              "i3": "t2"
+            }
+          }
+        }
+      ],
+      "responses": {
+        "a": {
+          "choice": "1"
+        },
+        "b": {
+          "choices": [
+            "1",
+            "3"
+          ]
+        },
+        "c": {
+          "blanks": [
+            " TCP ",
+            "icmp"
+          ]
+        },
+        "d": {
+          "mapping": {
+            "i1": "t1",
+            "i2": "t2",
+            "i3": "t1"
+          }
+        }
+      },
+      "expected": {
+        "earned": 3500,
+        "max": 7000,
+        "rawBp": 5000,
+        "scaled": null,
+        "pass": false,
+        "items": {
+          "a": [
+            1000,
+            "correct"
+          ],
+          "b": [
+            0,
+            "incorrect"
+          ],
+          "c": [
+            500,
+            "partial"
+          ],
+          "d": [
+            2000,
+            "partial"
+          ]
+        }
+      }
+    },
+    {
+      "name": "penalty marking and negative marking, floor at zero",
+      "profile": {
+        "name": "t",
+        "types": {
+          "multi": "penalty"
+        },
+        "negativeMarkingBp": 2500,
+        "pass": {
+          "kind": "percent",
+          "minBp": 5000
+        }
+      },
+      "questions": [
+        {
+          "id": "a",
+          "type": "mcq",
+          "weight": 4,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        },
+        {
+          "id": "b",
+          "type": "multi",
+          "weight": 1,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              },
+              {
+                "id": "3",
+                "text": ""
+              }
+            ],
+            "select": 2
+          },
+          "key": {
+            "correct": [
+              "1",
+              "2"
+            ]
+          }
+        }
+      ],
+      "responses": {
+        "a": {
+          "choice": "2"
+        },
+        "b": {
+          "choices": [
+            "1",
+            "3"
+          ]
+        }
+      },
+      "expected": {
+        "earned": 0,
+        "max": 5000,
+        "rawBp": 0,
+        "scaled": null,
+        "pass": false,
+        "items": {
+          "a": [
+            -1000,
+            "incorrect"
+          ],
+          "b": [
+            0,
+            "incorrect"
+          ]
+        }
+      }
+    },
+    {
+      "name": "scaled 100 to 900 with half-up rounding",
+      "profile": {
+        "name": "t",
+        "scale": {
+          "min": 100,
+          "max": 900,
+          "points": [
+            {
+              "rawBp": 0,
+              "scaled": 100
+            },
+            {
+              "rawBp": 10000,
+              "scaled": 900
+            }
+          ]
+        },
+        "pass": {
+          "kind": "scaled",
+          "min": 700
+        }
+      },
+      "questions": [
+        {
+          "id": "a",
+          "type": "mcq",
+          "weight": 1,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        },
+        {
+          "id": "b",
+          "type": "mcq",
+          "weight": 1,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        },
+        {
+          "id": "c",
+          "type": "mcq",
+          "weight": 1,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        }
+      ],
+      "responses": {
+        "a": {
+          "choice": "1"
+        },
+        "b": {
+          "choice": "1"
+        },
+        "c": {
+          "choice": "2"
+        }
+      },
+      "expected": {
+        "earned": 2000,
+        "max": 3000,
+        "rawBp": 6667,
+        "scaled": 633,
+        "pass": false,
+        "items": {
+          "a": [
+            1000,
+            "correct"
+          ],
+          "b": [
+            1000,
+            "correct"
+          ],
+          "c": [
+            0,
+            "incorrect"
+          ]
+        }
+      }
+    },
+    {
+      "name": "pbq weighted assertions and pretest exclusion",
+      "profile": {
+        "name": "t",
+        "pass": {
+          "kind": "percent",
+          "minBp": 5000
+        }
+      },
+      "questions": [
+        {
+          "id": "lab",
+          "type": "pbq",
+          "weight": 2,
+          "payload": {
+            "title": "Firewall"
+          },
+          "key": {
+            "assertions": [
+              {
+                "id": "p",
+                "path": "rules.0.port",
+                "op": "eq",
+                "value": 443,
+                "weight": 3
+              },
+              {
+                "id": "a",
+                "path": "rules.0.action",
+                "op": "in",
+                "value": [
+                  "allow",
+                  "permit"
+                ],
+                "weight": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pre",
+          "type": "mcq",
+          "weight": 5,
+          "isPretest": true,
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        }
+      ],
+      "responses": {
+        "lab": {
+          "state": {
+            "rules": [
+              {
+                "port": 443,
+                "action": "deny"
+              }
+            ]
+          }
+        },
+        "pre": {
+          "choice": "1"
+        }
+      },
+      "expected": {
+        "earned": 1500,
+        "max": 2000,
+        "rawBp": 7500,
+        "scaled": null,
+        "pass": true,
+        "items": {
+          "lab": [
+            1500,
+            "partial"
+          ],
+          "pre": [
+            0,
+            "excluded"
+          ]
+        }
+      }
+    },
+    {
+      "name": "every domain must reach its minimum even when the total passes",
+      "profile": {
+        "name": "t",
+        "domainMinBp": 5000,
+        "pass": {
+          "kind": "percent",
+          "minBp": 6000
+        }
+      },
+      "questions": [
+        {
+          "id": "a",
+          "type": "mcq",
+          "weight": 3,
+          "domain": "Easy",
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        },
+        {
+          "id": "b",
+          "type": "mcq",
+          "weight": 1,
+          "domain": "Hard",
+          "payload": {
+            "options": [
+              {
+                "id": "1",
+                "text": ""
+              },
+              {
+                "id": "2",
+                "text": ""
+              }
+            ]
+          },
+          "key": {
+            "correct": "1"
+          }
+        }
+      ],
+      "responses": {
+        "a": {
+          "choice": "1"
+        },
+        "b": {
+          "choice": "2"
+        }
+      },
+      "expected": {
+        "earned": 3000,
+        "max": 4000,
+        "rawBp": 7500,
+        "scaled": null,
+        "pass": false,
+        "items": {
+          "a": [
+            3000,
+            "correct"
+          ],
+          "b": [
+            0,
+            "incorrect"
+          ]
+        }
+      }
+    }
+  ]
+}
