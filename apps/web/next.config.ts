@@ -15,7 +15,7 @@ const NOTES_URL = process.env.NOTES_URL ?? "http://localhost:4006";
 const config: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: resolve(import.meta.dirname, "../.."),
-  transpilePackages: ["@ultimyr/lore", "@ultimyr/ui-icons", "@ultimyr/coverage"],
+  transpilePackages: ["@ultimyr/lore", "@ultimyr/ui-icons", "@ultimyr/coverage", "@ultimyr/bundle"],
   poweredByHeader: false,
   async headers() {
     // The consent page must never be framed (clickjacking).

@@ -42,5 +42,7 @@ Merge by code or title keeps links when you re-import.
 ## Build with an AI assistant
 **Where:** Exam prep > Build with an AI assistant, and the Coverage tab of an archive. It gives you a prompt that has Claude (or another MCP assistant) build objectives, a roadmap, guides, flashcards and questions as drafts, and tracks progress. See [mcp.md](mcp.md#build-a-whole-certification-from-one-prompt).
 
+No connector (Gemini, ChatGPT, Claude without one)? The same page has a copy and paste route: the chat writes a text bundle and Ultimyr saves it as drafts. See [bundle.md](bundle.md).
+
 ## API and MCP
 See [api.md](api.md) and [mcp.md](mcp.md).
