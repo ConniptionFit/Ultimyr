@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Fix:** clicking the Ultimyr logo no longer looks like a sign out. The splash page ignored your session and its button led to the sign in form. Signed in people now go straight to the reading room from the logo and the splash, and the sign in and register pages send them on instead of showing the form.
+
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
 

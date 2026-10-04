@@ -10,7 +10,7 @@ import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
-  const { signIn, register, verifyMfa, signInWithPasskey } = useAuth();
+  const { state, signIn, register, verifyMfa, signInWithPasskey } = useAuth();
   const { copy } = useNaming();
   const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
@@ -18,6 +18,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
   const [providers, setProviders] = useState<{ slug: string; name: string; startUrl: string }[]>([]);
+
+  // Someone who already has a session should never be shown the form (for example after following the logo).
+  const alreadySignedIn = state.status === "authenticated" && status === "idle" && !mfaToken;
+  useEffect(() => {
+    if (alreadySignedIn) router.replace(takeReturn() ?? "/reading-room");
+  }, [alreadySignedIn, router]);
 
   useEffect(() => {
     if (mode !== "login") return;
