@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Badge, ErrorLine } from "@/components/admin/bits";
+import { ScimGuide } from "@/components/admin/scim-guide";
 import { Button, Field } from "@/components/ui";
 import { message, when } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
@@ -27,28 +28,33 @@ export default function Provisioning() {
     void load();
   }, [load]);
 
-  async function create(e: FormEvent) {
-    e.preventDefault();
+  async function issue(tokenName: string) {
     setError(null);
     try {
-      const t = await api<{ token: string }>("POST", "admin/scim-tokens", { name });
+      const t = await api<{ token: string }>("POST", "admin/scim-tokens", { name: tokenName });
       setFresh(t.token);
-      setName("");
       await load();
     } catch (err) {
       setError(message(err));
     }
   }
 
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    await issue(name);
+    setName("");
+  }
+
   return (
     <div className="space-y-5">
       <h2 className="text-2xl">Provisioning (SCIM)</h2>
-      <p className="text-sm text-muted">Let your identity provider create, update and deactivate accounts and groups automatically. Create a token, then paste it and the address below into the provider.</p>
+      <p className="text-sm text-muted">Let your identity provider create, update and deactivate accounts and groups automatically. Follow the guide for your provider, or create a token yourself and paste it with the address into any SCIM 2.0 provider.</p>
       <div className="rounded-md border border-line p-3 text-sm">
         <span className="text-muted">SCIM base address: </span>
         <code className="break-all">{base}</code>
       </div>
       <ErrorLine error={error} />
+      <ScimGuide url={base} token={fresh} onCreateToken={issue} />
       {fresh && (
         <div role="status" className="space-y-1 rounded-md border border-accent p-4 text-sm">
           <p>Copy this token now. It is shown once.</p>
