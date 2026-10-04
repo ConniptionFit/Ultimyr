@@ -66,6 +66,7 @@ export interface Attempt {
   status: "in_progress" | "submitted" | "expired";
   startedAt: string;
   deadlineAt: string | null;
+  extraTimePct?: number;
   submittedAt: string | null;
   serverTime?: string;
   profile: { id: string; name: string; fidelity: "published_formula" | "community_estimate" | "custom" };

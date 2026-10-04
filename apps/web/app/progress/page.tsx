@@ -1,10 +1,11 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
+import { streakText } from "@ultimyr/lore";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { BarChart, Meter } from "@/components/charts";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -15,7 +16,7 @@ import type { Archive } from "@/lib/types";
 
 function Progress() {
   const { state, api } = useAuth();
-  const { t } = useNaming();
+  const { t, mode } = useNaming();
   const router = useRouter();
   const params = useSearchParams();
   const [archives, setArchives] = useState<Archive[] | null>(null);
@@ -60,7 +61,7 @@ function Progress() {
       <>
         <Header />
         <Shell>
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         </Shell>
       </>
     );
@@ -116,6 +117,8 @@ function Progress() {
               </div>
             ))}
           </dl>
+
+          {an.summary.streakDays > 0 && <p className="text-sm text-muted">{streakText(an.summary.streakDays, mode)}</p>}
 
           {archive && an.readiness && (
             <section aria-labelledby="ready-h" className="space-y-3 rounded-md border border-line p-4">

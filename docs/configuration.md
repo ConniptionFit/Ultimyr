@@ -38,6 +38,8 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party, SSO callback URLs and the OAuth issuer for MCP apps. Changing it later orphans passkeys. |
 | `ULTIMYR_ALLOW_INSECURE_IDP` | false in production | Allow `http://` identity providers (otherwise only `https://` is accepted). Local testing only. |
 
+Rate limits are fixed per IP address: 10 per minute on credential endpoints (sign in, MFA, register) and 300 per minute on session refresh, which every page load calls (looser so a classroom behind one address is not locked out). Behind a proxy, make sure it forwards the client address.
+
 ## Content service
 | Variable | Default | Purpose |
 |---|---|---|

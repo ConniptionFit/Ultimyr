@@ -51,12 +51,39 @@ export const copy = {
   loginTitle: { themed: "Return to the Archives", plain: "Sign in" },
   registerTitle: { themed: "Request a reading card", plain: "Create your account" },
   loginError: { themed: "That name and passphrase do not match our records.", plain: "Incorrect email or password." },
+  loading: { themed: "Fetching from the stacks...", plain: "Loading..." },
+  saved: { themed: "Committed to memory.", plain: "Saved." },
+  deckDone: { themed: "Committed to memory.", plain: "Nice work. Deck finished." },
+  deleteConfirm: {
+    themed: "Strike this from the Archives? You can recover it for 30 days.",
+    plain: "Delete this? You can recover it from the trash for 30 days.",
+  },
+  emptyItems: {
+    themed: "Nothing shelved yet. Begin with a single page.",
+    plain: "Nothing here yet. Add a guide, deck or quiz.",
+  },
+  emptySearch: { themed: "Nothing on the shelves matches that.", plain: "No results." },
+  caughtUp: { themed: "That is everything for now.", plain: "You are all caught up." },
+  nothingDue: { themed: "Nothing is due. The shelves are quiet.", plain: "Nothing is due." },
+  attemptGap: { themed: "A gap, found. Better now than on exam day.", plain: "Here is what to review before the exam." },
+  aiThinking: { themed: "The Archivist is consulting the shelves.", plain: "The assistant is thinking..." },
+  vaultNote: {
+    themed: "Your keys are sealed. They are never shown again.",
+    plain: "Your keys are encrypted and never shown again.",
+  },
   notFound: {
     themed: "This shelf is empty. The Archive has no record of this page.",
     plain: "Page not found.",
   },
 } as const;
 export type CopyKey = keyof typeof copy;
+
+/** "Candle lit for 12 days." / "12 day streak". */
+export function streakText(days: number, mode: NamingMode): string {
+  if (days <= 0) return mode === "themed" ? "No candle lit yet." : "No streak yet.";
+  const unit = days === 1 ? "day" : "days";
+  return mode === "themed" ? `Candle lit for ${days} ${unit}.` : `${days} ${unit} in a row.`;
+}
 
 export function text(key: CopyKey, mode: NamingMode): string {
   return copy[key][mode];

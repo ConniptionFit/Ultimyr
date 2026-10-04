@@ -5,12 +5,25 @@ import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
 
 export function Header() {
   const { state, signOut } = useAuth();
   const { t } = useNaming();
   const router = useRouter();
+  const { focus, setFocus } = useDisplay();
+  if (focus) {
+    return (
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-3xl items-center justify-end px-4 py-2">
+          <button className="text-sm text-muted hover:text-ink" onClick={() => setFocus(false)}>
+            Leave focus mode
+          </button>
+        </div>
+      </header>
+    );
+  }
   return (
     <header className="border-b border-line">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">

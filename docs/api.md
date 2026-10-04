@@ -146,7 +146,7 @@ Scopes: reads need `quiz:read`, writes (including taking an attempt) need `quiz:
 ## Attempts
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/quizzes/:itemId/attempts` | `{ mode?: "practice", includeDrafts?, restart? }`. 201 with the questions (no keys), or 200 with `resumed: true` if one is open. 409 `no_questions` if nothing is published. Rate limited. |
+| POST | `/quizzes/:itemId/attempts` | `{ mode?: "practice", includeDrafts?, restart?, extraTimePct?: 0, 25, 50 or 100 }`. 201 with the questions (no keys), or 200 with `resumed: true` if one is open. 409 `no_questions` if nothing is published. Rate limited. |
 | GET | `/attempts/:id` | Resume. Includes `serverTime` and `deadlineAt`. A past-deadline attempt is closed and graded on the spot. |
 | PUT | `/attempts/:id/items/:questionId` | `{ response?, flagged?, timeMs? }`. 409 `attempt_closed` after the deadline plus grace, 409 `already_revealed` for a checked practice answer. |
 | POST | `/attempts/:id/items/:questionId/check` | Practice only: grades the question and returns outcome, key and explanation. |

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 import { aiMessage, PROVIDER_NAME, type AiCredential, type AiPrefs, type AiStatus, type Provider } from "@/lib/ai";
 
 const fail = (e: unknown) => (e instanceof ApiError ? aiMessage(e.code) : "Could not reach the server.");
@@ -10,6 +11,7 @@ const fail = (e: unknown) => (e instanceof ApiError ? aiMessage(e.code) : "Could
 /** Settings: bring your own AI key. Keys are write-only: after saving, only the label and last four characters are ever shown. */
 export function AiPanel() {
   const { api } = useAuth();
+  const { copy } = useNaming();
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [creds, setCreds] = useState<AiCredential[]>([]);
   const [prefs, setPrefs] = useState<AiPrefs | null>(null);
@@ -73,7 +75,7 @@ export function AiPanel() {
       <div>
         <h2 className="text-xl">AI connections</h2>
         <p className="text-sm text-muted">
-          Bring your own key for Gemini, OpenAI or Anthropic. Keys are encrypted for you alone, never shown again, and used only when you ask for AI help. Everything AI writes lands as a draft for you to review.
+          Bring your own key for Gemini, OpenAI or Anthropic. {copy("vaultNote")} They are used only when you ask for AI help. Everything AI writes lands as a draft for you to review.
         </p>
       </div>
       {status && !status.vault && <p role="alert" className="text-sm text-danger">{aiMessage("vault_unavailable")}</p>}

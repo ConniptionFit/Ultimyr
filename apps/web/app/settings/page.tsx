@@ -1,11 +1,12 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { terms, type TermKey } from "@ultimyr/lore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { AiPanel } from "@/components/ai-panel";
+import { DisplayPanel } from "@/components/display-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { SecurityPanel } from "@/components/security-panel";
 import { Shell } from "@/components/ui";
@@ -26,11 +27,12 @@ export default function Settings() {
       <Header />
       <Shell>
         {state.status !== "authenticated" ? (
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         ) : (
           <div className="ulti-fade space-y-8">
             <h1 className="text-3xl">Settings</h1>
-            <h2 className="text-xl">Security</h2>
+            <DisplayPanel />
+            <h2 className="border-t border-line pt-8 text-xl">Security</h2>
             <SecurityPanel />
             <AiPanel />
             <McpPanel />

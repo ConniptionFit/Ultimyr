@@ -42,6 +42,8 @@ export interface Ctx {
   secrets: Secrets;
   /** Route config enabling the per-IP rate limit on credential endpoints. */
   limit: { rateLimit: { max: number; timeWindow: string } };
+  /** Looser limit for session refresh: every page load calls it, and a whole classroom can share one address. */
+  refreshLimit: { rateLimit: { max: number; timeWindow: string } };
   audit(action: string, req: FastifyRequest, actorId?: string | null, target?: string | null, metadata?: Record<string, unknown>): Promise<void>;
   rolesFor(userId: string): Promise<Role[]>;
   signAccess(p: { userId: string; sessionId: string; roles: Role[]; scopes?: string[]; amr: string[]; ttl?: number }): Promise<string>;
@@ -57,7 +59,7 @@ export interface Ctx {
   requireAdmin(req: FastifyRequest): Promise<Authed>;
 }
 
-export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "secrets" | "limit">): Ctx {
+export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "secrets" | "limit" | "refreshLimit">): Ctx {
   const { db, config, keys } = base;
 
   const ctx: Ctx = {

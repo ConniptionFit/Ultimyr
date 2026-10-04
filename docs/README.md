@@ -8,6 +8,7 @@
 | [content.md](content.md) | Understand archives, guides, decks, versions, sharing, search and import/export |
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
+| [accessibility.md](accessibility.md) | Use display settings, focus mode, extra time, install the app, see the performance budget |
 | [mcp.md](mcp.md) | Connect Claude or another MCP app, see the tools, understand the safety rules and OAuth |
 | [ai.md](ai.md) | Connect AI keys, generate drafts, understand the key vault, rotate the master key |
 | [api.md](api.md) | Call the auth, content, quiz, AI and MCP APIs |

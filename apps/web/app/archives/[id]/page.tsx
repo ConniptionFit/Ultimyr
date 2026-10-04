@@ -1,10 +1,11 @@
 "use client";
 
-import { ArchiveIcon, StatusIcon } from "@ultimyr/ui-icons";
+import { ArchiveIcon } from "@ultimyr/ui-icons";
 import { BookOpen, Download, FileQuestion, Layers, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
@@ -19,7 +20,7 @@ const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const
 export default function ArchivePage() {
   const { id } = useParams<{ id: string }>();
   const { state, api } = useAuth();
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const router = useRouter();
   const [a, setA] = useState<Archive | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export default function ArchivePage() {
       <>
         <Header />
         <Shell>
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         </Shell>
       </>
     );
@@ -242,7 +243,7 @@ export default function ArchivePage() {
                     variant="quiet"
                     className="ml-auto text-danger"
                     onClick={async () => {
-                      if (!confirm("Strike this from the Archives? You can recover it for 30 days.")) return;
+                      if (!confirm(copy("deleteConfirm"))) return;
                       await api("DELETE", `archives/${id}`);
                       router.push("/reading-room");
                     }}
@@ -283,7 +284,7 @@ export default function ArchivePage() {
               </form>
             )}
             <ul className="divide-y divide-line rounded-md border border-line">
-              {(a.items ?? []).length === 0 && <li className="p-4 text-muted">Nothing shelved yet. Begin with a single page.</li>}
+              {(a.items ?? []).length === 0 && <li className="p-4 text-muted">{copy("emptyItems")}</li>}
               {(a.items ?? []).map((it) => {
                 const Icon = KIND_ICON[it.kind];
                 return (

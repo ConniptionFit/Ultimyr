@@ -1,13 +1,15 @@
 "use client";
 
-import { ArchiveIcon, StatusIcon } from "@ultimyr/ui-icons";
+import { ArchiveIcon } from "@ultimyr/ui-icons";
 import { Library, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { loadExample } from "@/lib/example";
 import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
 import type { Archive } from "@/lib/types";
@@ -51,6 +53,17 @@ export default function ReadingRoom() {
     })();
   }, [state.status, router, api, load]);
 
+  async function tryExample() {
+    setBusy(true);
+    setError(null);
+    try {
+      router.push(`/archives/${await loadExample(api)}`);
+    } catch {
+      setError("Could not add the example. You may not have permission to create new material.");
+      setBusy(false);
+    }
+  }
+
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -70,7 +83,7 @@ export default function ReadingRoom() {
       <Header />
       <Shell>
         {state.status !== "authenticated" || archives === null ? (
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         ) : (
           <div className="ulti-fade space-y-8">
             <div className="flex items-end justify-between gap-4">
@@ -111,6 +124,11 @@ export default function ReadingRoom() {
                     <ArchiveIcon fallback={Library} size={32} />
                   </div>
                   <p className="mx-auto max-w-sm text-muted">{copy("emptyArchives")}</p>
+                  <div className="mt-4">
+                    <Button variant="quiet" onClick={tryExample} disabled={busy}>
+                      Add a small example to explore
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-2">

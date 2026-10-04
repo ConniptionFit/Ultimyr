@@ -21,5 +21,5 @@ export function Field({ label, id, ...rest }: InputHTMLAttributes<HTMLInputEleme
 }
 
 export function Shell({ children, narrow = false }: { children: ReactNode; narrow?: boolean }) {
-  return <main className={`mx-auto px-4 py-16 ${narrow ? "max-w-sm" : "max-w-3xl"}`}>{children}</main>;
+  return <main id="main" tabIndex={-1} className={`mx-auto px-4 py-16 ${narrow ? "max-w-sm" : "max-w-3xl"}`}>{children}</main>;
 }

@@ -1,0 +1,676 @@
+{
+ "format": "ultimyr-archive",
+ "version": 1,
+ "archive": {
+  "title": "CompTIA A+ (example)",
+  "vendor": "CompTIA",
+  "overview": "A small example archive so you can see how Ultimyr fits together: a guide, a flashcard deck and a practice quiz for core IT fundamentals.\n\nThis is not official CompTIA material and does not cover the whole exam. Check CompTIA's current exam objectives, and replace this with your own or an authoritative source.",
+  "iconName": "cpu",
+  "tags": [
+   "example",
+   "it",
+   "networking"
+  ]
+ },
+ "items": [
+  {
+   "kind": "guide",
+   "title": "Ports and protocols",
+   "summary": "The well known default ports and which protocols are encrypted.",
+   "markdown": "# Ports and protocols\n\nA port number tells a computer which service a network packet is for. These are the well known defaults you should be able to recall quickly.\n\n## The list\n\n- **20, 21**: FTP. File transfer. Control uses 21, data uses 20. Sends credentials in clear text.\n- **22**: SSH. Secure shell. Encrypted remote login. Also carries SFTP and SCP.\n- **23**: Telnet. Remote login in clear text. Replaced by SSH.\n- **25**: SMTP. Sends email between servers.\n- **53**: DNS. Turns names into IP addresses.\n- **67, 68**: DHCP. Hands out IP addresses automatically. Servers use 67, clients use 68.\n- **80**: HTTP. Web traffic in clear text.\n- **110**: POP3. Downloads email from a server.\n- **123**: NTP. Keeps clocks in sync.\n- **143**: IMAP. Reads email that stays on the server.\n- **161, 162**: SNMP. Monitors and manages network devices.\n- **389**: LDAP. Directory lookups, such as Active Directory.\n- **443**: HTTPS. Web traffic encrypted with TLS.\n- **445**: SMB. Windows file and printer sharing.\n- **3389**: RDP. Remote Desktop to a Windows PC.\n\n## Secure and insecure pairs\n\nSome protocols have an encrypted twin. Prefer the encrypted one.\n\n- HTTP (80) and HTTPS (443)\n- Telnet (23) and SSH (22)\n- FTP (20, 21) and SFTP (22) or FTPS\n- LDAP (389) and LDAPS (636)\n\n## Remember\n\n- TCP is connection oriented and checks delivery. UDP is faster and does not check.\n- DNS mostly uses UDP, and falls back to TCP for large answers.\n"
+  },
+  {
+   "kind": "guide",
+   "title": "Memory and storage basics",
+   "summary": "RAM types, drives and RAID levels.",
+   "markdown": "# Memory and storage basics\n\n## Memory (RAM)\n\n- Desktops use **DIMM** modules. Laptops use smaller **SODIMM** modules.\n- Generations such as DDR3, DDR4 and DDR5 are **not interchangeable**. Each has a different notch position, so a module only fits its own slot.\n- Dual channel means two matched modules work together for more bandwidth.\n- ECC memory detects and corrects some errors. It is common in servers.\n\n## Storage\n\n- **HDD**: spinning platters. Cheap per gigabyte, slower, sensitive to knocks.\n- **SATA SSD**: flash storage on the SATA interface, which tops out at 6 Gbps.\n- **NVMe**: flash storage over PCIe, usually an M.2 stick. Much faster than SATA.\n\n## RAID\n\n- **RAID 0** stripes data across disks for speed. There is no redundancy, so one failure loses everything.\n- **RAID 1** mirrors two disks. It survives one failure.\n- **RAID 5** stripes with parity across three or more disks. It survives one failure.\n- **RAID 10** mirrors pairs, then stripes them. It needs at least four disks and survives one failure per mirror.\n\nRAID is not a backup. Deleting a file deletes it on every disk.\n"
+  },
+  {
+   "kind": "guide",
+   "title": "The troubleshooting method",
+   "summary": "A repeatable order for finding and fixing faults.",
+   "markdown": "# The troubleshooting method\n\nA calm, repeatable order beats guessing. The usual six steps are:\n\n## The steps\n\n1. Identify the problem. Ask questions, gather information, and note what changed.\n2. Establish a theory of probable cause. Start with the obvious.\n3. Test the theory to determine the cause.\n4. Establish a plan of action and implement the solution.\n5. Verify full system functionality and, if applicable, implement preventive measures.\n6. Document the findings, actions and outcomes.\n\n## Tips\n\n- Change one thing at a time, so you know what worked.\n- Back up important data before you make changes.\n- If a theory fails, form a new one. If you are stuck, escalate.\n\nCheck the vendor's current exam objectives, because the wording of the steps can change between versions.\n"
+  },
+  {
+   "kind": "deck",
+   "title": "Ports flashcards",
+   "summary": "One card per common port.",
+   "cards": [
+    {
+     "front": "What does port 20, 21 carry?",
+     "back": "FTP. File transfer. Control uses 21, data uses 20. Sends credentials in clear text."
+    },
+    {
+     "front": "What does port 22 carry?",
+     "back": "SSH. Secure shell. Encrypted remote login. Also carries SFTP and SCP."
+    },
+    {
+     "front": "What does port 23 carry?",
+     "back": "Telnet. Remote login in clear text. Replaced by SSH."
+    },
+    {
+     "front": "What does port 25 carry?",
+     "back": "SMTP. Sends email between servers."
+    },
+    {
+     "front": "What does port 53 carry?",
+     "back": "DNS. Turns names into IP addresses."
+    },
+    {
+     "front": "What does port 67, 68 carry?",
+     "back": "DHCP. Hands out IP addresses automatically. Servers use 67, clients use 68."
+    },
+    {
+     "front": "What does port 80 carry?",
+     "back": "HTTP. Web traffic in clear text."
+    },
+    {
+     "front": "What does port 110 carry?",
+     "back": "POP3. Downloads email from a server."
+    },
+    {
+     "front": "What does port 123 carry?",
+     "back": "NTP. Keeps clocks in sync."
+    },
+    {
+     "front": "What does port 143 carry?",
+     "back": "IMAP. Reads email that stays on the server."
+    },
+    {
+     "front": "What does port 161, 162 carry?",
+     "back": "SNMP. Monitors and manages network devices."
+    },
+    {
+     "front": "What does port 389 carry?",
+     "back": "LDAP. Directory lookups, such as Active Directory."
+    },
+    {
+     "front": "What does port 443 carry?",
+     "back": "HTTPS. Web traffic encrypted with TLS."
+    },
+    {
+     "front": "What does port 445 carry?",
+     "back": "SMB. Windows file and printer sharing."
+    },
+    {
+     "front": "What does port 3389 carry?",
+     "back": "RDP. Remote Desktop to a Windows PC."
+    }
+   ]
+  },
+  {
+   "kind": "deck",
+   "title": "Hardware and network terms",
+   "summary": "Short definitions worth knowing cold.",
+   "cards": [
+    {
+     "front": "What does POST stand for?",
+     "back": "Power-On Self-Test. The firmware checks core hardware before it starts the operating system."
+    },
+    {
+     "front": "What does the CMOS battery keep?",
+     "back": "The firmware settings and the system clock when the computer is unplugged."
+    },
+    {
+     "front": "Why apply thermal paste?",
+     "back": "It fills tiny gaps between the CPU and the heatsink so heat moves out efficiently."
+    },
+    {
+     "front": "What is the maximum run for a standard Ethernet copper cable?",
+     "back": "100 metres (328 feet)."
+    },
+    {
+     "front": "What does PoE do?",
+     "back": "Power over Ethernet sends power and data on one network cable, for example to a phone or access point."
+    },
+    {
+     "front": "What is APIPA?",
+     "back": "Automatic Private IP Addressing. A device that cannot reach a DHCP server gives itself an address in 169.254.0.0/16."
+    },
+    {
+     "front": "What does DHCP do?",
+     "back": "It hands out IP addresses, and other network settings, automatically."
+    },
+    {
+     "front": "What is the difference between a hub, a switch and a router?",
+     "back": "A hub repeats traffic to every port. A switch sends traffic only to the right port by MAC address. A router connects different networks by IP address."
+    },
+    {
+     "front": "What is UEFI?",
+     "back": "The modern replacement for the legacy BIOS. It supports larger disks, faster boot and Secure Boot."
+    },
+    {
+     "front": "What is a TPM?",
+     "back": "Trusted Platform Module. A chip that stores keys and helps with disk encryption and secure boot."
+    },
+    {
+     "front": "Which RAID level mirrors two disks?",
+     "back": "RAID 1."
+    },
+    {
+     "front": "What command shows IP settings on Windows?",
+     "back": "ipconfig. Use ipconfig /all for full detail."
+    }
+   ]
+  }
+ ],
+ "quiz": {
+  "title": "Fundamentals practice quiz",
+  "summary": "Sixteen questions across networking, hardware, security and troubleshooting.",
+  "questions": [
+   {
+    "type": "mcq",
+    "stem": "Which port does HTTPS use by default?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "80"
+      },
+      {
+       "id": "b",
+       "text": "443"
+      },
+      {
+       "id": "c",
+       "text": "22"
+      },
+      {
+       "id": "d",
+       "text": "3389"
+      }
+     ]
+    },
+    "key": {
+     "correct": "b"
+    },
+    "explanation": "HTTPS is HTTP over TLS and uses 443. Port 80 is plain HTTP.",
+    "domain": "Networking",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "Which protocol turns a host name into an IP address?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "DHCP"
+      },
+      {
+       "id": "b",
+       "text": "SMTP"
+      },
+      {
+       "id": "c",
+       "text": "DNS"
+      },
+      {
+       "id": "d",
+       "text": "NTP"
+      }
+     ]
+    },
+    "key": {
+     "correct": "c"
+    },
+    "explanation": "DNS resolves names to addresses. DHCP hands out addresses.",
+    "domain": "Networking",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "A PC shows an address of 169.254.12.7 and cannot reach the internet. What most likely happened?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "The DNS server is offline"
+      },
+      {
+       "id": "b",
+       "text": "It could not reach a DHCP server and gave itself an APIPA address"
+      },
+      {
+       "id": "c",
+       "text": "The firewall blocked port 443"
+      },
+      {
+       "id": "d",
+       "text": "The router has the wrong password"
+      }
+     ]
+    },
+    "key": {
+     "correct": "b"
+    },
+    "explanation": "169.254.0.0/16 is the APIPA range, used when no DHCP server answers.",
+    "domain": "Networking",
+    "difficulty": 3,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "Which RAID level mirrors two disks?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "RAID 0"
+      },
+      {
+       "id": "b",
+       "text": "RAID 1"
+      },
+      {
+       "id": "c",
+       "text": "RAID 5"
+      },
+      {
+       "id": "d",
+       "text": "RAID 10"
+      }
+     ]
+    },
+    "key": {
+     "correct": "b"
+    },
+    "explanation": "RAID 1 writes the same data to both disks. RAID 0 only stripes.",
+    "domain": "Hardware",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "What does the CMOS battery maintain?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "The hard drive spin speed"
+      },
+      {
+       "id": "b",
+       "text": "Firmware settings and the system clock"
+      },
+      {
+       "id": "c",
+       "text": "The operating system licence"
+      },
+      {
+       "id": "d",
+       "text": "The graphics card memory"
+      }
+     ]
+    },
+    "key": {
+     "correct": "b"
+    },
+    "explanation": "It powers the small memory that holds firmware settings and the real time clock.",
+    "domain": "Hardware",
+    "difficulty": 2,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "Which memory module type is used in most laptops?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "DIMM"
+      },
+      {
+       "id": "b",
+       "text": "SODIMM"
+      },
+      {
+       "id": "c",
+       "text": "ECC DIMM only"
+      },
+      {
+       "id": "d",
+       "text": "PCIe"
+      }
+     ]
+    },
+    "key": {
+     "correct": "b"
+    },
+    "explanation": "SODIMMs are the smaller modules used in laptops and small form factor PCs.",
+    "domain": "Hardware",
+    "difficulty": 2,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "According to the usual troubleshooting method, what is the first step?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "Test the theory"
+      },
+      {
+       "id": "b",
+       "text": "Document the findings"
+      },
+      {
+       "id": "c",
+       "text": "Identify the problem"
+      },
+      {
+       "id": "d",
+       "text": "Implement the solution"
+      }
+     ]
+    },
+    "key": {
+     "correct": "c"
+    },
+    "explanation": "You gather information and identify the problem before forming theories.",
+    "domain": "Troubleshooting",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "You fix a fault, then confirm everything works. Which step comes next?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "Document the findings, actions and outcomes"
+      },
+      {
+       "id": "b",
+       "text": "Identify the problem"
+      },
+      {
+       "id": "c",
+       "text": "Establish a theory of probable cause"
+      },
+      {
+       "id": "d",
+       "text": "Escalate"
+      }
+     ]
+    },
+    "key": {
+     "correct": "a"
+    },
+    "explanation": "After verifying and adding preventive measures, you document what you did.",
+    "domain": "Troubleshooting",
+    "difficulty": 2,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "An email asks you to confirm your password through a link. What is this?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "Phishing"
+      },
+      {
+       "id": "b",
+       "text": "Tailgating"
+      },
+      {
+       "id": "c",
+       "text": "A brute force attack"
+      },
+      {
+       "id": "d",
+       "text": "A rootkit"
+      }
+     ]
+    },
+    "key": {
+     "correct": "a"
+    },
+    "explanation": "Phishing uses convincing messages to trick people into giving up credentials.",
+    "domain": "Security",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "mcq",
+    "stem": "Which command shows IP configuration on a Windows PC?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "ipconfig"
+      },
+      {
+       "id": "b",
+       "text": "ifconfig"
+      },
+      {
+       "id": "c",
+       "text": "netstat -r"
+      },
+      {
+       "id": "d",
+       "text": "chkdsk"
+      }
+     ]
+    },
+    "key": {
+     "correct": "a"
+    },
+    "explanation": "ipconfig shows addresses. ifconfig is the Linux and macOS style command.",
+    "domain": "Networking",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "multi",
+    "stem": "Select all of the encrypted protocols.",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "SSH"
+      },
+      {
+       "id": "b",
+       "text": "Telnet"
+      },
+      {
+       "id": "c",
+       "text": "HTTPS"
+      },
+      {
+       "id": "d",
+       "text": "HTTP"
+      },
+      {
+       "id": "e",
+       "text": "SFTP"
+      }
+     ]
+    },
+    "key": {
+     "correct": [
+      "a",
+      "c",
+      "e"
+     ]
+    },
+    "explanation": "SSH, HTTPS and SFTP encrypt traffic. Telnet and HTTP send it in clear text.",
+    "domain": "Security",
+    "difficulty": 2,
+    "weight": 2
+   },
+   {
+    "type": "multi",
+    "stem": "Select all of the RAID levels that survive the failure of one disk.",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "RAID 0"
+      },
+      {
+       "id": "b",
+       "text": "RAID 1"
+      },
+      {
+       "id": "c",
+       "text": "RAID 5"
+      },
+      {
+       "id": "d",
+       "text": "RAID 10"
+      }
+     ]
+    },
+    "key": {
+     "correct": [
+      "b",
+      "c",
+      "d"
+     ]
+    },
+    "explanation": "RAID 0 has no redundancy. RAID 1, 5 and 10 each survive one failed disk.",
+    "domain": "Hardware",
+    "difficulty": 3,
+    "weight": 2
+   },
+   {
+    "type": "multi",
+    "stem": "Which of these are storage interfaces or form factors?",
+    "payload": {
+     "options": [
+      {
+       "id": "a",
+       "text": "SATA"
+      },
+      {
+       "id": "b",
+       "text": "NVMe"
+      },
+      {
+       "id": "c",
+       "text": "DDR5"
+      },
+      {
+       "id": "d",
+       "text": "M.2"
+      }
+     ]
+    },
+    "key": {
+     "correct": [
+      "a",
+      "b",
+      "d"
+     ]
+    },
+    "explanation": "DDR5 is memory, not storage.",
+    "domain": "Hardware",
+    "difficulty": 2,
+    "weight": 2
+   },
+   {
+    "type": "fib",
+    "stem": "The default port for SSH is ____.",
+    "payload": {
+     "blanks": 1
+    },
+    "key": {
+     "blanks": [
+      {
+       "accepted": [
+        "22"
+       ]
+      }
+     ]
+    },
+    "explanation": "SSH uses TCP port 22.",
+    "domain": "Networking",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "fib",
+    "stem": "The command ____ sends ICMP echo requests to test whether a host is reachable.",
+    "payload": {
+     "blanks": 1
+    },
+    "key": {
+     "blanks": [
+      {
+       "accepted": [
+        "ping"
+       ]
+      }
+     ]
+    },
+    "explanation": "ping uses ICMP echo to test reachability and measure round trip time.",
+    "domain": "Networking",
+    "difficulty": 1,
+    "weight": 1
+   },
+   {
+    "type": "dnd",
+    "stem": "Match each port to its protocol.",
+    "payload": {
+     "items": [
+      {
+       "id": "i22",
+       "text": "22"
+      },
+      {
+       "id": "i25",
+       "text": "25"
+      },
+      {
+       "id": "i53",
+       "text": "53"
+      },
+      {
+       "id": "i3389",
+       "text": "3389"
+      }
+     ],
+     "targets": [
+      {
+       "id": "tssh",
+       "text": "SSH"
+      },
+      {
+       "id": "tsmtp",
+       "text": "SMTP"
+      },
+      {
+       "id": "tdns",
+       "text": "DNS"
+      },
+      {
+       "id": "trdp",
+       "text": "RDP"
+      }
+     ]
+    },
+    "key": {
+     "mapping": {
+      "i22": "tssh",
+      "i25": "tsmtp",
+      "i53": "tdns",
+      "i3389": "trdp"
+     }
+    },
+    "explanation": "SSH 22, SMTP 25, DNS 53, RDP 3389.",
+    "domain": "Networking",
+    "difficulty": 2,
+    "weight": 2
+   }
+  ]
+ }
+}

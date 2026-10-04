@@ -50,5 +50,5 @@ The `migrate` container runs first and applies new migrations once. Migrations a
 | `/api/v1/...` returns 404 or 502 from web | The web image was built with the wrong `AUTH_URL`, `CONTENT_URL` or `QUIZ_URL`. Rebuild: `docker compose build web`. |
 | Claude cannot connect to MCP | See [mcp.md](mcp.md#troubleshooting). The proxy must forward `/mcp`, `/oauth/*` and `/.well-known/*` and the site must be https. |
 | AI features say "not set up" | `vault_kek` is missing. Run `scripts/init-secrets.sh` and restart `ai-gateway`. |
-| 429 on login or MFA | Rate limit (10 per minute per client) or TOTP lockout after repeated bad codes. Wait and retry. |
+| 429 on login or MFA | Rate limit (10 per minute per client, session refresh has its own 300 per minute limit) or TOTP lockout after repeated bad codes. Wait and retry. |
 | Locked out of TOTP with no recovery codes | An admin cannot reset it through the API yet. As a last resort delete the row from `auth.totp_factors` for that user in SQL. |

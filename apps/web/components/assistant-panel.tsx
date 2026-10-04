@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 import { aiMessage, streamSse } from "@/lib/ai";
 
 interface Msg { role: "user" | "assistant"; text: string }
@@ -11,6 +12,7 @@ interface Msg { role: "user" | "assistant"; text: string }
 /** A study assistant tied to what the learner is looking at (a guide, a deck, or an attempt's results). Answers stream in. */
 export function AssistantPanel({ context, label = "Ask the assistant" }: { context: { type: "item" | "attempt"; id: string }; label?: string }) {
   const { state, api } = useAuth();
+  const { copy } = useNaming();
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
@@ -52,7 +54,7 @@ export function AssistantPanel({ context, label = "Ask the assistant" }: { conte
             {msgs.map((m, i) => (
               <p key={i} className={`whitespace-pre-wrap ${m.role === "user" ? "text-muted" : ""}`}>
                 <span className="sr-only">{m.role === "user" ? "You: " : "Assistant: "}</span>
-                {m.text || "…"}
+                {m.text || copy("aiThinking")}
               </p>
             ))}
           </div>

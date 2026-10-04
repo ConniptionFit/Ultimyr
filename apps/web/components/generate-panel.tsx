@@ -5,11 +5,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 import { aiMessage, type AiJob } from "@/lib/ai";
 
 /** Archive page: ask AI for a draft guide, deck or quiz. The draft opens for review and is never published automatically. */
 export function GeneratePanel({ archiveId, onDone }: { archiveId: string; onDone: () => void }) {
   const { api } = useAuth();
+  const { copy } = useNaming();
   const [open, setOpen] = useState(false);
   const [job, setJob] = useState<AiJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function GeneratePanel({ archiveId, onDone }: { archiveId: string; onDone
       {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
       {job && (
         <p role="status" className="mt-2 text-sm">
-          {busy && "The AI is writing a draft…"}
+          {busy && copy("aiThinking")}
           {job.status === "succeeded" && job.result && (
             <>
               Draft ready{job.result.skipped ? ` (${job.result.skipped} unusable items were left out)` : ""}.{" "}

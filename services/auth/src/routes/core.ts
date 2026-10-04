@@ -22,7 +22,7 @@ export const parse = <S extends z.ZodType>(schema: S, body: unknown): z.infer<S>
 };
 
 export function coreRoutes(ctx: Ctx) {
-  const { db, config, keys, limit } = ctx;
+  const { db, config, keys, limit, refreshLimit } = ctx;
 
   return async (r: FastifyInstance) => {
     // Burn a hash on unknown emails so login timing does not reveal which accounts exist.
@@ -89,7 +89,7 @@ export function coreRoutes(ctx: Ctx) {
     });
 
     // Rotating refresh tokens with reuse detection.
-    r.post("/v1/auth/refresh", { config: limit }, async (req, reply) => {
+    r.post("/v1/auth/refresh", { config: refreshLimit }, async (req, reply) => {
       const raw = req.cookies[REFRESH_COOKIE];
       const [sessionId, secret] = raw?.split(".") ?? [];
       const fail = () => {

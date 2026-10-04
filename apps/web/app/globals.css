@@ -13,7 +13,7 @@
   --danger: #a3341f;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #14130f;
     --surface: #1c1b16;
     --ink: #efe9d9;
@@ -24,6 +24,18 @@
     --danger: #e08a76;
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14130f;
+  --surface: #1c1b16;
+  --ink: #efe9d9;
+  --muted: #a39d8b;
+  --line: #2d2b23;
+  --accent: #6fb5a5;
+  --accent-ink: #0f1a17;
+  --danger: #e08a76;
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -45,5 +57,18 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; letter-spacing: -
 
 @media (prefers-reduced-motion: no-preference) {
   .ulti-fade { animation: ulti-fade 0.5s ease-out both; }
-  @keyframes ulti-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes ulti-fade { from { opacity: 0.01; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 }
+
+/* Display preferences (Settings). The cookie sets these on <html> before first paint. */
+html[data-size="large"] { font-size: 112.5%; }
+html[data-size="xlarge"] { font-size: 125%; }
+html[data-font="readable"] { font-family: Verdana, Tahoma, "Trebuchet MS", ui-sans-serif, sans-serif; letter-spacing: 0.02em; word-spacing: 0.06em; }
+html[data-font="readable"] body { line-height: 1.8; }
+html[data-font="readable"] h1, html[data-font="readable"] h2, html[data-font="readable"] h3 { font-family: inherit; letter-spacing: 0.01em; }
+html[data-motion="calm"] *, html[data-motion="calm"] *::before, html[data-motion="calm"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
+/* Keyboard users can jump past the header. */
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 50; background: var(--accent); color: var(--accent-ink); padding: 0.5rem 1rem; border-radius: 0 0 0.375rem 0; }
+.skip-link:focus { left: 0; }
+main:focus { outline: none; }

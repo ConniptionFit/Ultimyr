@@ -277,6 +277,19 @@ describe.skipIf(!testDbUrl)("quiz service", () => {
       expect(json(stale).id).not.toBe(json(next).id);
     });
 
+    it("extends the deadline for a declared extra time accommodation, and only on timed attempts", async () => {
+      const item = newQuiz();
+      await addQuestions(item, 2);
+      await call(author, "PUT", `/v1/quizzes/${item}/config`, { mode: "exam_sim", timeLimitSeconds: 600, questionCount: 2, graceSeconds: 0 });
+      h.clock.now = new Date("2026-10-04T12:00:00Z");
+      const at = json(await call(learner, "POST", `/v1/quizzes/${item}/attempts`, { extraTimePct: 50 }));
+      expect(at).toMatchObject({ extraTimePct: 50, deadlineAt: "2026-10-04T12:15:00.000Z" });
+      expect(json(await call(learner, "GET", `/v1/attempts/${at.id}`))).toMatchObject({ extraTimePct: 50 });
+      expect((await call(learner, "POST", `/v1/quizzes/${item}/attempts`, { restart: true, extraTimePct: 30 })).statusCode).toBe(400);
+      const practice = json(await call(learner, "POST", `/v1/quizzes/${item}/attempts`, { restart: true, mode: "practice", extraTimePct: 100 }));
+      expect(practice).toMatchObject({ extraTimePct: 0, deadlineAt: null });
+    });
+
     it("snapshots the scoring profile so later changes never move past results", async () => {
       const item = newQuiz();
       await addQuestions(item, 2);
