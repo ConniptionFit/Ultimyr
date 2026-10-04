@@ -10,17 +10,18 @@ import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
-  const { state, signIn, register, verifyMfa, signInWithPasskey } = useAuth();
+  const { state, signIn, changePassword, register, verifyMfa, signInWithPasskey } = useAuth();
   const { copy } = useNaming();
   const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [change, setChange] = useState<{ token: string; current: string } | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
   const [providers, setProviders] = useState<{ slug: string; name: string; startUrl: string }[]>([]);
 
   // Someone who already has a session should never be shown the form (for example after following the logo).
-  const alreadySignedIn = state.status === "authenticated" && status === "idle" && !mfaToken;
+  const alreadySignedIn = state.status === "authenticated" && status === "idle" && !mfaToken && !change;
   useEffect(() => {
     if (alreadySignedIn) router.replace(takeReturn() ?? "/reading-room");
   }, [alreadySignedIn, router]);
@@ -64,6 +65,31 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
   }
 
+  async function onChange(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!change) return;
+    const f = new FormData(e.currentTarget);
+    const next = String(f.get("newPassword"));
+    if (next !== String(f.get("confirm"))) {
+      setStatus("error");
+      setError("The two passwords do not match.");
+      return;
+    }
+    setStatus("loading");
+    setError(null);
+    try {
+      await changePassword(change.token, change.current, next);
+      setStatus("success");
+      router.push(takeReturn() ?? "/reading-room");
+    } catch (err) {
+      setStatus("error");
+      if (err instanceof ApiError && err.code === "password_unchanged") setError("Choose a different password from the temporary one.");
+      else if (err instanceof ApiError && err.code === "invalid_request") setError(err.issues[0] ?? "Please check the password and try again.");
+      else if (err instanceof ApiError && err.status === 401) setError("This step expired. Sign in again.");
+      else setError("Something went wrong. Please try again.");
+    }
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -74,6 +100,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       if (mode === "login") {
         const next = await signIn(email, password);
+        if (next && "changeToken" in next) {
+          setChange({ token: next.changeToken, current: password });
+          setStatus("idle");
+          return;
+        }
         if (next) {
           setMfaToken(next.mfaToken);
           setStatus("idle");
@@ -87,6 +118,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       if (err instanceof ApiError) {
         if (err.code === "invalid_credentials") setError(copy("loginError"));
         else if (err.code === "email_taken") setError("That email already has an account.");
+        else if (err.code === "local_users_disabled") setError(mode === "login" ? "Password sign-in is turned off here. Use single sign-on, or ask an administrator." : "Accounts on this installation come from single sign-on. Ask an administrator.");
         else if (err.code === "registration_closed") setError("Registration is closed on this installation. Ask an administrator for an invitation.");
         else if (err.code === "invalid_request") setError(err.issues[0] ?? "Please check the details and try again.");
         else setError("Something went wrong. Please try again.");
@@ -95,6 +127,25 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   const isLogin = mode === "login";
+  if (change) {
+    return (
+      <form onSubmit={onChange} className="ulti-fade space-y-5">
+        <h1 className="text-3xl">Choose a new password</h1>
+        <p className="text-sm text-muted">An administrator gave you a temporary password. Pick your own to continue.</p>
+        <Field id="newPassword" name="newPassword" type="password" label="New password (12 characters or more)" autoComplete="new-password" autoFocus required minLength={12} />
+        <Field id="confirm" name="confirm" type="password" label="Repeat the new password" autoComplete="new-password" required minLength={12} />
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={status === "loading"} className="w-full">
+          Save and sign in
+          <StatusIcon status={status} size={16} />
+        </Button>
+      </form>
+    );
+  }
   if (mfaToken) {
     return (
       <form onSubmit={onMfa} className="ulti-fade space-y-5">

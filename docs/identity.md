@@ -43,9 +43,9 @@ Administrators (role `platform_admin`) see **Admin panel** in the account menu (
 | Category | What it does |
 | --- | --- |
 | General | Counts, the registration switch, deployment details. |
-| Users | Search, suspend or reinstate, edit roles. The last active administrator is protected. |
+| Users | Add a person, search, suspend or reinstate, edit roles, issue a new sign-in link. The last active administrator is protected. |
 | Groups | Create local groups and manage members. SSO and SCIM groups are read only. |
-| Sign-in methods | A step by step setup guide for OpenID Connect and SAML (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and add, enable and remove OIDC, OAuth 2 and SAML providers. |
+| Sign-in methods | A step by step setup guide for OpenID Connect and SAML (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and add, enable and remove OIDC, OAuth 2 and SAML providers, and the switch that disables local accounts. |
 | Provisioning | A step by step SCIM setup guide (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and SCIM token management. |
 | Audit log | Latest sign-ins and admin actions, with a filter. |
 
@@ -63,10 +63,27 @@ Things every provider needs: the provider must be able to reach `{PUBLIC_URL}/sc
 2. Point your IdP at `{PUBLIC_URL}/scim/v2` with that bearer token.
 3. Users and Groups are supported, including the Okta and Entra PATCH styles. SCIM-managed users are flagged `scim_managed`.
 
+## Adding people by hand
+Admin panel > Users > **Add a person** creates a local account without SCIM or SSO. Enter a name, email and roles (default Author and Learner), then pick how they get in:
+
+- **Invite link** (default): you get a one-time link, valid 7 days. They open it and choose their own password. Send it yourself; Ultimyr does not send email.
+- **Temporary password**: generated, or typed by you (12 characters or more). Their first password sign-in stops at a "Choose a new password" step and no session exists until they complete it.
+
+The link or password is shown once and stored only as a hash. **New sign-in link** on a local user's row issues a fresh link (for a lapsed invite or a forgotten password) and cancels older ones.
+
+## Disabling local accounts
+Sign-in methods > **Disable local accounts** (off by default) is for installs that want everyone to come through the identity provider. When on, the server refuses password, passkey and sign-up access, existing sessions and refresh, and manual creation for any account that was not created by SSO or SCIM and is not linked to a provider. Accounts that signed in through a provider keep working.
+
+Two safeguards against lockout:
+
+- It cannot be switched on unless at least one provider is enabled (409 `no_identity_provider`).
+- **Local administrators are exempt** and can still sign in with a password, as a break-glass way back in if the provider is down or misconfigured. Remove the administrator role from local accounts you do not want to keep that power.
+
 ## API keys
 Created under account menu > Your settings > Security. A key (`ulk_...`) is exchanged at `POST /api/v1/auth/token` for a short lived access token limited to the key's scopes. Key tokens can never change account security settings.
 
 ## Security notes
+- Temporary passwords and invite links are shown once, stored hashed (links) or as an argon2 hash (passwords), and invite links are single use. Redeeming one revokes the account's existing sessions.
 - Refresh tokens rotate and reuse revokes the whole session family.
 - Admin actions, sign-ins, MFA changes and key use are written to the audit log (`GET /api/v1/admin/audit`).
 - If the first admin loses their authenticator and recovery codes, reset by deleting their row in `auth.totp_factors` with SQL.
