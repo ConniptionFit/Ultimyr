@@ -42,6 +42,8 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 ## Admin
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/admin/overview` | Counts, deployment details and the settings below. |
+| GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen: boolean or null }`. `null` removes the override and uses `AUTH_REGISTRATION`. |
 | GET, PATCH | `/admin/users`, `/admin/users/:id` | PATCH `{ status: active or suspended, roles[] }`. Suspending revokes sessions. The last active admin cannot be removed. |
 | GET, POST, DELETE | `/admin/groups`, `/admin/groups/:id` | |
 | GET, POST, DELETE | `/admin/groups/:id/members`, `/admin/groups/:id/members/:userId` | |

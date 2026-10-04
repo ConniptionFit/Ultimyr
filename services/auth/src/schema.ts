@@ -165,3 +165,10 @@ export const scimTokens = auth.table("scim_tokens", {
   lastUsedAt: ts("last_used_at"),
   revokedAt: ts("revoked_at"),
 });
+
+export const instanceSettings = auth.table("instance_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedBy: uuid("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

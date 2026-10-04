@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- **Settings rework:** your own settings now live behind the account icon in the menu bar (Your settings: display, security, AI keys, connected apps, themed names, which stays at the bottom and is off by default). Administrators also get an **Admin panel** there, with a category list on the left that opens on General, then Users, Groups, Sign-in methods, Provisioning and the Audit log. Non-admins never see it, and the server rejects admin calls from anyone without the administrator role.
+- **New:** admins can open or close registration from General (`GET/PATCH /api/v1/admin/settings`, `GET /api/v1/admin/overview`). It overrides `AUTH_REGISTRATION` until reset. Adds migration `0004_instance_settings`.
 - **Fix:** clicking the Ultimyr logo no longer looks like a sign out. The splash page ignored your session and its button led to the sign in form. Signed in people now go straight to the reading room from the logo and the splash, and the sign in and register pages send them on instead of showing the form.
 
 ## 1.0.0 (2026-10-04)

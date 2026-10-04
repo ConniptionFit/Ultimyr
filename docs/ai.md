@@ -8,7 +8,7 @@ Bring your own AI key (Gemini, OpenAI or Anthropic) and Ultimyr can write draft 
 - **Test** a saved key with one tiny request.
 
 ## Connect a key
-Settings, **AI connections**: pick a provider, name the key, paste it. After saving, only the label and the last four characters are ever shown. Set a default key and, if you like, a model per provider.
+Account menu, Your settings, **AI keys**: pick a provider, name the key, paste it. After saving, only the label and the last four characters are ever shown. Set a default key and, if you like, a model per provider.
 
 **Gemini sign-in is not built.** "Sign in with Google to use Gemini" (OAuth) is not implemented, so Gemini uses an API key like the others. Model names are configurable (the defaults change as providers retire models): `AI_DEFAULT_MODEL_GEMINI`, `AI_DEFAULT_MODEL_OPENAI`, `AI_DEFAULT_MODEL_ANTHROPIC`, or per person in Settings.
 

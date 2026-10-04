@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui";
+import { Button, Toggle } from "@/components/ui";
 import { useDisplay, type Display } from "@/lib/display";
 
 function Choice<T extends string | number>({ legend, value, options, onChange, hint }: { legend: string; value: T; options: Array<[T, string]>; onChange: (v: T) => void; hint?: string }) {
@@ -17,26 +17,6 @@ function Choice<T extends string | number>({ legend, value, options, onChange, h
         ))}
       </div>
     </fieldset>
-  );
-}
-
-function Toggle({ label, hint, on, onChange }: { label: string; hint: string; on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-start justify-between gap-6">
-      <div>
-        <p className="text-sm">{label}</p>
-        <p className="text-xs text-muted">{hint}</p>
-      </div>
-      <button
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        onClick={() => onChange(!on)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${on ? "bg-accent" : "bg-line"}`}
-      >
-        <span className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-surface transition-transform ${on ? "translate-x-5" : "translate-x-0.5"}`} />
-      </button>
-    </div>
   );
 }
 

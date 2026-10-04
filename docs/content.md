@@ -1,6 +1,6 @@
 # Content: archives, guides, decks and sharing
 
-The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Codex and Folio, which you can switch to plain names in Settings. The API always uses the plain names.
+The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Codex and Folio, which you can switch to plain names in Your settings. The API always uses the plain names.
 
 ## Model
 | Thing | What it is |
