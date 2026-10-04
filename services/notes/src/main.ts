@@ -16,7 +16,14 @@ if (process.env.NOTES_AUTO_MIGRATE === "true") {
   await migrate(pool, { service: "notes", dir, log: (m) => console.log(m) });
 }
 
-const sealer = Sealer.fromConfig(cfg.kek, cfg.kekVersion, cfg.kekPrevious);
+let sealer: Sealer | null = null;
+let keyProblem: string | null = null;
+try {
+  sealer = Sealer.fromConfig(cfg.kek, cfg.kekVersion, cfg.kekPrevious);
+} catch (e) {
+  // A bad key switches notes off instead of crash looping, so the rest of the stack is never held back by it.
+  keyProblem = e instanceof Error ? e.message : String(e);
+}
 const enabled = !!cfg.fnsUrl && !!sealer;
 const app = await buildApp({
   pool,
@@ -27,7 +34,8 @@ const app = await buildApp({
   fnsHost: cfg.fnsUrl ? new URL(cfg.fnsUrl).host : null,
   logger: cfg.nodeEnv !== "test",
 });
-if (!enabled) app.log.warn("Notes are off: set FNS_URL and ULTIMYR_VAULT_KEK to connect Fast Note Sync.");
+if (keyProblem) app.log.error(`Notes are off: the vault key is not usable (${keyProblem}).`);
+else if (!enabled) app.log.warn("Notes are off: set FNS_URL and ULTIMYR_VAULT_KEK to connect Fast Note Sync.");
 
 onShutdown(async () => {
   await app.close();
