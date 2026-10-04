@@ -29,6 +29,9 @@ importers:
       '@simplewebauthn/browser':
         specifier: ^14.0.0
         version: 14.0.0
+      '@ultimyr/bundle':
+        specifier: workspace:^
+        version: link:../../packages/bundle
       '@ultimyr/coverage':
         specifier: workspace:^
         version: link:../../packages/coverage
@@ -87,6 +90,8 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/bundle: {}
 
   packages/config:
     dependencies:
