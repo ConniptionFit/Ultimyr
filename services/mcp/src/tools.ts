@@ -142,6 +142,16 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   });
 
   // ---- writing: always drafts --------------------------------------------
+  tool("create_archive", "content:write", "write", { title: "Create an archive", description: "Create a new archive (a course or certification) to hold guides, decks and quizzes. It is private to the person until they share it. Do this first when list_archives shows nothing suitable.", input: { title: z.string().min(1).max(160), overview: z.string().max(20_000).default(""), vendor: z.string().max(120).optional(), validityMonths: z.number().int().min(1).max(600).optional(), tags: z.array(z.string().max(40)).max(20).optional() } }, async (a) => {
+    const row = await send("content", "/v1/archives", { title: a.title, overview: a.overview, vendor: a.vendor, validityMonths: a.validityMonths, tags: a.tags });
+    return { id: row.id, title: row.title, slug: row.slug, visibility: row.visibility, note: "Archive created and private. Use its id as archiveId in create_guide, create_deck and create_quiz." };
+  });
+  tool("update_archive", "content:write", "write", { title: "Update an archive", description: "Change an archive's title, overview, vendor, validity or tags. Cannot change who can see it.", input: { archiveId: id, title: z.string().min(1).max(160).optional(), overview: z.string().max(20_000).optional(), vendor: z.string().max(120).optional(), validityMonths: z.number().int().min(1).max(600).optional(), tags: z.array(z.string().max(40)).max(20).optional() } }, async (a) => {
+    const { archiveId, ...fields } = a;
+    const row = await send("content", `/v1/archives/${archiveId}`, fields, "PATCH");
+    return { id: row.id, title: row.title, overview: row.overview, vendor: row.vendor, tags: row.tags };
+  });
+
   tool("create_guide", "content:write", "write", { title: "Create a guide", description: "Create a study guide in an archive from Markdown (# and ## headings, lists, short paragraphs). Saved as a draft.", input: { archiveId: id, title: z.string().min(1).max(160), summary: z.string().max(2000).default(""), markdown: z.string().min(1).max(500_000) } }, async (a) => {
     const it = await send("content", `/v1/archives/${a.archiveId}/items`, { kind: "guide", title: a.title, summary: a.summary, markdown: a.markdown, source: "mcp" });
     return { ...summary(it), note: "Saved as a draft. A person must review and publish it in Ultimyr." };
