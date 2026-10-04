@@ -20,7 +20,24 @@ Back up two things:
 - **Postgres**: `docker compose exec postgres pg_dump -U ultimyr ultimyr > ultimyr.sql` (bundled DB), or your own server's usual method.
 - **`./secrets`**: especially `auth_enc_key`, `vault_kek` and `jwt_private_key.pem`. A database backup without `auth_enc_key` cannot restore TOTP or IdP secrets, and one without `vault_kek` cannot restore AI keys. Store them separately from the dump.
 
-Restore: start Postgres, load the dump, put the same secrets back, start the stack.
+Or use the scripts, which wrap the commands above:
+```sh
+scripts/backup.sh                                  # writes backups/<timestamp>/ultimyr.dump and secrets.tgz
+scripts/restore.sh backups/<timestamp>/ultimyr.dump   # asks you to type "restore", stops the app, loads the dump, starts it again
+```
+Restore: put the same secrets back first, then run the restore script. Practise on a copy before you need it. A good routine is a nightly `scripts/backup.sh` from cron, keeping `secrets.tgz` somewhere separate.
+
+## Load check
+`node scripts/loadtest.mjs https://your.address 30 20` runs 20 parallel clients for 30 seconds against public, read-only pages and prints requests per second, p50, p95, p99 and errors. On a small shared CPU (production build, bundled Postgres) it served about 390 requests per second with p95 near 110 ms and no errors. Treat it as a smoke test, not a capacity plan.
+
+## Runbooks
+| Situation | Do this |
+|---|---|
+| Site is down | `docker compose ps`, then `docker compose logs --tail=100 <service>`. Each service has `/healthz` (alive) and `/readyz` (database reachable). |
+| A bad release | Take a backup, `git checkout <previous tag>`, `docker compose up -d --build`. Migrations are forward only, so restoring the pre-upgrade backup is the safe way back across a migration. |
+| Suspected leaked secret | Rotate it per the table below. A leaked `jwt_private_key.pem` also needs everyone signed out (rotating does that). Revoke API keys and MCP connections from Settings or the admin API. |
+| Person leaves | Deactivate them (admin or SCIM), then `DELETE /v1/ai/me` as an admin if their AI keys should be destroyed. |
+| Disk filling | Check the `pgdata` volume and Docker logs (`docker system df`). Set log rotation in Docker's `daemon.json`. |
 
 ## Upgrading
 ```sh

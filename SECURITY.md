@@ -9,6 +9,8 @@ The auth service (sessions, MFA, passkeys, API keys, SSO, SCIM), the web app, an
 ## What the project does today
 Argon2id passwords, rotating refresh tokens with reuse detection, EdDSA JWTs, AES-256-GCM for stored secrets, HMAC-hashed API keys, rate limiting, PKCE/state/nonce for OIDC, signed-assertion checks for SAML. Details in [docs/architecture.md](docs/architecture.md) and [docs/identity.md](docs/identity.md).
 
+See [docs/security.md](docs/security.md) for the full review, deployment checklist and known limits.
+
 ## Hardening your install
 - Serve only over HTTPS and set `COOKIE_SECURE=true`.
 - Keep `./secrets` out of version control (it is gitignored) and back it up separately from the database.
