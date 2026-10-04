@@ -1,10 +1,11 @@
+import { hash } from "@node-rs/argon2";
 import { ROLES, type Role } from "@ultimyr/authz";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
-import { auditLog, groupMembers, groups, idpProviders, instanceSettings, roleAssignments, scimTokens, sessions, users } from "../schema.js";
+import { auditLog, groupMembers, groups, idpProviders, instanceSettings, passwordTokens, roleAssignments, scimTokens, sessions, users } from "../schema.js";
 import { randomToken } from "../secrets.js";
 import { parse } from "./core.js";
 
@@ -14,7 +15,17 @@ const patchUserBody = z.object({
 });
 const groupBody = z.object({ name: z.string().trim().min(1).max(100) });
 const memberBody = z.object({ userId: z.uuid() });
-const settingsBody = z.object({ registrationOpen: z.boolean().nullable().optional() });
+const settingsBody = z.object({ registrationOpen: z.boolean().nullable().optional(), localUsersDisabled: z.boolean().optional() });
+const createUserBody = z.object({
+  email: z.email().max(254),
+  displayName: z.string().trim().min(1).max(80),
+  roles: z.array(z.enum(ROLES)).min(1).default(["author", "learner"]),
+  /** "password": a temporary password they must replace at first sign-in. "invite": a one-time link to choose their own. */
+  method: z.enum(["password", "invite"]).default("invite"),
+  /** Optional for "password"; one is generated when left out. */
+  password: z.string().min(12, "Password must be at least 12 characters").max(128).optional(),
+});
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const tokenBody = z.object({ name: z.string().trim().min(1).max(60) });
 
 export function adminRoutes(ctx: Ctx) {
@@ -37,6 +48,7 @@ export function adminRoutes(ctx: Ctx) {
 
   async function settingsView() {
     return {
+      localUsersDisabled: await ctx.localUsersDisabled(),
       registrationOpen: await ctx.registrationOpen(),
       registrationOverridden: (await db.select({ k: instanceSettings.key }).from(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"))).length > 0,
       registrationDefault: ctx.config.registrationOpen,
@@ -75,6 +87,17 @@ export function adminRoutes(ctx: Ctx) {
     r.patch("/v1/admin/settings", async (req) => {
       const { user } = await ctx.requireAdmin(req);
       const body = parse(settingsBody, req.body);
+      if (body.localUsersDisabled === true) {
+        // Refuse to switch passwords off with nothing to replace them: someone must be able to sign in another way.
+        const [p] = await db.select({ n: sql<number>`count(*)::int` }).from(idpProviders).where(eq(idpProviders.enabled, true));
+        if (!p?.n) throw new HttpError(409, "no_identity_provider");
+      }
+      if (body.localUsersDisabled !== undefined) {
+        await db
+          .insert(instanceSettings)
+          .values({ key: "localUsersDisabled", value: body.localUsersDisabled, updatedBy: user.id })
+          .onConflictDoUpdate({ target: instanceSettings.key, set: { value: body.localUsersDisabled, updatedBy: user.id, updatedAt: new Date() } });
+      }
       if (body.registrationOpen === null) {
         await db.delete(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"));
       } else if (body.registrationOpen !== undefined) {
@@ -102,9 +125,59 @@ export function adminRoutes(ctx: Ctx) {
         displayName: u.displayName,
         status: u.status,
         createdVia: u.createdVia,
+        mustChangePassword: u.mustChangePassword,
         createdAt: u.createdAt,
         roles: roleRows.filter((x) => x.userId === u.id).map((x) => x.role),
       }));
+    });
+
+    // Manual account creation. The person gets a temporary password (forced change at first sign-in) or a one-time invite link.
+    // The password and link are returned once and never stored in readable form.
+    r.post("/v1/admin/users", async (req, reply) => {
+      const { user: admin } = await ctx.requireAdmin(req);
+      const body = parse(createUserBody, req.body);
+      if (await ctx.localUsersDisabled()) throw new HttpError(409, "local_users_disabled");
+      const roles: Role[] = [...new Set(body.roles)];
+      const id = uuidv7();
+      const temporaryPassword = body.method === "password" ? (body.password ?? randomToken(18)) : undefined;
+      const passwordHash = temporaryPassword ? await hash(temporaryPassword) : null;
+      const inviteToken = body.method === "invite" ? `ulinv_${randomToken(32)}` : undefined;
+
+      const created = await db.transaction(async (tx) => {
+        const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = lower(${body.email})`);
+        if (exists.length) return false;
+        await tx.insert(users).values({ id, email: body.email, displayName: body.displayName, passwordHash, mustChangePassword: Boolean(temporaryPassword), createdVia: "local" });
+        await tx.insert(roleAssignments).values(roles.map((role) => ({ userId: id, role })));
+        if (inviteToken) await tx.insert(passwordTokens).values({ id: uuidv7(), userId: id, tokenHash: secrets.hashToken(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS), createdBy: admin.id });
+        return true;
+      });
+      if (!created) throw new HttpError(409, "email_taken");
+      await ctx.audit("admin.user_created", req, admin.id, id, { method: body.method, roles });
+      return reply.code(201).send({
+        id,
+        email: body.email,
+        displayName: body.displayName,
+        roles,
+        ...(temporaryPassword ? { temporaryPassword } : {}),
+        ...(inviteToken ? { inviteUrl: `${ctx.config.publicUrl}/set-password?token=${inviteToken}`, inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS) } : {}),
+      });
+    });
+
+    // A fresh one-time link for a local account (a lapsed invite, or a forgotten password). Older links stop working.
+    r.post("/v1/admin/users/:id/invite", async (req) => {
+      const { user: admin } = await ctx.requireAdmin(req);
+      const { id } = req.params as { id: string };
+      const [target] = await db.select().from(users).where(eq(users.id, id)).catch(() => []);
+      if (!target) throw new HttpError(404, "not_found");
+      if (target.createdVia !== "local") throw new HttpError(409, "not_local_account");
+      if (await ctx.localUsersDisabled()) throw new HttpError(409, "local_users_disabled");
+      const inviteToken = `ulinv_${randomToken(32)}`;
+      await db.transaction(async (tx) => {
+        await tx.update(passwordTokens).set({ usedAt: new Date() }).where(and(eq(passwordTokens.userId, id), sql`${passwordTokens.usedAt} IS NULL`));
+        await tx.insert(passwordTokens).values({ id: uuidv7(), userId: id, tokenHash: secrets.hashToken(inviteToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS), createdBy: admin.id });
+      });
+      await ctx.audit("admin.invite_created", req, admin.id, id);
+      return { inviteUrl: `${ctx.config.publicUrl}/set-password?token=${inviteToken}`, inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS) };
     });
 
     r.patch("/v1/admin/users/:id", async (req) => {
