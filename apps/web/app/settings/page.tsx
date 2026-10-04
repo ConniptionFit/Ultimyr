@@ -5,6 +5,7 @@ import { terms, type TermKey } from "@ultimyr/lore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "@/components/header";
+import { SecurityPanel } from "@/components/security-panel";
 import { Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
@@ -56,6 +57,8 @@ export default function Settings() {
                 ))}
               </dl>
             </section>
+            <h1 className="border-t border-line pt-8 text-3xl">Security</h1>
+            <SecurityPanel />
           </div>
         )}
       </Shell>

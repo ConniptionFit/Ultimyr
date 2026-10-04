@@ -1,5 +1,6 @@
 "use client";
 
+import { startAuthentication } from "@simplewebauthn/browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export interface User {
@@ -13,7 +14,12 @@ type State = { status: "loading" } | { status: "anonymous" } | { status: "authen
 
 interface AuthValue {
   state: State;
-  signIn: (email: string, password: string) => Promise<void>;
+  /** Resolves with an MFA token when a second factor is required, otherwise signs in. */
+  signIn: (email: string, password: string) => Promise<{ mfaToken: string } | null>;
+  verifyMfa: (mfaToken: string, input: { code?: string; recoveryCode?: string }) => Promise<void>;
+  signInWithPasskey: () => Promise<void>;
+  /** Authenticated JSON call to the auth service. Throws ApiError on failure. */
+  api: <T = unknown>(method: string, path: string, body?: unknown) => Promise<T>;
   register: (displayName: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -48,6 +54,14 @@ async function session(res: Response): Promise<{ user: User; accessToken: string
   return res.json();
 }
 
+async function json<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[] };
+    throw new ApiError(res.status, data.error ?? "unknown_error", data.issues);
+  }
+  return res.json();
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -64,9 +78,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const s = await session(await post("login", { email, password }));
+    const res = await post("login", { email, password });
+    const data = (await session(res as Response)) as unknown as { mfaRequired?: boolean; mfaToken?: string } & { user: User; accessToken: string };
+    if (data.mfaRequired && data.mfaToken) return { mfaToken: data.mfaToken };
+    setState({ status: "authenticated", user: data.user, accessToken: data.accessToken });
+    return null;
+  }, []);
+  const verifyMfa = useCallback(async (mfaToken: string, input: { code?: string; recoveryCode?: string }) => {
+    const s = await session(await post("mfa/verify", { mfaToken, ...input }));
     setState({ status: "authenticated", ...s });
   }, []);
+  const signInWithPasskey = useCallback(async () => {
+    const opts = await json<{ challengeId: string; options: Parameters<typeof startAuthentication>[0]["optionsJSON"] }>(await post("passkeys/login/options", {}));
+    const response = await startAuthentication({ optionsJSON: opts.options });
+    const s = await session(await post("passkeys/login/verify", { challengeId: opts.challengeId, response }));
+    setState({ status: "authenticated", ...s });
+  }, []);
+  const token = state.status === "authenticated" ? state.accessToken : null;
+  const api = useCallback(
+    async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
+      const res = await fetch(`/api/v1/${path}`, {
+        method,
+        headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        credentials: "same-origin",
+      });
+      if (res.status === 204) return undefined as T;
+      return json<T>(res);
+    },
+    [token],
+  );
   const register = useCallback(async (displayName: string, email: string, password: string) => {
     const s = await session(await post("register", { displayName, email, password }));
     setState({ status: "authenticated", ...s });
@@ -76,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: "anonymous" });
   }, []);
 
-  const value = useMemo(() => ({ state, signIn, register, signOut }), [state, signIn, register, signOut]);
+  const value = useMemo(() => ({ state, signIn, verifyMfa, signInWithPasskey, api, register, signOut }), [state, signIn, verifyMfa, signInWithPasskey, api, register, signOut]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
