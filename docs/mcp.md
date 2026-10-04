@@ -61,6 +61,8 @@ How the assistant works through it:
 
 Because the queue is computed from what already exists, a new chat can pick up exactly where an old one stopped (`continue_build`). Draft questions count, so nothing is written twice. Writes are rate limited per minute; the assistant is told to wait and continue.
 
+No connector? Any chat can write the same thing as text and you paste it in. See [bundle.md](bundle.md).
+
 ## Safety
 - **Drafts.** New material and quiz questions are saved as drafts with source `mcp`, visible only to editors until a person publishes them. Editing **published** material creates a new version (so it can be restored) and moves the item back to draft until republished. Pass `holdForReview: false` on a tool call to skip that hold.
 - **Links.** Ultimyr stores links without opening them, so it cannot tell whether one is real. The server's instructions tell the model never to invent a URL, but review every draft link before publishing.

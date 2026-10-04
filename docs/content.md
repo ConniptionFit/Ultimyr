@@ -89,6 +89,7 @@ People are found by **exact email** (never listed), groups by name. Group member
 | Archive JSON (`ultimyr-archive`) | Whole archive with guides, decks, saved resources and the roadmap | Creates a new archive you own |
 | Markdown | A guide, or a deck as Q and A | Becomes a guide (title from the first `#`) |
 | Anki CSV | A deck as `front,back,tags` | Becomes a deck (comma or tab separated, quoted fields) |
+| Ultimyr bundle (text) | None | A whole certification written by any chat: objectives, roadmap, guides, decks and quizzes, saved as drafts. See [bundle.md](bundle.md) |
 
 In the archive file, roadmap steps point at items by position and at resources by link, so it carries no database ids; steps on quizzes become checkpoints with the quiz's title (quizzes are not part of the file), and progress is never exported. Import and export never include other people's data. There is no lock-in: export an archive any time.
 

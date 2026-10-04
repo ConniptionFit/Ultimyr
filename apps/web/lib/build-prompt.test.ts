@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { continuePrompt, startPrompt } from "./build-prompt";
+import { bundlePrompt, continuePrompt, startPrompt } from "./build-prompt";
 
 describe("build prompts", () => {
   it("names the certification, depth and the tools to use", () => {
@@ -15,5 +15,14 @@ describe("build prompts", () => {
   });
   it("carries the archive id when continuing", () => {
     expect(continuePrompt("A+", "abc", "quick")).toContain("id abc");
+  });
+  it("gives a chat without a connector the format, an example and the stop rules", () => {
+    const p = bundlePrompt("Security+", "quick");
+    expect(p).toContain('"Security+"');
+    expect(p).toContain("=== end ===");
+    expect(p).toContain("ultimyr-bundle v1");
+    expect(p).toContain("Never guess objectives");
+    expect(p).toContain("about 5 flashcards and 3 questions");
+    expect(p).not.toMatch(/\u2014/);
   });
 });
