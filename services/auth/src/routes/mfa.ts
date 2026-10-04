@@ -87,7 +87,7 @@ export function mfaRoutes(ctx: Ctx) {
 
   return async (r: FastifyInstance) => {
     r.get("/v1/me/mfa", async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const [f] = await db.select().from(totpFactors).where(eq(totpFactors.userId, user.id));
       const codes = await db
         .select({ n: sql<number>`count(*)::int` })
@@ -103,7 +103,7 @@ export function mfaRoutes(ctx: Ctx) {
     });
 
     r.post("/v1/me/mfa/totp/setup", async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const [existing] = await db.select().from(totpFactors).where(eq(totpFactors.userId, user.id));
       if (existing?.confirmedAt) throw new HttpError(409, "totp_already_enabled");
       const secret = generateSecret();
@@ -117,7 +117,7 @@ export function mfaRoutes(ctx: Ctx) {
     });
 
     r.post("/v1/me/mfa/totp/confirm", { config: limit }, async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const { code } = parse(codeBody, req.body);
       if (!(await checkTotp(user.id, code, false))) throw new HttpError(400, "invalid_code");
       await db.update(totpFactors).set({ confirmedAt: new Date() }).where(eq(totpFactors.userId, user.id));
@@ -127,7 +127,7 @@ export function mfaRoutes(ctx: Ctx) {
     });
 
     r.delete("/v1/me/mfa/totp", { config: limit }, async (req, reply) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       await stepUp(user.id, parse(stepUpBody, req.body ?? {}));
       await db.delete(totpFactors).where(eq(totpFactors.userId, user.id));
       await db.delete(recoveryCodes).where(eq(recoveryCodes.userId, user.id));
@@ -136,7 +136,7 @@ export function mfaRoutes(ctx: Ctx) {
     });
 
     r.post("/v1/me/mfa/recovery-codes/regenerate", { config: limit }, async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const [f] = await db.select().from(totpFactors).where(eq(totpFactors.userId, user.id));
       if (!f?.confirmedAt) throw new HttpError(409, "totp_not_enabled");
       await stepUp(user.id, parse(stepUpBody, req.body ?? {}));

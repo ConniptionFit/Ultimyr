@@ -45,13 +45,13 @@ export function passkeyRoutes(ctx: Ctx) {
 
   return async (r: FastifyInstance) => {
     r.get("/v1/me/passkeys", async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const rows = await db.select().from(passkeys).where(eq(passkeys.userId, user.id));
       return rows.map((p) => ({ id: p.id, name: p.name, backedUp: p.backedUp, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt }));
     });
 
     r.post("/v1/me/passkeys/register/options", async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const existing = await db.select().from(passkeys).where(eq(passkeys.userId, user.id));
       const options = await generateRegistrationOptions({
         rpName: "Ultimyr",
@@ -67,7 +67,7 @@ export function passkeyRoutes(ctx: Ctx) {
     });
 
     r.post("/v1/me/passkeys/register/verify", { config: limit }, async (req) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const body = parse(registerVerifyBody, req.body);
       const expectedChallenge = await consumeChallenge(body.challengeId, "register", user.id);
       const verification = await verifyRegistrationResponse({
@@ -100,7 +100,7 @@ export function passkeyRoutes(ctx: Ctx) {
     });
 
     r.delete("/v1/me/passkeys/:id", async (req, reply) => {
-      const { user } = await ctx.authenticate(req);
+      const { user } = await ctx.authenticateInteractive(req);
       const { id } = req.params as { id: string };
       const mine = await db.select().from(passkeys).where(eq(passkeys.userId, user.id));
       const target = mine.find((p) => p.id === id);

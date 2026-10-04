@@ -52,6 +52,8 @@ export interface Ctx {
   signMfaToken(userId: string): Promise<string>;
   verifyMfaToken(token: string): Promise<string>;
   authenticate(req: FastifyRequest): Promise<Authed>;
+  /** Like authenticate, but rejects API-key tokens: account security changes need a real sign-in. */
+  authenticateInteractive(req: FastifyRequest): Promise<Authed>;
   requireAdmin(req: FastifyRequest): Promise<Authed>;
 }
 
@@ -172,11 +174,15 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
       return { principal, user };
     },
 
-    async requireAdmin(req) {
+    async authenticateInteractive(req) {
       const a = await ctx.authenticate(req);
+      if (a.principal.sessionId.startsWith(API_KEY_SESSION_PREFIX)) throw new HttpError(403, "interactive_session_required");
+      return a;
+    },
+
+    async requireAdmin(req) {
+      const a = await ctx.authenticateInteractive(req);
       if (!a.principal.roles.includes("platform_admin")) throw new HttpError(403, "forbidden");
-      // An API key must be explicitly scoped to admin work; none of the defined scopes grant it.
-      if (a.principal.sessionId.startsWith(API_KEY_SESSION_PREFIX)) throw new HttpError(403, "forbidden");
       return a;
     },
   };
