@@ -19,7 +19,7 @@ const sign = (claims: Record<string, unknown>, opts: { aud?: string; iss?: strin
 describe("verifyAccessToken", () => {
   it("accepts a valid token", async () => {
     const p = await verifyAccessToken(await sign({}), publicKey);
-    expect(p).toEqual({ userId: "u1", sessionId: "s1", roles: ["learner"], scopes: [] });
+    expect(p).toEqual({ userId: "u1", sessionId: "s1", roles: ["learner"], scopes: [], amr: [] });
   });
   it("rejects wrong key, audience, issuer, expiry and unknown roles", async () => {
     await expect(verifyAccessToken(await sign({}, { key: other.privateKey }), publicKey)).rejects.toThrow();
@@ -31,7 +31,7 @@ describe("verifyAccessToken", () => {
 });
 
 describe("role and scope helpers", () => {
-  const p = { userId: "u", sessionId: "s", roles: ["author" as const], scopes: ["content:read"] };
+  const p = { userId: "u", sessionId: "s", roles: ["author" as const], scopes: ["content:read"], amr: [] };
   it("checks roles", () => {
     expect(hasRole(p, "author")).toBe(true);
     expect(hasRole(p, "platform_admin")).toBe(false);

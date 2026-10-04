@@ -7,11 +7,28 @@ export type Role = (typeof ROLES)[number];
 export const ISSUER = "ultimyr-auth";
 export const AUDIENCE = "ultimyr";
 
+/** Scopes an API key or MCP connection may be limited to. Interactive sessions carry no scopes (full access). */
+export const SCOPES = [
+  "content:read",
+  "content:write",
+  "content:share",
+  "quiz:read",
+  "quiz:write",
+  "ai:use",
+] as const;
+export type Scope = (typeof SCOPES)[number];
+export const isScope = (s: string): s is Scope => (SCOPES as readonly string[]).includes(s);
+
+/** Session ids starting with this prefix belong to API keys, not browser sessions. */
+export const API_KEY_SESSION_PREFIX = "key:";
+
 export const accessClaimsSchema = z.object({
   sub: z.string().min(1),
   sid: z.string().min(1),
   roles: z.array(z.enum(ROLES)),
   scopes: z.array(z.string()).default([]),
+  /** Authentication methods used: pwd, otp, recovery, webauthn, sso, apikey. */
+  amr: z.array(z.string()).default([]),
 });
 export type AccessClaims = z.infer<typeof accessClaimsSchema>;
 
@@ -20,6 +37,7 @@ export interface Principal {
   sessionId: string;
   roles: Role[];
   scopes: string[];
+  amr: string[];
 }
 
 export type KeySource = JWTVerifyGetKey | CryptoKey | KeyObject | Uint8Array;
@@ -34,7 +52,7 @@ export async function verifyAccessToken(token: string, key: KeySource): Promise<
   const { payload } =
     typeof key === "function" ? await jwtVerify(token, key, opts) : await jwtVerify(token, key as CryptoKey, opts);
   const claims = accessClaimsSchema.parse(payload);
-  return { userId: claims.sub, sessionId: claims.sid, roles: claims.roles, scopes: claims.scopes };
+  return { userId: claims.sub, sessionId: claims.sid, roles: claims.roles, scopes: claims.scopes, amr: claims.amr };
 }
 
 export function hasRole(p: Principal, ...roles: Role[]): boolean {
