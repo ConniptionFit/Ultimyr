@@ -7,7 +7,7 @@ import type { Pool } from "pg";
 import type { AuthConfig } from "./config.js";
 import { uuidv7 } from "./ids.js";
 import type { SigningKeys } from "./keys.js";
-import { apiKeys, auditLog, instanceSettings, roleAssignments, sessions, users } from "./schema.js";
+import { apiKeys, auditLog, identities, instanceSettings, roleAssignments, sessions, users } from "./schema.js";
 import { randomToken, sha256Hex, type Secrets } from "./secrets.js";
 
 export const ACCESS_TTL_SECONDS = 10 * 60;
@@ -15,6 +15,7 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const REFRESH_COOKIE = "ultimyr_rt";
 export const COOKIE_PATH = "/api/v1/auth";
 const MFA_AUDIENCE = "ultimyr-mfa";
+const PWCHANGE_AUDIENCE = "ultimyr-pwchange";
 
 export type Db = NodePgDatabase<Record<string, never>>;
 export type User = typeof users.$inferSelect;
@@ -53,12 +54,22 @@ export interface Ctx {
   publicUser(u: User, roles: Role[]): { id: string; email: string; displayName: string; roles: Role[] };
   signMfaToken(userId: string): Promise<string>;
   verifyMfaToken(token: string): Promise<string>;
+  /** Short-lived proof that a password was just checked for an account that must choose a new one. */
+  signPasswordChangeToken(userId: string): Promise<string>;
+  verifyPasswordChangeToken(token: string): Promise<string>;
   authenticate(req: FastifyRequest): Promise<Authed>;
   /** Like authenticate, but rejects API-key tokens: account security changes need a real sign-in. */
   authenticateInteractive(req: FastifyRequest): Promise<Authed>;
   requireAdmin(req: FastifyRequest): Promise<Authed>;
   /** Whether new people may register. An admin setting overrides the AUTH_REGISTRATION default. */
   registrationOpen(): Promise<boolean>;
+  /** Admin setting: refuse password sign-in for accounts that do not come from an identity provider. Off by default. */
+  localUsersDisabled(): Promise<boolean>;
+  /**
+   * True when the "disable local users" setting is on and this account is local: not created by SSO or SCIM, not linked to
+   * an identity provider, and not an administrator (administrators stay as the break-glass sign-in).
+   */
+  localSignInBlocked(user: User, roles: Role[]): Promise<boolean>;
 }
 
 export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "secrets" | "limit" | "refreshLimit">): Ctx {
@@ -110,6 +121,8 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
     publicUser: (u, roles) => ({ id: u.id, email: u.email, displayName: u.displayName, roles }),
 
     async startSession(req, reply, userId, amr) {
+      const [who] = await db.select().from(users).where(eq(users.id, userId));
+      if (who && (await ctx.localSignInBlocked(who, await ctx.rolesFor(userId)))) throw new HttpError(403, "local_users_disabled");
       const sessionId = uuidv7();
       const secret = randomToken();
       await db.insert(sessions).values({
@@ -152,6 +165,27 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
       }
     },
 
+    signPasswordChangeToken(userId) {
+      return new SignJWT({})
+        .setProtectedHeader({ alg: "EdDSA", kid: keys.kid })
+        .setSubject(userId)
+        .setIssuer(ISSUER)
+        .setAudience(PWCHANGE_AUDIENCE)
+        .setIssuedAt()
+        .setExpirationTime("10m")
+        .sign(keys.privateKey);
+    },
+
+    async verifyPasswordChangeToken(token) {
+      try {
+        const { payload } = await jwtVerify(token, keys.publicKey, { issuer: ISSUER, audience: PWCHANGE_AUDIENCE, algorithms: ["EdDSA"] });
+        if (!payload.sub) throw new Error("no subject");
+        return payload.sub;
+      } catch {
+        throw new HttpError(401, "invalid_change_token");
+      }
+    },
+
     async authenticate(req) {
       const header = req.headers.authorization;
       if (!header?.startsWith("Bearer ")) throw new HttpError(401, "unauthenticated");
@@ -178,6 +212,7 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
       }
       const [user] = await db.select().from(users).where(eq(users.id, principal.userId));
       if (!user || user.status !== "active") throw new HttpError(401, "unauthenticated");
+      if (await ctx.localSignInBlocked(user, principal.roles)) throw new HttpError(401, "unauthenticated");
       return { principal, user };
     },
 
@@ -196,6 +231,18 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
     async registrationOpen() {
       const [row] = await db.select({ value: instanceSettings.value }).from(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"));
       return typeof row?.value === "boolean" ? row.value : config.registrationOpen;
+    },
+
+    async localUsersDisabled() {
+      const [row] = await db.select({ value: instanceSettings.value }).from(instanceSettings).where(eq(instanceSettings.key, "localUsersDisabled"));
+      return row?.value === true;
+    },
+
+    async localSignInBlocked(user, roles) {
+      if (user.createdVia !== "local" || roles.includes("platform_admin")) return false;
+      if (!(await ctx.localUsersDisabled())) return false;
+      const linked = await db.select({ id: identities.id }).from(identities).where(eq(identities.userId, user.id)).limit(1);
+      return linked.length === 0;
     },
   };
   return ctx;

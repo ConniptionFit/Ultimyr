@@ -3,9 +3,9 @@ import type { Role } from "@ultimyr/authz";
 import { and, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { ACCESS_TTL_SECONDS, REFRESH_COOKIE, type Ctx } from "../ctx.js";
+import { ACCESS_TTL_SECONDS, HttpError, REFRESH_COOKIE, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
-import { roleAssignments, sessions, totpFactors, users } from "../schema.js";
+import { passwordTokens, roleAssignments, sessions, totpFactors, users } from "../schema.js";
 import { randomToken, safeEqual, sha256Hex } from "../secrets.js";
 
 const registerBody = z.object({
@@ -13,6 +13,9 @@ const registerBody = z.object({
   password: z.string().min(12, "Password must be at least 12 characters").max(128),
   displayName: z.string().trim().min(1).max(80),
 });
+const newPassword = z.string().min(12, "Password must be at least 12 characters").max(128);
+const setPasswordBody = z.object({ token: z.string().min(10).max(200), password: newPassword });
+const changePasswordBody = z.object({ changeToken: z.string().min(10).max(2000), currentPassword: z.string().min(1).max(128), newPassword });
 const loginBody = z.object({ email: z.email().max(254), password: z.string().min(1).max(128) });
 
 export const parse = <S extends z.ZodType>(schema: S, body: unknown): z.infer<S> => {
@@ -49,11 +52,13 @@ export function coreRoutes(ctx: Ctx) {
       const userId = uuidv7();
 
       const registrationOpen = await ctx.registrationOpen();
+      const localDisabled = await ctx.localUsersDisabled();
       const result = await db.transaction(async (tx) => {
         // Serialise first-user detection so two simultaneous sign-ups cannot both become admin.
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('ultimyr_first_user'))`);
         const [{ n } = { n: 0 }] = await tx.select({ n: sql<number>`count(*)::int` }).from(users);
         const first = n === 0;
+        if (!first && localDisabled) return "local_disabled" as const;
         if (!first && !registrationOpen) return "closed" as const;
         const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = lower(${email})`);
         if (exists.length) return "exists" as const;
@@ -63,6 +68,7 @@ export function coreRoutes(ctx: Ctx) {
         return first ? ("first" as const) : ("ok" as const);
       });
 
+      if (result === "local_disabled") return reply.code(403).send({ error: "local_users_disabled" });
       if (result === "closed") return reply.code(403).send({ error: "registration_closed" });
       if (result === "exists") return reply.code(409).send({ error: "email_taken" });
 
@@ -80,12 +86,55 @@ export function coreRoutes(ctx: Ctx) {
         return reply.code(401).send({ error: "invalid_credentials" });
       }
 
+      if (await ctx.localSignInBlocked(user, await ctx.rolesFor(user.id))) {
+        await ctx.audit("login.local_disabled", req, user.id);
+        return reply.code(403).send({ error: "local_users_disabled" });
+      }
+      // Admin-created accounts with a temporary password must choose their own before getting a session.
+      if (user.mustChangePassword) {
+        await ctx.audit("login.password_change_required", req, user.id);
+        return { passwordChangeRequired: true, changeToken: await ctx.signPasswordChangeToken(user.id) };
+      }
+
       const [totp] = await db.select({ at: totpFactors.confirmedAt }).from(totpFactors).where(eq(totpFactors.userId, user.id));
       if (totp?.at) {
         await ctx.audit("login.mfa_required", req, user.id);
         return { mfaRequired: true, mfaToken: await ctx.signMfaToken(user.id), methods: ["totp", "recovery"] };
       }
       await ctx.audit("login.success", req, user.id);
+      return ctx.startSession(req, reply, user.id, ["pwd"]);
+    });
+
+    // Second step for a temporary password: verify it again, store the new one, then sign in.
+    r.post("/v1/auth/change-password", { config: limit }, async (req, reply) => {
+      const body = parse(changePasswordBody, req.body);
+      const userId = await ctx.verifyPasswordChangeToken(body.changeToken);
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user || user.status !== "active" || !user.mustChangePassword || !user.passwordHash) throw new HttpError(401, "invalid_change_token");
+      if (!(await verify(user.passwordHash, body.currentPassword).catch(() => false))) {
+        await ctx.audit("login.failed", req, userId);
+        throw new HttpError(401, "invalid_credentials");
+      }
+      if (body.currentPassword === body.newPassword) throw new HttpError(400, "password_unchanged");
+      await db.update(users).set({ passwordHash: await hash(body.newPassword), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, userId));
+      await ctx.audit("user.password_changed", req, userId, userId, { via: "first_sign_in" });
+      return ctx.startSession(req, reply, userId, ["pwd"]);
+    });
+
+    // Redeem a one-time invite or reset link created by an administrator.
+    r.post("/v1/auth/set-password", { config: limit }, async (req, reply) => {
+      const body = parse(setPasswordBody, req.body);
+      const [used] = await db
+        .update(passwordTokens)
+        .set({ usedAt: new Date() })
+        .where(and(eq(passwordTokens.tokenHash, ctx.secrets.hashToken(body.token)), sql`${passwordTokens.usedAt} IS NULL`, sql`${passwordTokens.expiresAt} > now()`))
+        .returning({ userId: passwordTokens.userId });
+      if (!used) throw new HttpError(400, "invalid_token");
+      const [user] = await db.select().from(users).where(eq(users.id, used.userId));
+      if (!user || user.status !== "active") throw new HttpError(400, "invalid_token");
+      await db.update(users).set({ passwordHash: await hash(body.password), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, user.id));
+      await db.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, user.id), sql`${sessions.revokedAt} IS NULL`));
+      await ctx.audit("user.password_set", req, user.id, user.id, { via: "invite" });
       return ctx.startSession(req, reply, user.id, ["pwd"]);
     });
 
@@ -110,7 +159,7 @@ export function coreRoutes(ctx: Ctx) {
           .set({ refreshHash: sha256Hex(next), prevRefreshHash: s.refreshHash, lastSeenAt: new Date() })
           .where(eq(sessions.id, s.id));
         const [user] = await db.select().from(users).where(eq(users.id, s.userId));
-        if (!user || user.status !== "active") return fail();
+        if (!user || user.status !== "active" || (await ctx.localSignInBlocked(user, await ctx.rolesFor(user.id)))) return fail();
         ctx.setRefreshCookie(reply, s.id, next);
         const roles = await ctx.rolesFor(user.id);
         return {

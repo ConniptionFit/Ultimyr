@@ -14,8 +14,12 @@ type State = { status: "loading" } | { status: "anonymous" } | { status: "authen
 
 interface AuthValue {
   state: State;
-  /** Resolves with an MFA token when a second factor is required, otherwise signs in. */
-  signIn: (email: string, password: string) => Promise<{ mfaToken: string } | null>;
+  /** Resolves with an MFA token when a second factor is required, or a change token when a temporary password must be replaced, otherwise signs in. */
+  signIn: (email: string, password: string) => Promise<{ mfaToken: string } | { changeToken: string } | null>;
+  /** Replace a temporary password (after signIn returned a change token), then sign in. */
+  changePassword: (changeToken: string, currentPassword: string, newPassword: string) => Promise<void>;
+  /** Redeem an invite or reset link, then sign in. */
+  setPassword: (token: string, password: string) => Promise<void>;
   verifyMfa: (mfaToken: string, input: { code?: string; recoveryCode?: string }) => Promise<void>;
   signInWithPasskey: () => Promise<void>;
   /** Authenticated JSON call to the auth service. Throws ApiError on failure. */
@@ -79,10 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await post("login", { email, password });
-    const data = (await session(res as Response)) as unknown as { mfaRequired?: boolean; mfaToken?: string } & { user: User; accessToken: string };
+    const data = (await session(res as Response)) as unknown as { mfaRequired?: boolean; mfaToken?: string; passwordChangeRequired?: boolean; changeToken?: string } & { user: User; accessToken: string };
+    if (data.passwordChangeRequired && data.changeToken) return { changeToken: data.changeToken };
     if (data.mfaRequired && data.mfaToken) return { mfaToken: data.mfaToken };
     setState({ status: "authenticated", user: data.user, accessToken: data.accessToken });
     return null;
+  }, []);
+  const changePassword = useCallback(async (changeToken: string, currentPassword: string, newPassword: string) => {
+    const s = await session(await post("change-password", { changeToken, currentPassword, newPassword }));
+    setState({ status: "authenticated", ...s });
+  }, []);
+  const setPassword = useCallback(async (token: string, password: string) => {
+    const s = await session(await post("set-password", { token, password }));
+    setState({ status: "authenticated", ...s });
   }, []);
   const verifyMfa = useCallback(async (mfaToken: string, input: { code?: string; recoveryCode?: string }) => {
     const s = await session(await post("mfa/verify", { mfaToken, ...input }));
@@ -117,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: "anonymous" });
   }, []);
 
-  const value = useMemo(() => ({ state, signIn, verifyMfa, signInWithPasskey, api, register, signOut }), [state, signIn, verifyMfa, signInWithPasskey, api, register, signOut]);
+  const value = useMemo(() => ({ state, signIn, changePassword, setPassword, verifyMfa, signInWithPasskey, api, register, signOut }), [state, signIn, changePassword, setPassword, verifyMfa, signInWithPasskey, api, register, signOut]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

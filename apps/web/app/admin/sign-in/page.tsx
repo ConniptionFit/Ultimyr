@@ -39,10 +39,12 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<Kind>("oidc");
+  const [localOff, setLocalOff] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setList(await api<Provider[]>("GET", "admin/idp-providers"));
+      setLocalOff((await api<{ localUsersDisabled: boolean }>("GET", "admin/settings")).localUsersDisabled);
     } catch (e) {
       setError(message(e));
     }
@@ -58,7 +60,7 @@ export default function SignIn() {
       await load();
       return true;
     } catch (e) {
-      setError(message(e) === "slug taken" ? "That short name is taken." : message(e));
+      setError(message(e) === "slug taken" ? "That short name is taken." : message(e) === "no identity provider" ? "Add and enable a single sign-on provider first, so people still have a way in." : message(e));
       return false;
     }
   }
@@ -88,6 +90,16 @@ export default function SignIn() {
       <h2 className="text-2xl">Sign-in methods</h2>
       <p className="text-sm text-muted">Passwords, passkeys and authenticator codes are always available. Add single sign-on so people can use your identity provider. See docs/identity.md.</p>
       <ErrorLine error={error} />
+      <section className="space-y-2 rounded-md border border-line p-5">
+        <h3 className="text-lg">Local accounts</h3>
+        <Toggle
+          label="Disable local accounts"
+          hint="Turns off password, passkey and sign-up access for anyone who does not come from single sign-on or SCIM, and blocks manual account creation. Needs an enabled provider."
+          on={localOff}
+          onChange={(v) => run(() => api("PATCH", "admin/settings", { localUsersDisabled: v }))}
+        />
+        <p className="text-xs text-muted">Local administrators can always still sign in, as a break-glass way back in if your provider is down. Off by default.</p>
+      </section>
       <ul className="divide-y divide-line rounded-md border border-line">
         {list.map((p) => (
           <li key={p.id} className="space-y-3 p-4">
