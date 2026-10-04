@@ -2,7 +2,7 @@
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
 
-**Status:** Phase 5 (daily review, progress and goals). Earlier phases: Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
+**Status:** Phase 6 (AI gateway). Earlier phases: Phase 5 daily review and progress, Phase 1 skeleton and auth core, Phase 2 identity hardening, Phase 3 content, Phase 4 quizzes. See [`docs/architecture-plan.md`](docs/architecture-plan.md) for the full plan and roadmap.
 
 ## What works today
 
@@ -12,6 +12,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - Phase 3 content: archives with icons and quick stats, Markdown guides with sections and version history, flashcard decks, sharing to people and groups, full text search, Markdown/Anki/JSON import and export, trash with 30 day recovery. See [`docs/content.md`](docs/content.md).
 - Phase 4 quizzes: five question types (multiple choice, select all, fill in, matching, scenario labs), practice mode with instant feedback, timed attempts with a server-owned clock, review screens, and an exact, versioned scoring engine with honest fidelity labels. See [`docs/quiz.md`](docs/quiz.md).
 - Phase 5 study: a daily flashcard review scheduled by FSRS-5 spaced repetition, a progress page (accuracy by day and domain, streak, study stats, 7 day forecast), goals with a readiness estimate, and a live server clock with a review panel for timed exams. See [`docs/study.md`](docs/study.md).
+- Phase 6 AI: bring your own Gemini, OpenAI or Anthropic key (encrypted per person, never shown again), generate draft guides, decks and quiz questions, and ask a study assistant about the page you are on. AI output is always a draft you review. See [`docs/ai.md`](docs/ai.md).
 - Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
@@ -44,7 +45,7 @@ That is the whole setup: the web container forwards `/api/v1/*` to the auth serv
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets` and `access` go to content, `/api/v1/ai` goes to the AI gateway, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
 ### Use an existing Postgres
 
@@ -62,6 +63,7 @@ pnpm migrate                               # applies service migrations
 pnpm dev:auth                              # http://localhost:4001
 pnpm --filter @ultimyr/content dev         # http://localhost:4002
 pnpm --filter @ultimyr/quiz dev            # http://localhost:4003
+pnpm --filter @ultimyr/ai-gateway dev       # http://localhost:4004 (set ULTIMYR_VAULT_KEK to enable AI)
 pnpm dev:web                               # http://localhost:3000 (proxies /api/v1 to auth)
 pnpm typecheck && pnpm test
 ```
@@ -73,6 +75,7 @@ apps/web              Next.js UI
 services/auth         Auth service (Fastify + Drizzle), owns the `auth` schema
 services/content      Content service (Fastify + SQL), owns the `content` schema
 services/quiz         Quiz service (Fastify + SQL), owns the `quiz` schema
+services/ai-gateway   AI gateway: key vault, generation jobs, assistant. Owns the `ai` schema
 packages/scoring      Pure scoring library (question types, profiles, grading)
 packages/fsrs         Pure FSRS-5 spaced repetition scheduler
 packages/config       Env parsing, Docker secrets (_FILE), database config
@@ -96,6 +99,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
 | Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study` |
+| AI | `/ai/status`, `/ai/credentials`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads` |
 | Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |

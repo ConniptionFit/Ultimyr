@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Header } from "@/components/header";
+import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -301,6 +302,8 @@ export default function ArchivePage() {
               })}
             </ul>
           </section>
+
+          {editor && <GeneratePanel archiveId={id} onDone={() => void load()} />}
 
           {a.relation === "owner" && (
             <div>

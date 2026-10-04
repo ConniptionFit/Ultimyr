@@ -151,6 +151,9 @@ Response shapes: `mcq` `{ choice }`, `multi` `{ choices }`, `fib` `{ blanks }`, 
 | GET | `/goals` | All your goals. |
 | GET, PUT, DELETE | `/goals/:archiveId` | PUT `{ targetBp, targetDate? }` (`targetBp` 1 to 10000, so 8000 is 80%). GET returns `{ goal: null }` when none. |
 
+## AI gateway
+See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
+
 ## Daily review (content service)
 Scopes: reads `content:read`, reviews and settings `content:write`. Only published decks the caller can read are included.
 

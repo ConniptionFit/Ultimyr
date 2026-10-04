@@ -6,4 +6,5 @@ mkdir -p secrets
 [ -f secrets/jwt_private_key.pem ] || { openssl genpkey -algorithm ed25519 -out secrets/jwt_private_key.pem; echo "created secrets/jwt_private_key.pem"; }
 [ -f secrets/auth_enc_key ] || { openssl rand -base64 32 | tr -d '\n' > secrets/auth_enc_key; echo "created secrets/auth_enc_key (back this up: it encrypts TOTP seeds and IdP secrets)"; }
 [ -f secrets/api_key_pepper ] || { openssl rand -base64 32 | tr -d '\n' > secrets/api_key_pepper; echo "created secrets/api_key_pepper"; }
+[ -f secrets/vault_kek ] || { openssl rand -base64 32 | tr -d '\n' > secrets/vault_kek; echo "created secrets/vault_kek (back this up: it wraps every stored AI key)"; }
 chmod 600 secrets/*
