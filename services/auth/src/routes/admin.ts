@@ -3,6 +3,7 @@ import { ROLES, type Role } from "@ultimyr/authz";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { createAbout } from "../about.js";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
 import { auditLog, groupMembers, groups, idpProviders, instanceSettings, passwordTokens, roleAssignments, scimTokens, sessions, users } from "../schema.js";
@@ -46,6 +47,8 @@ export function adminRoutes(ctx: Ctx) {
     return rows[0]?.n ?? 0;
   }
 
+  const about = createAbout({ repo: ctx.config.repo, enabled: ctx.config.updateCheck });
+
   async function settingsView() {
     return {
       localUsersDisabled: await ctx.localUsersDisabled(),
@@ -76,6 +79,13 @@ export function adminRoutes(ctx: Ctx) {
         deployment: { publicUrl: ctx.config.publicUrl, environment: ctx.config.nodeEnv },
         settings: await settingsView(),
       };
+    });
+
+    // Running build, latest GitHub release and changelog. Cached for an hour; `?refresh=1` re-checks (at most every 30 seconds).
+    r.get("/v1/admin/about", async (req) => {
+      await ctx.requireAdmin(req);
+      const q = req.query as { refresh?: string };
+      return about(q.refresh === "1");
     });
 
     r.get("/v1/admin/settings", async (req) => {

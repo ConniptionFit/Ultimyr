@@ -15,7 +15,7 @@ describe.skipIf(!testDbUrl)("admin general settings", () => {
   it("keeps the overview and settings admin only", async () => {
     const admin = (await register(h.app, "ada@example.com")).json();
     const learner = (await register(h.app, "bob@example.com")).json();
-    for (const url of ["/v1/admin/overview", "/v1/admin/settings"]) {
+    for (const url of ["/v1/admin/overview", "/v1/admin/settings", "/v1/admin/about"]) {
       expect((await h.app.inject({ url })).statusCode).toBe(401);
       expect((await h.app.inject({ url, headers: bearer(learner.accessToken) })).statusCode).toBe(403);
       expect((await h.app.inject({ url, headers: bearer(admin.accessToken) })).statusCode).toBe(200);
