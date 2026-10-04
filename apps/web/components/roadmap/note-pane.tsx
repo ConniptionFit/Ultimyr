@@ -1,6 +1,7 @@
 "use client";
 
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, Layers, X } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui";
@@ -11,7 +12,7 @@ import { notesMessage, type StepNote } from "@/lib/notes";
  * The right hand side of the side-by-side view: the step's Markdown note, from your Obsidian vault via Fast Note Sync.
  * Saving sends the hash we loaded, so an edit made in Obsidian meanwhile is a conflict rather than a silent overwrite.
  */
-export function NotePane({ stepId, title, onClose }: { stepId: string; title: string; onClose: () => void }) {
+export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: string; stepId: string; title: string; onClose: () => void }) {
   const { api } = useAuth();
   const [note, setNote] = useState<StepNote | null>(null);
   const [text, setText] = useState("");
@@ -20,6 +21,8 @@ export function NotePane({ stepId, title, onClose }: { stepId: string; title: st
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deck, setDeck] = useState<{ id: string; count: number } | null>(null);
+  const [deckMsg, setDeckMsg] = useState<string | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
   const dirty = text !== saved;
 
@@ -56,6 +59,21 @@ export function NotePane({ stepId, title, onClose }: { stepId: string; title: st
       setBusy(false);
     }
   }, [api, busy, dirty, note, stepId, text]);
+
+  /** Turns the saved `Question :: Answer` lines into a new deck in this archive. Reads the saved note, so save first. */
+  async function makeDeck() {
+    setDeckMsg(null);
+    setDeck(null);
+    try {
+      const r = await api<{ cards: { front: string; back: string }[]; skipped: number }>("GET", `notes/steps/${stepId}/flashcards`);
+      if (!r.cards.length) return setDeckMsg("No flashcards found. Add lines like Question :: Answer under the Flashcards heading, then save.");
+      const made = await api<{ id: string }>("POST", `archives/${archiveId}/items`, { kind: "deck", title: `${title}: flashcards`, summary: "From my notes.", cards: r.cards, source: "human" });
+      setDeck({ id: made.id, count: r.cards.length });
+      if (r.skipped) setDeckMsg(`${r.skipped} line(s) were skipped (no Question :: Answer, or a duplicate).`);
+    } catch (e) {
+      setDeckMsg(e instanceof ApiError ? notesMessage(e.code) : "Could not make the deck.");
+    }
+  }
 
   return (
     <aside aria-label={`Notes for ${title}`} className="flex min-h-[24rem] flex-col gap-3 rounded-md border border-line p-3">
@@ -127,10 +145,27 @@ export function NotePane({ stepId, title, onClose }: { stepId: string; title: st
             <Button onClick={() => void save()} disabled={!dirty || busy}>
               {busy ? "Saving…" : "Save"}
             </Button>
+            <Button variant="quiet" onClick={() => void makeDeck()} disabled={dirty} title={dirty ? "Save first: the deck is made from the saved note" : undefined}>
+              <Layers size={16} aria-hidden /> Make a deck
+            </Button>
             <span role="status" className="text-xs text-muted">
               {dirty ? "Unsaved changes" : "Saved"}
             </span>
           </div>
+          {(deck || deckMsg) && (
+            <p role="status" className="text-sm text-muted">
+              {deck && (
+                <>
+                  Made a deck of {deck.count} cards.{" "}
+                  <Link href={`/items/${deck.id}`} className="text-accent underline">
+                    Open it
+                  </Link>
+                  .{" "}
+                </>
+              )}
+              {deckMsg}
+            </p>
+          )}
         </>
       )}
     </aside>

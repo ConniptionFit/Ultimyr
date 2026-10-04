@@ -198,6 +198,8 @@ Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-o
 | POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Returns `{ total, created, existing, failed, indexUrl }`. Safe to repeat. |
 | GET | `/notes/steps/:stepId` | `{ path, exists, content, hash, obsidianUrl }` |
 | PUT | `/notes/steps/:stepId` | `{ content, baseHash }`. 409 `conflict` if the note changed since `hash`. |
+| POST | `/notes/steps/:stepId/append` | `{ text }`. Adds text to the end of the note; never replaces anything. |
+| GET | `/notes/steps/:stepId/flashcards` | `{ cards: [{ front, back }], skipped }` from the `Question :: Answer` lines under `## Flashcards`. |
 | POST | `/notes/steps/:stepId/status` | `{ status: todo, reading or done }`. Patches only the `status` property. |
 
 Errors: 409 `not_connected`, `fns_token_rejected`, `conflict`; 404 `no_note` (step has no note yet); 502 `fns_unreachable`.

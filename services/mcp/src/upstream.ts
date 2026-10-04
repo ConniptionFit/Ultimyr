@@ -10,7 +10,7 @@ export class UpstreamError extends Error {
   }
 }
 
-export type Service = "auth" | "content" | "quiz";
+export type Service = "auth" | "content" | "quiz" | "notes";
 export interface CallOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
@@ -19,8 +19,8 @@ export interface CallOptions {
 export type Upstream = (service: Service, path: string, bearer: string, opts?: CallOptions) => Promise<any>;
 
 /** Call another Ultimyr service as the person, with their own token. This service holds no credentials of its own. */
-export function createUpstream(cfg: Pick<McpConfig, "authUrl" | "contentUrl" | "quizUrl">, fetchImpl: typeof fetch = fetch): Upstream {
-  const base = { auth: cfg.authUrl, content: cfg.contentUrl, quiz: cfg.quizUrl };
+export function createUpstream(cfg: Pick<McpConfig, "authUrl" | "contentUrl" | "quizUrl" | "notesUrl">, fetchImpl: typeof fetch = fetch): Upstream {
+  const base = { auth: cfg.authUrl, content: cfg.contentUrl, quiz: cfg.quizUrl, notes: cfg.notesUrl };
   return async (service, path, bearer, opts = {}) => {
     const url = new URL(`${base[service]}${path}`);
     for (const [k, v] of Object.entries(opts.query ?? {})) if (v !== undefined) url.searchParams.set(k, String(v));

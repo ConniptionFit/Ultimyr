@@ -8,7 +8,7 @@ import { randomToken, safeEqual } from "../secrets.js";
 import { parse } from "./core.js";
 
 /** What a connected app may be granted. Sharing and AI use are opt in. */
-export const DEFAULT_MCP_SCOPES = ["content:read", "content:write", "quiz:read", "quiz:write"];
+export const DEFAULT_MCP_SCOPES = ["content:read", "content:write", "quiz:read", "quiz:write", "notes:use"];
 export const MCP_ACCESS_TTL = 30 * 60;
 const CODE_TTL_MS = 5 * 60_000;
 const REFRESH_TTL_MS = 90 * 86_400_000;

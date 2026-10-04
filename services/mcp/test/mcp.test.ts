@@ -143,6 +143,24 @@ describe("MCP server", () => {
     expect(calls).toHaveLength(4);
   });
 
+  it("reads and appends to step notes only with the notes:use scope", async () => {
+    fresh();
+    await boot();
+    const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name);
+    expect(await names(["content:read", "content:write"])).not.toContain("get_step_note");
+    expect((await names(["notes:use"])).sort()).toEqual(["append_step_note", "get_step_flashcards", "get_step_note"]);
+    respond = (c) => (c.method === "POST" ? { path: "A/B.md", hash: "h" } : c.path.endsWith("/flashcards") ? { cards: [{ front: "q", back: "a" }], skipped: 0 } : { path: "A/B.md", exists: true, content: "# Note", hash: "h", obsidianUrl: "obsidian://x" });
+    const c = await connect(await issuer.token({ scopes: ["notes:use"] }));
+    const got = await c.callTool({ name: "get_step_note", arguments: { stepId: ID } });
+    expect(JSON.parse(text(got))).toEqual({ path: "A/B.md", exists: true, content: "# Note" });
+    expect(calls[0]).toMatchObject({ service: "notes", path: `/v1/notes/steps/${ID}` });
+    const add = await c.callTool({ name: "append_step_note", arguments: { stepId: ID, text: "## From Claude\nHi" } });
+    expect(add.isError).toBeFalsy();
+    expect(calls[1]).toMatchObject({ service: "notes", path: `/v1/notes/steps/${ID}/append`, method: "POST", body: { text: "## From Claude\nHi" } });
+    const cards = await c.callTool({ name: "get_step_flashcards", arguments: { stepId: ID } });
+    expect(JSON.parse(text(cards)).cards).toEqual([{ front: "q", back: "a" }]);
+  });
+
   it("holds edits to published material for review, and says so", async () => {
     fresh();
     await boot();

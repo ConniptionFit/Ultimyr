@@ -81,6 +81,25 @@ describe.skipIf(!testDbUrl)("notes service", () => {
     expect(h.fake.notes.get("Ultimyr/claude-architect/01 Foundations/01 Prep hub.md")!.content).toBe("# new");
   });
 
+  it("appends without replacing and lists flashcards", async () => {
+    const path = "Ultimyr/claude-architect/01 Foundations/01 Prep hub.md";
+    const cur = json(await call(alice, "GET", `/v1/notes/steps/${stepId}`));
+    const base = "---\nstatus: todo\n---\n## Summary\nMine.\n\n## Flashcards\nWhat is a token? :: A chunk of text\n- Window size? :: Context limit\n";
+    expect((await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { content: base, baseHash: cur.hash })).statusCode).toBe(200);
+    const r = await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { text: "## From Claude\nA suggestion." });
+    expect(r.statusCode).toBe(200);
+    const text = h.fake.notes.get(path)!.content;
+    expect(text.startsWith(base.trimEnd())).toBe(true);
+    expect(text).toContain("## From Claude\nA suggestion.");
+    const cards = json(await call(alice, "GET", `/v1/notes/steps/${stepId}/flashcards`));
+    expect(cards.cards).toEqual([
+      { front: "What is a token?", back: "A chunk of text" },
+      { front: "Window size?", back: "Context limit" },
+    ]);
+    expect((await call(bob, "POST", `/v1/notes/steps/${stepId}/append`, { text: "x" })).statusCode).toBe(404);
+    expect((await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { text: "" })).statusCode).toBe(400);
+  });
+
   it("keeps notes private to their owner", async () => {
     expect((await call(bob, "GET", `/v1/notes/steps/${stepId}`)).statusCode).toBe(404);
     expect((await call(bob, "PUT", `/v1/notes/steps/${stepId}`, { content: "x", baseHash: "h1" })).statusCode).toBe(404);

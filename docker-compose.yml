@@ -159,6 +159,7 @@ services:
       AUTH_URL: http://auth:4001
       CONTENT_URL: http://content:4002
       QUIZ_URL: http://quiz:4003
+      NOTES_URL: http://notes:4006
       ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
       MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-120}
       MCP_WRITE_PER_MINUTE: ${MCP_WRITE_PER_MINUTE:-30}
@@ -167,6 +168,7 @@ services:
       auth: { condition: service_healthy }
       content: { condition: service_healthy }
       quiz: { condition: service_healthy }
+      notes: { condition: service_healthy }
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_MCP_PORT:-4005}:4005"
     restart: unless-stopped
