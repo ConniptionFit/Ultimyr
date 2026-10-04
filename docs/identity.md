@@ -14,7 +14,7 @@ In production the service refuses to start without both.
 |---|---|
 | Password | argon2id. If TOTP is on, login returns `mfaRequired` plus a short MFA token. |
 | TOTP + recovery codes | 6 digit codes, replay protected, lockout after repeated failures. 10 single use recovery codes. |
-| Passkeys | WebAuthn, user verification required. Add and remove under Settings > Security. |
+| Passkeys | WebAuthn, user verification required. Add and remove under account menu > Your settings > Security. |
 | OIDC / OAuth2 | PKCE, state, nonce, discovery. Subjects are matched by provider plus subject, never by email alone. |
 | SAML 2.0 | SP-initiated only. Signed assertions required, audience, expiry, issuer and InResponseTo are enforced. |
 
@@ -34,13 +34,29 @@ Admin only. `POST /api/v1/admin/idp-providers` with a bearer token.
 - `groupClaim` (OIDC) or `groupsAttr` (SAML) maps IdP groups to Ultimyr groups, prefixed with the provider name.
 - IdP URLs must be https. For local testing only, set `ULTIMYR_ALLOW_INSECURE_IDP=true`.
 
+## Admin panel
+Administrators (role `platform_admin`) see **Admin panel** in the account menu (the person icon in the menu bar). Everyone else does not, and `/admin` shows a plain "not available" screen. The screen is only a convenience: every admin API call is checked on the server, so a non-admin token gets 403 whatever the page shows. Categories are listed on the left and open on **General**:
+
+| Category | What it does |
+| --- | --- |
+| General | Counts, the registration switch, deployment details. |
+| Users | Search, suspend or reinstate, edit roles. The last active administrator is protected. |
+| Groups | Create local groups and manage members. SSO and SCIM groups are read only. |
+| Sign-in methods | Add, enable and remove OIDC, OAuth 2 and SAML providers. |
+| Provisioning | Create and revoke SCIM tokens. |
+| Audit log | Latest sign-ins and admin actions, with a filter. |
+
+Everything that only affects your own session (display, security, AI keys, connected apps, themed names) is under **Your settings** in the same menu.
+
+**Registration switch.** General has "Allow new sign-ups". It overrides `AUTH_REGISTRATION` until you choose "Use the default". The first account on a fresh install is always allowed.
+
 ## SCIM 2.0 provisioning
 1. Create a token: `POST /api/v1/admin/scim-tokens` (shown once).
 2. Point your IdP at `{PUBLIC_URL}/scim/v2` with that bearer token.
 3. Users and Groups are supported, including the Okta and Entra PATCH styles. SCIM-managed users are flagged `scim_managed`.
 
 ## API keys
-Created under Settings > Security. A key (`ulk_...`) is exchanged at `POST /api/v1/auth/token` for a short lived access token limited to the key's scopes. Key tokens can never change account security settings.
+Created under account menu > Your settings > Security. A key (`ulk_...`) is exchanged at `POST /api/v1/auth/token` for a short lived access token limited to the key's scopes. Key tokens can never change account security settings.
 
 ## Security notes
 - Refresh tokens rotate and reuse revokes the whole session family.

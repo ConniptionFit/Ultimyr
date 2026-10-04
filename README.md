@@ -6,7 +6,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 
 ## What works today
 
-- `web`: Next.js splash page, sign in, sign up, empty "Reading Room", and a settings page with a **themed names toggle**.
+- `web`: Next.js splash page, sign in, sign up, empty "Reading Room", your settings (account menu), and an admin-only admin panel.
 - `auth`: local accounts (argon2id), rotating refresh sessions with theft detection, EdDSA access tokens, JWKS endpoint, first-user admin bootstrap, audit log.
 - Phase 2 identity: TOTP and recovery codes, passkeys, API keys, OIDC/OAuth2/SAML sign-in, SCIM 2.0, groups, admin API. See [`docs/identity.md`](docs/identity.md).
 - Phase 3 content: archives with icons and quick stats, Markdown guides with sections and version history, flashcard decks, sharing to people and groups, full text search, Markdown/Anki/JSON import and export, trash with 30 day recovery. See [`docs/content.md`](docs/content.md).

@@ -7,7 +7,7 @@ import type { Pool } from "pg";
 import type { AuthConfig } from "./config.js";
 import { uuidv7 } from "./ids.js";
 import type { SigningKeys } from "./keys.js";
-import { apiKeys, auditLog, roleAssignments, sessions, users } from "./schema.js";
+import { apiKeys, auditLog, instanceSettings, roleAssignments, sessions, users } from "./schema.js";
 import { randomToken, sha256Hex, type Secrets } from "./secrets.js";
 
 export const ACCESS_TTL_SECONDS = 10 * 60;
@@ -57,6 +57,8 @@ export interface Ctx {
   /** Like authenticate, but rejects API-key tokens: account security changes need a real sign-in. */
   authenticateInteractive(req: FastifyRequest): Promise<Authed>;
   requireAdmin(req: FastifyRequest): Promise<Authed>;
+  /** Whether new people may register. An admin setting overrides the AUTH_REGISTRATION default. */
+  registrationOpen(): Promise<boolean>;
 }
 
 export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "secrets" | "limit" | "refreshLimit">): Ctx {
@@ -189,6 +191,11 @@ export function createCtx(base: Pick<Ctx, "pool" | "db" | "config" | "keys" | "s
       const a = await ctx.authenticateInteractive(req);
       if (!a.principal.roles.includes("platform_admin")) throw new HttpError(403, "forbidden");
       return a;
+    },
+
+    async registrationOpen() {
+      const [row] = await db.select({ value: instanceSettings.value }).from(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"));
+      return typeof row?.value === "boolean" ? row.value : config.registrationOpen;
     },
   };
   return ctx;

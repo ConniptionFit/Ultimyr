@@ -2,7 +2,7 @@
 
 Ultimyr aims to be comfortable to study with for a long time, including for people with ADHD, dyslexia, low vision or a need for more time.
 
-## Display settings (Settings page)
+## Display settings (account menu, Your settings)
 | Setting | Options | Notes |
 |---|---|---|
 | Theme | System, light, dark | Follows the device by default |

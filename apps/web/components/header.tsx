@@ -1,15 +1,16 @@
 "use client";
 
-import { Library, LogOut, Search, Settings } from "lucide-react";
+import { Library, Search } from "lucide-react";
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AccountMenu } from "@/components/account-menu";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
 
 export function Header() {
-  const { state, signOut } = useAuth();
+  const { state } = useAuth();
   const { t } = useNaming();
   const router = useRouter();
   const { focus, setFocus } = useDisplay();
@@ -54,20 +55,7 @@ export function Header() {
             <Link href="/progress" className="hover:text-ink">
               Progress
             </Link>
-            <Link href="/settings" className="flex items-center gap-1 hover:text-ink" aria-label="Settings">
-              <UIcon icon={Settings} size={16} />
-            </Link>
-            <button
-              className="flex items-center gap-1 hover:text-ink"
-              onClick={async () => {
-                await signOut();
-                // Full navigation avoids racing the protected pages' redirect to /login.
-                window.location.assign("/");
-              }}
-            >
-              <UIcon icon={LogOut} size={16} />
-              Sign out
-            </button>
+            <AccountMenu />
           </nav>
         )}
       </div>

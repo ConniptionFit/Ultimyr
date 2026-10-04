@@ -1,76 +1,77 @@
 "use client";
 
 import { terms, type TermKey } from "@ultimyr/lore";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Loading } from "@/components/loading";
-import { Header } from "@/components/header";
 import { AiPanel } from "@/components/ai-panel";
 import { DisplayPanel } from "@/components/display-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { SecurityPanel } from "@/components/security-panel";
-import { Shell } from "@/components/ui";
-import { useAuth } from "@/lib/auth";
+import { Pane } from "@/components/side-nav";
+import { Toggle } from "@/components/ui";
+import { RequireSession } from "@/lib/require-session";
 import { useNaming } from "@/lib/naming";
 
+const SECTIONS = [
+  { id: "display", label: "Display" },
+  { id: "security", label: "Security" },
+  { id: "ai", label: "AI keys" },
+  { id: "apps", label: "Connected apps" },
+  { id: "names", label: "Themed names" },
+];
+
+/** Settings that only affect your own session. Instance-wide settings live in the admin panel. */
 export default function Settings() {
-  const { state } = useAuth();
   const { mode, setMode } = useNaming();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (state.status === "anonymous") router.replace("/login");
-  }, [state.status, router]);
-
   return (
-    <>
-      <Header />
-      <Shell>
-        {state.status !== "authenticated" ? (
-          <Loading />
-        ) : (
-          <div className="ulti-fade space-y-8">
-            <h1 className="text-3xl">Settings</h1>
-            <DisplayPanel />
-            <h2 className="border-t border-line pt-8 text-xl">Security</h2>
-            <SecurityPanel />
-            <AiPanel />
-            <McpPanel />
-            <section className="space-y-4 border-t border-line pt-8">
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <h2 className="text-xl">Themed names</h2>
-                  <p className="text-sm text-muted">
-                    Show Ultimyr&apos;s Archive-inspired names, or switch to plain labels. Only the labels change.
-                  </p>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={mode === "themed"}
-                  aria-label="Themed names"
-                  onClick={() => setMode(mode === "themed" ? "plain" : "themed")}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${mode === "themed" ? "bg-accent" : "bg-line"}`}
-                >
-                  <span
-                    className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-surface transition-transform ${mode === "themed" ? "translate-x-5" : "translate-x-0.5"}`}
-                  />
-                </button>
-              </div>
-              <details className="text-sm">
-                <summary className="cursor-pointer text-muted hover:text-ink">See all names</summary>
-                <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border border-line p-4">
-                  {(Object.keys(terms) as TermKey[]).map((k) => (
-                    <div key={k} className="contents">
-                      <dt className="text-muted">{terms[k].plain}</dt>
-                      <dd>{terms[k].themed}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </details>
-            </section>
+    <RequireSession wide>
+      <Pane
+        title="Your settings"
+        intro="These only affect your own account and this device."
+        nav={
+          <nav aria-label="Settings sections" className="md:w-48 md:shrink-0">
+            <ul className="flex flex-wrap gap-1 md:sticky md:top-6 md:flex-col">
+              {SECTIONS.map((s) => (
+                <li key={s.id}>
+                  <a href={`#${s.id}`} className="block rounded-md px-3 py-1.5 text-sm text-muted hover:text-ink">
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        }
+      >
+        <div id="display" className="scroll-mt-6 [&>section]:border-t-0 [&>section]:pt-0">
+          <DisplayPanel />
+        </div>
+        <div id="security" className="scroll-mt-6 space-y-8 border-t border-line pt-8">
+          <h2 className="text-xl">Security</h2>
+          <SecurityPanel />
+        </div>
+        <div id="ai" className="scroll-mt-6 [&>section]:pt-0">
+          <AiPanel />
+        </div>
+        <div id="apps" className="scroll-mt-6 [&>section]:pt-0">
+          <McpPanel />
+        </div>
+        <section id="names" className="scroll-mt-6 space-y-4 border-t border-line pt-8">
+          <div>
+            <h2 className="text-xl">Themed names</h2>
+            <p className="text-sm text-muted">Show Ultimyr&apos;s Archive-inspired names, or keep plain labels. Only the labels change. Off by default.</p>
           </div>
-        )}
-      </Shell>
-    </>
+          <Toggle label="Themed names" on={mode === "themed"} onChange={(on) => setMode(on ? "themed" : "plain")} />
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted hover:text-ink">See all names</summary>
+            <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border border-line p-4">
+              {(Object.keys(terms) as TermKey[]).map((k) => (
+                <div key={k} className="contents">
+                  <dt className="text-muted">{terms[k].plain}</dt>
+                  <dd>{terms[k].themed}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </section>
+      </Pane>
+    </RequireSession>
   );
 }

@@ -48,12 +48,13 @@ export function coreRoutes(ctx: Ctx) {
       const passwordHash = await hash(password);
       const userId = uuidv7();
 
+      const registrationOpen = await ctx.registrationOpen();
       const result = await db.transaction(async (tx) => {
         // Serialise first-user detection so two simultaneous sign-ups cannot both become admin.
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('ultimyr_first_user'))`);
         const [{ n } = { n: 0 }] = await tx.select({ n: sql<number>`count(*)::int` }).from(users);
         const first = n === 0;
-        if (!first && !config.registrationOpen) return "closed" as const;
+        if (!first && !registrationOpen) return "closed" as const;
         const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = lower(${email})`);
         if (exists.length) return "exists" as const;
         await tx.insert(users).values({ id: userId, email, displayName, passwordHash });

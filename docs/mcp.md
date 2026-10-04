@@ -6,16 +6,16 @@ Ultimyr speaks the [Model Context Protocol](https://modelcontextprotocol.io), so
 https://<your Ultimyr address>/mcp
 ```
 
-(That is `ULTIMYR_PUBLIC_URL` plus `/mcp`. Settings shows it with a copy button.)
+(That is `ULTIMYR_PUBLIC_URL` plus `/mcp`. Your settings shows it with a copy button.)
 
 ## Connect Claude
 1. In Claude, open Settings, then Connectors, then add a custom connector.
 2. Paste the address. Claude finds the sign-in details itself.
 3. Ultimyr opens a consent page. Sign in, choose what to allow, and press **Connect**.
 
-Disconnect any time in Settings, Connected apps. The app then cannot refresh; a token it already holds expires within 30 minutes.
+Disconnect any time in Your settings, Connected apps. The app then cannot refresh; a token it already holds expires within 30 minutes.
 
-**Without OAuth:** create an API key in Settings, Security (pick scopes) and send `Authorization: Bearer ulk_...` to `/mcp`. Keys are exchanged for a short token by the server and a revoked key stops working within two minutes.
+**Without OAuth:** create an API key in Your settings, Security (pick scopes) and send `Authorization: Bearer ulk_...` to `/mcp`. Keys are exchanged for a short token by the server and a revoked key stops working within two minutes.
 
 ## What it can do
 Everything runs **as you**, with only the scopes you approved. The MCP server holds no data and no credentials of its own: it passes your token to the content and quiz services, which enforce access exactly as they do for the web app. A tool whose scope you did not grant is not even listed.

@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
-import { auditLog, groupMembers, groups, roleAssignments, scimTokens, sessions, users } from "../schema.js";
+import { auditLog, groupMembers, groups, idpProviders, instanceSettings, roleAssignments, scimTokens, sessions, users } from "../schema.js";
 import { randomToken } from "../secrets.js";
 import { parse } from "./core.js";
 
@@ -14,6 +14,7 @@ const patchUserBody = z.object({
 });
 const groupBody = z.object({ name: z.string().trim().min(1).max(100) });
 const memberBody = z.object({ userId: z.uuid() });
+const settingsBody = z.object({ registrationOpen: z.boolean().nullable().optional() });
 const tokenBody = z.object({ name: z.string().trim().min(1).max(60) });
 
 export function adminRoutes(ctx: Ctx) {
@@ -34,7 +35,58 @@ export function adminRoutes(ctx: Ctx) {
     return rows[0]?.n ?? 0;
   }
 
+  async function settingsView() {
+    return {
+      registrationOpen: await ctx.registrationOpen(),
+      registrationOverridden: (await db.select({ k: instanceSettings.key }).from(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"))).length > 0,
+      registrationDefault: ctx.config.registrationOpen,
+    };
+  }
+
   return async (r: FastifyInstance) => {
+    // ---- general ----------------------------------------------------------
+    r.get("/v1/admin/overview", async (req) => {
+      await ctx.requireAdmin(req);
+      const [u] = await db
+        .select({
+          total: sql<number>`count(*)::int`,
+          active: sql<number>`count(*) FILTER (WHERE ${users.status} = 'active')::int`,
+          suspended: sql<number>`count(*) FILTER (WHERE ${users.status} = 'suspended')::int`,
+        })
+        .from(users);
+      const [g] = await db.select({ n: sql<number>`count(*)::int` }).from(groups);
+      const [p] = await db.select({ n: sql<number>`count(*) FILTER (WHERE ${idpProviders.enabled})::int` }).from(idpProviders);
+      return {
+        users: u ?? { total: 0, active: 0, suspended: 0 },
+        admins: await activeAdminCount(),
+        groups: g?.n ?? 0,
+        signInProviders: p?.n ?? 0,
+        deployment: { publicUrl: ctx.config.publicUrl, environment: ctx.config.nodeEnv },
+        settings: await settingsView(),
+      };
+    });
+
+    r.get("/v1/admin/settings", async (req) => {
+      await ctx.requireAdmin(req);
+      return settingsView();
+    });
+
+    // `registrationOpen: null` removes the override and falls back to AUTH_REGISTRATION.
+    r.patch("/v1/admin/settings", async (req) => {
+      const { user } = await ctx.requireAdmin(req);
+      const body = parse(settingsBody, req.body);
+      if (body.registrationOpen === null) {
+        await db.delete(instanceSettings).where(eq(instanceSettings.key, "registrationOpen"));
+      } else if (body.registrationOpen !== undefined) {
+        await db
+          .insert(instanceSettings)
+          .values({ key: "registrationOpen", value: body.registrationOpen, updatedBy: user.id })
+          .onConflictDoUpdate({ target: instanceSettings.key, set: { value: body.registrationOpen, updatedBy: user.id, updatedAt: new Date() } });
+      }
+      await ctx.audit("admin.settings_updated", req, user.id, null, { ...body });
+      return settingsView();
+    });
+
     // ---- users ------------------------------------------------------------
     r.get("/v1/admin/users", async (req) => {
       await ctx.requireAdmin(req);
