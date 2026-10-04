@@ -9,5 +9,6 @@ export const ADMIN_SECTIONS = [
   { href: "/admin/groups", label: "Groups" },
   { href: "/admin/sign-in", label: "Sign-in methods" },
   { href: "/admin/provisioning", label: "Provisioning" },
+  { href: "/admin/notes", label: "Notes (Obsidian)" },
   { href: "/admin/audit", label: "Audit log" },
 ];

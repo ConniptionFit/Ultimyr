@@ -16,7 +16,7 @@ export const uuid = () => crypto.randomUUID();
 /** An in-memory Fast Note Sync: one vault, a token, notes with content hashes. */
 export function fakeFns() {
   const notes = new Map<string, { content: string; n: number }>();
-  const state = { token: "good-token-123", vaults: ["Study"], down: false, patches: [] as { path: string; updates: Record<string, unknown> }[] };
+  const state = { probeOk: true, token: "good-token-123", vaults: ["Study"], down: false, patches: [] as { path: string; updates: Record<string, unknown> }[] };
   const hash = (path: string) => `h${notes.get(path)!.n}`;
   const check = (token: string) => {
     if (state.down) throw new FnsError(503, "fns_unreachable");
@@ -26,6 +26,10 @@ export function fakeFns() {
     async vaults(t) {
       check(t);
       return state.vaults;
+    },
+    async listPaths(t) {
+      check(t);
+      return [...notes.keys(), "Projects/Alpha/Plan.md", "Daily/2026/10/04.md"];
     },
     async getNote(t, _v, path) {
       check(t);
@@ -63,7 +67,7 @@ export interface Harness {
   close(): Promise<void>;
 }
 
-export async function createHarness(opts: { enabled?: boolean } = {}): Promise<Harness> {
+export async function createHarness(opts: { enabled?: boolean; envUrl?: string | null } = {}): Promise<Harness> {
   const pool = new pg.Pool({ connectionString: testDbUrl });
   await pool.query("DROP SCHEMA IF EXISTS notes CASCADE");
   await pool.query("DELETE FROM public.ultimyr_migrations WHERE service = 'notes'").catch(() => {});
@@ -82,9 +86,10 @@ export async function createHarness(opts: { enabled?: boolean } = {}): Promise<H
     pool,
     keySource: issuer.publicKey,
     content,
-    fns: enabled ? fake.fns : null,
     sealer: enabled ? new Sealer(1, new Map([[1, randomBytes(32)]])) : null,
-    fnsHost: "fns.test",
+    envUrl: opts.envUrl === undefined ? "http://fns.test" : opts.envUrl,
+    makeFns: () => fake.fns,
+    probe: async () => fake.state.probeOk,
   });
   return {
     pool,
