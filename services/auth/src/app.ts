@@ -8,9 +8,11 @@ import type { AuthConfig } from "./config.js";
 import { HttpError, createCtx, type Ctx } from "./ctx.js";
 import type { SigningKeys } from "./keys.js";
 import { coreRoutes } from "./routes/core.js";
+import { adminRoutes } from "./routes/admin.js";
 import { keyRoutes } from "./routes/keys.js";
 import { mfaRoutes } from "./routes/mfa.js";
 import { passkeyRoutes } from "./routes/passkeys.js";
+import { scimRoutes } from "./routes/scim.js";
 import { createSecrets } from "./secrets.js";
 
 export { REFRESH_COOKIE } from "./ctx.js";
@@ -26,7 +28,7 @@ export interface AppDeps {
 type RouteModule = (ctx: Ctx) => (r: FastifyInstance) => Promise<void>;
 
 /** Route modules, each registered at `/...` and `/api/...` so proxies can forward /api/v1/* untouched. */
-const modules: RouteModule[] = [coreRoutes, mfaRoutes, passkeyRoutes, keyRoutes];
+const modules: RouteModule[] = [coreRoutes, mfaRoutes, passkeyRoutes, keyRoutes, adminRoutes, scimRoutes];
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { pool, config, keys } = deps;
