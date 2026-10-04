@@ -6,7 +6,7 @@
 export type NamingMode = "themed" | "plain";
 
 export const NAMING_COOKIE = "ultimyr_naming";
-export const DEFAULT_NAMING: NamingMode = "themed";
+export const DEFAULT_NAMING: NamingMode = "plain";
 
 export const terms = {
   archive: { themed: "Archive", plain: "Course" },
