@@ -168,7 +168,6 @@ services:
       auth: { condition: service_healthy }
       content: { condition: service_healthy }
       quiz: { condition: service_healthy }
-      notes: { condition: service_healthy }
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_MCP_PORT:-4005}:4005"
     restart: unless-stopped
@@ -185,7 +184,7 @@ services:
         AI_URL: http://ai-gateway:4004
         MCP_URL: http://mcp:4005
         NOTES_URL: http://notes:4006
-    depends_on: [auth, content, quiz, ai-gateway, mcp, notes]
+    depends_on: [auth, content, quiz, ai-gateway, mcp]
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped
