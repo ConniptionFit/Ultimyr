@@ -10,6 +10,7 @@ interface Row { id: string; email: string; displayName: string; status: "active"
 const ROLES: Array<[string, string]> = [
   ["platform_admin", "Administrator"],
   ["org_admin", "Org admin"],
+  ["access_delegate", "Access delegate"],
   ["author", "Author"],
   ["learner", "Learner"],
 ];

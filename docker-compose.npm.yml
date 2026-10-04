@@ -7,7 +7,7 @@
 #   ultimyr-ai:4004       likewise (/api/v1/ai)
 #   ultimyr-notes:4006    likewise (/api/v1/notes)
 #   ultimyr-mcp:4005      likewise (/mcp and /.well-known/oauth-protected-resource)
-#   ultimyr-content:4002  likewise (headless: route /api/v1/archives, items, search, credentials... here)
+#   ultimyr-content:4002  likewise (headless: route /api/v1/archives, items, search, credentials, group-access... here)
 #
 # One-time: if NPM has no shared network yet, create one and connect NPM to it:
 #   docker network create proxy && docker network connect proxy <your-npm-container>
