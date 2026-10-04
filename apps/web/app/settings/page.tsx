@@ -28,7 +28,9 @@ export default function Settings() {
         ) : (
           <div className="ulti-fade space-y-8">
             <h1 className="text-3xl">Settings</h1>
-            <section className="space-y-4">
+            <h2 className="text-xl">Security</h2>
+            <SecurityPanel />
+            <section className="space-y-4 border-t border-line pt-8">
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <h2 className="text-xl">Themed names</h2>
@@ -41,24 +43,25 @@ export default function Settings() {
                   aria-checked={mode === "themed"}
                   aria-label="Themed names"
                   onClick={() => setMode(mode === "themed" ? "plain" : "themed")}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${mode === "themed" ? "bg-accent" : "bg-line"}`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${mode === "themed" ? "bg-accent" : "bg-line"}`}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface transition-transform ${mode === "themed" ? "translate-x-5" : "translate-x-0.5"}`}
+                    className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-surface transition-transform ${mode === "themed" ? "translate-x-5" : "translate-x-0.5"}`}
                   />
                 </button>
               </div>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border border-line p-4 text-sm">
-                {(Object.keys(terms) as TermKey[]).map((k) => (
-                  <div key={k} className="contents">
-                    <dt className="text-muted">{terms[k].plain}</dt>
-                    <dd>{terms[k].themed}</dd>
-                  </div>
-                ))}
-              </dl>
+              <details className="text-sm">
+                <summary className="cursor-pointer text-muted hover:text-ink">See all names</summary>
+                <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border border-line p-4">
+                  {(Object.keys(terms) as TermKey[]).map((k) => (
+                    <div key={k} className="contents">
+                      <dt className="text-muted">{terms[k].plain}</dt>
+                      <dd>{terms[k].themed}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
             </section>
-            <h1 className="border-t border-line pt-8 text-3xl">Security</h1>
-            <SecurityPanel />
           </div>
         )}
       </Shell>
