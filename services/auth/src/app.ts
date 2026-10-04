@@ -27,6 +27,8 @@ export interface AppDeps {
   keys: SigningKeys;
   /** Per-minute cap on credential endpoints, per IP. */
   rateLimitMax?: number;
+  /** Per-minute cap on session refresh, per IP. Far looser than sign in because every page load refreshes. */
+  refreshRateMax?: number;
 }
 
 type RouteModule = (ctx: Ctx) => (r: FastifyInstance) => Promise<void>;
@@ -57,6 +59,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     keys,
     secrets: createSecrets(config.encKeyB64, config.pepper),
     limit: { rateLimit: { max: deps.rateLimitMax ?? 10, timeWindow: "1 minute" } },
+    refreshLimit: { rateLimit: { max: deps.refreshRateMax ?? 300, timeWindow: "1 minute" } },
   });
 
   for (const mod of modules) {

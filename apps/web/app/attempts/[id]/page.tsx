@@ -1,11 +1,12 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { Flag } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AssistantPanel } from "@/components/assistant-panel";
+import { Loading } from "@/components/loading";
+import { FocusButton } from "@/components/focus-button";
 import { Header } from "@/components/header";
 import { FeedbackView, QuestionView } from "@/components/quiz/question-view";
 import { Button, Shell } from "@/components/ui";
@@ -18,7 +19,7 @@ const answered = (q: PlayQuestion) => q.response !== null && q.response !== unde
 export default function AttemptPage() {
   const { id } = useParams<{ id: string }>();
   const { state, api } = useAuth();
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const router = useRouter();
   const [at, setAt] = useState<Attempt | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +154,7 @@ export default function AttemptPage() {
       <>
         <Header />
         <Shell>
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         </Shell>
       </>
     );
@@ -185,11 +186,14 @@ export default function AttemptPage() {
               {MODE_LABEL[at.mode]}
               {closed ? " results" : ""}
             </h1>
-            {open && remaining !== null && (
-              <p role="timer" aria-live="off" className={`font-mono text-lg ${low ? "text-danger" : ""}`}>
-                {formatClock(remaining)}
-              </p>
-            )}
+            <div className="flex items-center gap-3">
+              {open && remaining !== null && (
+                <p role="timer" aria-live="off" className={`font-mono text-lg ${low ? "text-danger" : ""}`}>
+                  {formatClock(remaining)}
+                </p>
+              )}
+              {open && <FocusButton />}
+            </div>
           </div>
           {error && (
             <p role="alert" className="text-sm text-danger">
@@ -207,8 +211,9 @@ export default function AttemptPage() {
                 {pct(summary.rawBp)} of marks ({summary.earned / 1000} of {summary.max / 1000}). {summary.counts.correct} correct, {summary.counts.partial} partly, {summary.counts.incorrect} incorrect, {summary.counts.unanswered} unanswered.
                 {at.status === "expired" ? " Time ran out, so this was graded as it stood at the deadline." : ""}
               </p>
+              {summary.counts.incorrect + summary.counts.partial > 0 && <p className="text-sm">{copy("attemptGap")}</p>}
               <p className="text-xs text-muted">
-                Scored with “{at.profile.name}” ({FIDELITY_LABEL[at.profile.fidelity]}).
+                {at.extraTimePct ? `Taken with ${at.extraTimePct}% extra time. ` : ""}Scored with “{at.profile.name}” ({FIDELITY_LABEL[at.profile.fidelity]}).
                 {at.profile.fidelity !== "published_formula" && " This is not an official exam score."}
               </p>
               {summary.domains.length > 1 && (

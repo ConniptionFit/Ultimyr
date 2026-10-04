@@ -3,23 +3,34 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/lib/auth";
+import { ServiceWorker } from "@/components/service-worker";
+import { DISPLAY_COOKIE, displayAttrs, parseDisplay } from "@/lib/display-shared";
+import { DisplayProvider } from "@/lib/display";
 import { NamingProvider } from "@/lib/naming";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Ultimyr", template: "%s | Ultimyr" },
   description: "A quiet place to know things. Study guides, flashcards and practice exams.",
+  icons: { icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
 };
-export const viewport: Viewport = { colorScheme: "light dark" };
+export const viewport: Viewport = { colorScheme: "light dark", themeColor: "#2f6f62" };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
   const mode = parseNamingMode(jar.get(NAMING_COOKIE)?.value);
+  const display = parseDisplay(jar.get(DISPLAY_COOKIE)?.value);
   return (
-    <html lang="en">
+    <html lang="en" {...displayAttrs(display)}>
       <body>
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <NamingProvider initial={mode}>
-          <AuthProvider>{children}</AuthProvider>
+          <DisplayProvider initial={display}>
+            <AuthProvider>{children}</AuthProvider>
+            <ServiceWorker />
+          </DisplayProvider>
         </NamingProvider>
       </body>
     </html>

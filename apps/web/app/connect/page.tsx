@@ -1,8 +1,8 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Button, Shell } from "@/components/ui";
 import { rememberReturn } from "@/lib/after-login";
@@ -60,7 +60,7 @@ function Consent() {
     }
   }
 
-  if (state.status !== "authenticated" || (!name && !error)) return <StatusIcon status="loading" size={22} />;
+  if (state.status !== "authenticated" || (!name && !error)) return <Loading />;
   if (error && !name) return <p role="alert">{error}</p>;
 
   let host = redirectUri;
@@ -101,7 +101,7 @@ export default function ConnectPage() {
     <>
       <Header />
       <Shell narrow>
-        <Suspense fallback={<StatusIcon status="loading" size={22} />}>
+        <Suspense fallback={<Loading />}>
           <Consent />
         </Suspense>
       </Shell>

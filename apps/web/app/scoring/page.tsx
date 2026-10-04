@@ -1,8 +1,8 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -55,7 +55,7 @@ export default function ScoringPage() {
           <h1 className="text-3xl">Scoring profiles</h1>
           <p className="text-muted">A profile says how answers become a score and a pass or fail. Profiles never change once saved: a new version is created instead, so old results stay exactly as they were. Vendors rarely publish their real formulas, so every profile says how closely it matches.</p>
           {!profiles ? (
-            <StatusIcon status="loading" size={22} />
+            <Loading />
           ) : (
             <ul className="divide-y divide-line rounded-md border border-line">
               {profiles.map((p) => (

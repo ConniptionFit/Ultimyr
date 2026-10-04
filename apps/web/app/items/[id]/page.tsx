@@ -1,11 +1,11 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { Download, History, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AssistantPanel } from "@/components/assistant-panel";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { QuizPanel } from "@/components/quiz/quiz-panel";
@@ -26,7 +26,7 @@ interface Version {
 export default function ItemPage() {
   const { id } = useParams<{ id: string }>();
   const { state, api } = useAuth();
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const router = useRouter();
   const [it, setIt] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function ItemPage() {
       <>
         <Header />
         <Shell>
-          <StatusIcon status="loading" size={22} />
+          <Loading />
         </Shell>
       </>
     );
@@ -199,7 +199,7 @@ export default function ItemPage() {
                 variant="quiet"
                 className="text-danger"
                 onClick={async () => {
-                  if (!confirm("Strike this from the Archives? You can recover it for 30 days.")) return;
+                  if (!confirm(copy("deleteConfirm"))) return;
                   await api("DELETE", `items/${id}`).catch(fail);
                   router.push(`/archives/${it.archive.id}`);
                 }}
@@ -402,6 +402,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
 
 /** Simple flip-through of a deck. Spaced repetition (the daily queue) arrives with the study queue. */
 function Study({ cards, onDone }: { cards: Card[]; onDone: () => void }) {
+  const { copy } = useNaming();
   const [order] = useState(() => [...cards].sort(() => Math.random() - 0.5));
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -409,7 +410,7 @@ function Study({ cards, onDone }: { cards: Card[]; onDone: () => void }) {
   if (!c) {
     return (
       <div className="space-y-3 text-center">
-        <p className="font-serif text-2xl">Committed to memory.</p>
+        <p className="font-serif text-2xl">{copy("deckDone")}</p>
         <Button onClick={onDone}>Back to the deck</Button>
       </div>
     );

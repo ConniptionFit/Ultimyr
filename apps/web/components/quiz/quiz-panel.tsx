@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
 import { FIDELITY_LABEL, MODE_LABEL, TYPE_LABEL, formatClock, pct, type Attempt, type EditorQuestion, type Mode, type Profile, type QuizConfig } from "@/lib/quiz";
 import { QuestionEditor } from "./question-editor";
@@ -14,6 +15,7 @@ import { QuestionEditor } from "./question-editor";
 export function QuizPanel({ itemId, editor, published }: { itemId: string; editor: boolean; published: boolean }) {
   const { api } = useAuth();
   const { t } = useNaming();
+  const { display } = useDisplay();
   const router = useRouter();
   const [cfg, setCfg] = useState<QuizConfig | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -47,7 +49,7 @@ export function QuizPanel({ itemId, editor, published }: { itemId: string; edito
   async function start(practice: boolean, restart = false) {
     setError(null);
     try {
-      const a = await api<Attempt>("POST", `quizzes/${itemId}/attempts`, { ...(practice ? { mode: "practice" } : {}), restart, includeDrafts: editor && !published });
+      const a = await api<Attempt>("POST", `quizzes/${itemId}/attempts`, { ...(practice ? { mode: "practice" } : {}), restart, includeDrafts: editor && !published, ...(display.extraTime ? { extraTimePct: display.extraTime } : {}) });
       router.push(`/attempts/${a.id}`);
     } catch (e) {
       fail(e instanceof ApiError && e.code === "no_questions" ? new ApiError(409, "no_questions", ["There are no published questions yet."]) : e);

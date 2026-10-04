@@ -29,6 +29,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Performance budget
+        run: node scripts/check-budgets.mjs
 
   docker:
     runs-on: ubuntu-latest

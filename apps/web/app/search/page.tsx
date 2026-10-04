@@ -1,11 +1,12 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
 import { Shell } from "@/components/ui";
+import { useNaming } from "@/lib/naming";
 import { useAuth } from "@/lib/auth";
 
 interface Hit {
@@ -21,6 +22,7 @@ interface Hit {
 function Results() {
   const q = useSearchParams().get("q") ?? "";
   const { state, api } = useAuth();
+  const { copy } = useNaming();
   const router = useRouter();
   const [hits, setHits] = useState<Hit[] | null>(null);
 
@@ -30,12 +32,12 @@ function Results() {
     api<{ results: Hit[] }>("GET", `search?q=${encodeURIComponent(q)}`).then((r) => setHits(r.results)).catch(() => setHits([]));
   }, [state.status, q, api, router]);
 
-  if (state.status !== "authenticated" || (q && hits === null)) return <StatusIcon status="loading" size={22} />;
+  if (state.status !== "authenticated" || (q && hits === null)) return <Loading />;
   return (
     <div className="ulti-fade space-y-4">
       <h1 className="text-3xl">Search</h1>
       {!q && <p className="text-muted">Type something in the search box.</p>}
-      {q && <p className="text-muted">{hits?.length ?? 0} results for “{q}”</p>}
+      {q && <p className="text-muted">{hits?.length ? `${hits.length} results for “${q}”` : `${copy("emptySearch")} (“${q}”)`}</p>}
       <ul className="divide-y divide-line rounded-md border border-line">
         {(hits ?? []).map((h) => (
           <li key={`${h.type}-${h.id}`}>
@@ -64,7 +66,7 @@ export default function SearchPage() {
     <>
       <Header />
       <Shell>
-        <Suspense fallback={<StatusIcon status="loading" size={22} />}>
+        <Suspense fallback={<Loading />}>
           <Results />
         </Suspense>
       </Shell>

@@ -1,8 +1,9 @@
 "use client";
 
-import { StatusIcon } from "@ultimyr/ui-icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Loading } from "@/components/loading";
+import { FocusButton } from "@/components/focus-button";
 import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { Button, Shell } from "@/components/ui";
@@ -19,7 +20,7 @@ const RATINGS = [
 
 function Study() {
   const { state, api } = useAuth();
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const router = useRouter();
   const params = useSearchParams();
   const archive = params.get("archive");
@@ -87,7 +88,7 @@ function Study() {
     return (
       <>
         <Header />
-        <Shell>{error ? <p role="alert">{error}</p> : <StatusIcon status="loading" size={22} />}</Shell>
+        <Shell>{error ? <p role="alert">{error}</p> : <Loading />}</Shell>
       </>
     );
   }
@@ -98,9 +99,12 @@ function Study() {
         <div className="ulti-fade space-y-6">
           <div className="flex items-baseline justify-between">
             <h1 className="text-3xl">{t("queue")}</h1>
-            <p className="text-sm text-muted">
-              {done} done · {queue.length} left
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted">
+                {done} done · {queue.length} left
+              </p>
+              <FocusButton />
+            </div>
           </div>
           {error && (
             <p role="alert" className="text-sm text-danger">
@@ -109,7 +113,7 @@ function Study() {
           )}
           {!card ? (
             <div className="space-y-3 rounded-md border border-line p-6">
-              <p className="text-xl">{done ? "That is everything for now." : "Nothing is due."}</p>
+              <p className="text-xl">{done ? copy("caughtUp") : copy("nothingDue")}</p>
               <p className="text-muted">
                 {counts && counts.newAllowanceLeft === 0 ? "You have reached today's limit of new cards. " : ""}
                 Cards come back when it is time to see them again.

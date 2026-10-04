@@ -18,7 +18,10 @@ const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
     // The consent page must never be framed (clickjacking).
-    return [{ source: "/connect", headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] }];
+    return [
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
+      { source: "/connect", headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] },
+    ];
   },
   async rewrites() {
     return [
