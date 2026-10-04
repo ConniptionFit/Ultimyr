@@ -12,7 +12,8 @@ import { useAuth } from "@/lib/auth";
 import { loadExample } from "@/lib/example";
 import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
-import type { Archive } from "@/lib/types";
+import { ProgressBar, totalsText } from "@/components/roadmap/bits";
+import type { Archive, RoadmapSummary } from "@/lib/types";
 
 // Archives created before the content service existed were kept in this browser only.
 const LEGACY_STORE = "ultimyr_draft_archives";
@@ -25,10 +26,13 @@ export default function ReadingRoom() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [paths, setPaths] = useState<RoadmapSummary[]>([]);
 
   const load = useCallback(async () => {
     try {
       setArchives((await api<{ archives: Archive[] }>("GET", "archives")).archives);
+      // Roadmaps are a bonus on this page: if they fail to load, the list above still works.
+      setPaths((await api<{ roadmaps: RoadmapSummary[] }>("GET", "roadmaps").catch(() => ({ roadmaps: [] }))).roadmaps);
     } catch {
       setArchives([]);
       setError("Could not load your list. Is the content service running?");
@@ -115,6 +119,32 @@ export default function ReadingRoom() {
               <p role="alert" className="text-sm text-danger">
                 {error}
               </p>
+            )}
+            {paths.length > 0 && (
+              <section aria-labelledby="paths-h">
+                <h2 id="paths-h" className="mb-3 text-xl">
+                  {paths.some((p) => p.started) ? "Keep going" : t("roadmap")}
+                </h2>
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {paths.map((p) => (
+                    <li key={p.archiveId}>
+                      <Link href={`/archives/${p.archiveId}#roadmap`} className="block h-full space-y-2 rounded-md border border-line p-4 hover:bg-surface">
+                        <span className="flex items-center gap-2">
+                          <span className="text-accent">
+                            <ArchiveIcon pngUrl={p.icon.url} fallback={iconFor(p.icon.name)} size={20} />
+                          </span>
+                          <span className="truncate font-serif text-lg">{p.title}</span>
+                        </span>
+                        <ProgressBar totals={p.totals} label={`${p.title} progress`} />
+                        <span className="block text-sm text-muted">
+                          {p.totals.percent}% · {totalsText(p.totals)}
+                        </span>
+                        {p.next ? <span className="block truncate text-sm">Next: {p.next.title}</span> : <span className="block text-sm text-accent">{copy("roadmapDone")}</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
             <section>
               <h2 className="mb-3 text-xl">{t("archives")}</h2>

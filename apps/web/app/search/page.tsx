@@ -10,7 +10,7 @@ import { useNaming } from "@/lib/naming";
 import { useAuth } from "@/lib/auth";
 
 interface Hit {
-  type: "archive" | "item" | "section" | "card";
+  type: "archive" | "item" | "section" | "card" | "resource";
   id: string;
   archiveId: string;
   itemId: string | null;
@@ -41,7 +41,7 @@ function Results() {
       <ul className="divide-y divide-line rounded-md border border-line">
         {(hits ?? []).map((h) => (
           <li key={`${h.type}-${h.id}`}>
-            <Link href={h.type === "archive" ? `/archives/${h.id}` : `/items/${h.itemId}${h.anchor ? `#${h.anchor}` : ""}`} className="block p-3 hover:bg-surface">
+            <Link href={h.type === "archive" ? `/archives/${h.id}` : h.type === "resource" ? `/archives/${h.archiveId}#resources` : `/items/${h.itemId}${h.anchor ? `#${h.anchor}` : ""}`} className="block p-3 hover:bg-surface">
               <span className="block">
                 {h.title} <span className="text-xs text-muted">{h.type}</span>
               </span>

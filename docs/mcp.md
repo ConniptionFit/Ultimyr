@@ -30,13 +30,18 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `create_guide`, `update_guide` | `content:write` | Write guides. New versions are marked `mcp` |
 | `create_deck`, `upsert_cards`, `delete_cards` | `content:write` | Flashcards |
 | `create_quiz`, `create_quiz_questions` | `content:write`, `quiz:write` | Quizzes. Questions are validated strictly, all or nothing |
+| `list_resources` | `content:read` | The external links saved in an archive |
+| `get_roadmap` | `content:read` | The roadmap with step ids, your progress and the next step |
+| `add_resources` | `content:write` | Save up to 50 links (YouTube, Anthropic training pages, docs). A link already saved is updated, not duplicated. Saved as drafts |
+| `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
 | `share_item` | `content:share` | Give a person or group access. Off unless you grant sharing |
 
-**Resources:** `ultimyr://archive/{id}`, `ultimyr://guide/{id}` (Markdown), `ultimyr://deck/{id}`. **Prompts:** `make_study_guide`, `quiz_me_on`, `explain_my_mistakes`. Tools, resources and prompts use plain names even when themed names are on.
+**Resources:** `ultimyr://archive/{id}`, `ultimyr://guide/{id}` (Markdown), `ultimyr://deck/{id}`. **Prompts:** `make_study_guide`, `quiz_me_on`, `explain_my_mistakes`, `build_roadmap`. Tools, resources and prompts use plain names even when themed names are on.
 
 ## Safety
 - **Drafts.** New material and quiz questions are saved as drafts with source `mcp`, visible only to editors until a person publishes them. Editing **published** material creates a new version (so it can be restored) and moves the item back to draft until republished. Pass `holdForReview: false` on a tool call to skip that hold.
+- **Links.** Ultimyr stores links without opening them, so it cannot tell whether one is real. The server's instructions tell the model never to invent a URL, but review every draft link before publishing.
 - **Limits.** `MCP_RATE_PER_MINUTE` requests (default 120) and `MCP_WRITE_PER_MINUTE` changes (default 30) per person. Writes are size capped and validated before anything is sent on.
 - **Errors** are short plain messages. Upstream bodies, stack traces and addresses are never passed to the client.
 - **No session state.** Each request is self contained (stateless Streamable HTTP, JSON responses), so there is no session to steal.

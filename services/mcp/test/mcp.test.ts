@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await boot();
     const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name).sort();
     const reader = await names(["content:read"]);
-    expect(reader).toEqual(["get_archive", "get_deck", "get_guide", "list_archives", "search_materials"]);
+    expect(reader).toEqual(["get_archive", "get_deck", "get_guide", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
     const full = await names(["content:read", "content:write", "quiz:read", "quiz:write"]);
     expect(full).toContain("create_quiz_questions");
     expect(full).toContain("get_progress");
@@ -119,6 +119,22 @@ describe("MCP server", () => {
     const q = await c.callTool({ name: "create_quiz", arguments: { archiveId: ID, title: "Q" } });
     expect(q.isError).toBeFalsy();
     expect(calls[0]!.body.source).toBe("mcp");
+  });
+
+  it("adds links and sets a roadmap as drafts, and refuses unsafe input", async () => {
+    fresh();
+    await boot();
+    respond = (c) => (c.path.endsWith("/resources/bulk") ? { resources: [{ id: ITEM, title: "Intro", provider: "YouTube", kind: "video", created: true }] } : { status: "draft", stages: [{ id: ID, title: "Week 1", steps: [{}] }], totals: { steps: 1 } });
+    const c = await connect(await issuer.token({ scopes: ["content:write"] }));
+    const add = await c.callTool({ name: "add_resources", arguments: { archiveId: ID, resources: [{ url: "https://www.youtube.com/watch?v=abc", title: "Intro" }] } });
+    expect(add.isError).toBeFalsy();
+    expect(calls[0]).toMatchObject({ path: `/v1/archives/${ID}/resources/bulk`, method: "POST", body: { source: "mcp" } });
+    const set = await c.callTool({ name: "set_roadmap", arguments: { archiveId: ID, stages: [{ title: "Week 1", steps: [{ resourceId: ITEM }, { milestone: "Quiz" }] }] } });
+    expect(JSON.parse(text(set))).toMatchObject({ status: "draft" });
+    expect(calls[1]).toMatchObject({ path: `/v1/archives/${ID}/roadmap`, method: "PUT", body: { source: "mcp", status: "draft" } });
+    const bad = await c.callTool({ name: "add_resources", arguments: { archiveId: ID, resources: [{ url: "not a url", title: "x" }] } }).catch((e) => e);
+    expect(bad.isError ?? true).toBe(true);
+    expect(calls).toHaveLength(2);
   });
 
   it("holds edits to published material for review, and says so", async () => {
@@ -248,7 +264,7 @@ describe("MCP server", () => {
     const guide = await c.readResource({ uri: `ultimyr://guide/${ITEM}` });
     expect(guide.contents[0]).toMatchObject({ mimeType: "text/markdown", text: "# Ports" });
     const prompts = (await c.listPrompts()).prompts.map((p) => p.name).sort();
-    expect(prompts).toEqual(["explain_my_mistakes", "make_study_guide", "quiz_me_on"]);
+    expect(prompts).toEqual(["build_roadmap", "explain_my_mistakes", "make_study_guide", "quiz_me_on"]);
     const p = await c.getPrompt({ name: "make_study_guide", arguments: { topic: "DNS" } });
     expect((p.messages[0]!.content as any).text).toContain("DNS");
     const noRead = await connect(await issuer.token({ scopes: ["quiz:read"] }));
