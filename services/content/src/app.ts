@@ -8,18 +8,20 @@ import { grantRoutes } from "./routes/grants.js";
 import { ioRoutes } from "./routes/io.js";
 import { itemRoutes } from "./routes/items.js";
 import { searchRoutes } from "./routes/search.js";
+import { studyRoutes } from "./routes/study.js";
 
 export interface AppDeps {
   pool: Pool;
   keySource: KeySource;
   groups: GroupResolver;
+  now?: () => Date;
   logger?: boolean;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const svc = await createService({ name: "content", pool: deps.pool, keySource: deps.keySource, logger: deps.logger });
-  const ctx = createCtx(svc, deps.pool, deps.groups);
-  for (const mod of [archiveRoutes, itemRoutes, grantRoutes, searchRoutes, ioRoutes]) await svc.mount(mod(ctx));
+  const ctx = createCtx(svc, deps.pool, deps.groups, deps.now);
+  for (const mod of [archiveRoutes, itemRoutes, grantRoutes, searchRoutes, ioRoutes, studyRoutes]) await svc.mount(mod(ctx));
   return svc.app;
 }
 

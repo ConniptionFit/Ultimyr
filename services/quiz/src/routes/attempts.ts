@@ -224,6 +224,46 @@ export function attemptRoutes(ctx: Ctx) {
       return summary(att);
     });
 
+    /**
+     * Server-sent clock for an open attempt: the server's time and the time left, every 10 seconds, so the page
+     * can correct its own clock. Ends when the attempt closes (with a `closed` event) or after 5 minutes (reconnect).
+     */
+    r.get("/v1/attempts/:id/events", async (req, reply) => {
+      const a = await ctx.actor(req, "quiz:read");
+      const id = idParam(req);
+      let att = await mine(a, id);
+      reply.hijack();
+      const res = reply.raw;
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache, no-transform", connection: "keep-alive", "x-accel-buffering": "no" });
+      const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      const started = Date.now();
+      let timer: ReturnType<typeof setInterval> | undefined;
+      const end = () => {
+        clearInterval(timer);
+        if (!res.writableEnded) res.end();
+      };
+      const tick = async () => {
+        try {
+          att = await mine(a, id);
+        } catch {
+          return end();
+        }
+        const now = ctx.now();
+        if (att.status !== "in_progress") {
+          send("closed", { status: att.status, serverTime: now.toISOString() });
+          return end();
+        }
+        send("tick", { serverTime: now.toISOString(), deadlineAt: att.deadline_at, remainingMs: att.deadline_at ? new Date(att.deadline_at).getTime() - now.getTime() : null });
+        if (Date.now() - started > 300_000) end();
+      };
+      req.raw.on("close", end);
+      await tick();
+      if (!res.writableEnded) {
+        timer = setInterval(() => void tick(), Number(process.env.QUIZ_SSE_INTERVAL_MS ?? 10_000));
+        timer.unref();
+      }
+    });
+
     r.get("/v1/attempts/:id/review", async (req) => {
       const a = await ctx.actor(req, "quiz:read");
       const att = await mine(a, idParam(req));

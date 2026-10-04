@@ -49,6 +49,7 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `PORT`, `HOST` | `4003`, `0.0.0.0` | Listen address. |
 | `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys. Compose sets `http://auth:4001`. |
 | `CONTENT_URL` | `http://localhost:4002` | Asked, per request, whether the caller may attempt or edit a quiz. If content is down, quiz requests answer 503. Compose sets `http://content:4002`. |
+| `QUIZ_SSE_INTERVAL_MS` | `10000` | How often the live exam clock (`/attempts/:id/events`) sends the time. Lower it only for testing. |
 | `QUIZ_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
 
 ## Secrets (production required)

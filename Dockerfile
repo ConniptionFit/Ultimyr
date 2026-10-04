@@ -20,6 +20,7 @@ COPY services/auth/package.json services/auth/
 COPY services/content/package.json services/content/
 COPY services/quiz/package.json services/quiz/
 COPY packages/scoring/package.json packages/scoring/
+COPY packages/fsrs/package.json packages/fsrs/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS source

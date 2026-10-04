@@ -33,7 +33,7 @@ Learners can always run a practice attempt of any quiz, even a timed one.
 3. **Submit** (or run out of time). The server grades once. Submitting again returns the stored result.
 4. **Review.** Every question with your answer, the right answer, the explanation and the points.
 
-The **clock belongs to the server.** The deadline is fixed at the start, the browser's timer is only a display, and the page's clock is corrected by the server's time. A save after the deadline plus grace is refused, and the attempt is graded as it stood at the deadline. Closing the tab does not pause anything. Learners never receive answer keys or explanations until a question is checked or the attempt is closed.
+The **clock belongs to the server** and is streamed to the page (see [study.md](study.md)). The deadline is fixed at the start, the browser's timer is only a display, and the page's clock is corrected by the server's time. A save after the deadline plus grace is refused, and the attempt is graded as it stood at the deadline. Closing the tab does not pause anything. Learners never receive answer keys or explanations until a question is checked or the attempt is closed.
 
 One attempt per quiz is open at a time per person; starting again resumes it unless you choose "start over".
 

@@ -7,6 +7,7 @@
 | [identity.md](identity.md) | Set up MFA, passkeys, SSO (OIDC, OAuth2, SAML), SCIM and API keys |
 | [content.md](content.md) | Understand archives, guides, decks, versions, sharing, search and import/export |
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
+| [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
 | [api.md](api.md) | Call the auth, content and quiz service APIs |
 | [architecture.md](architecture.md) | Understand how the services, tokens and data fit together (as built) |
 | [operations.md](operations.md) | Back up, upgrade, monitor and troubleshoot |

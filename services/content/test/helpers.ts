@@ -14,6 +14,8 @@ export interface Harness {
   issuer: ReturnType<typeof createTestIssuer>;
   /** user id -> group ids, consulted by the stub group resolver. */
   groups: Map<string, string[]>;
+  /** Move the service clock (used by spaced repetition). */
+  clock: { now: Date };
   close(): Promise<void>;
 }
 
@@ -26,12 +28,14 @@ export async function createHarness(): Promise<Harness> {
   const issuer = createTestIssuer();
   const groups = new Map<string, string[]>();
   const resolver: GroupResolver = { groupsFor: async (p) => groups.get(p.userId) ?? [] };
-  const app = await buildApp({ pool, keySource: issuer.publicKey, groups: resolver });
+  const clock = { now: new Date() };
+  const app = await buildApp({ pool, keySource: issuer.publicKey, groups: resolver, now: () => clock.now });
   return {
     pool,
     app,
     issuer,
     groups,
+    clock,
     async close() {
       await app.close();
       await pool.end();
