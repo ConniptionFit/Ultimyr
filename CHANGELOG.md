@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: jump to what you missed on quiz results.** The results card lists the question numbers you got wrong, partly right or left blank, and each one opens that question with its answer and explanation. Finished quizzes and practice exams also offer **Drill my weak areas**.
 - **New: download your flashcard review history as a spreadsheet.** On Progress, **Reviews** saves a CSV of every review you have made (date, course, deck, card, rating, whether it was new, days until next, seconds spent). Only your own reviews are included. New route `GET /study/export`.
 - **New: undo your last flashcard rating.** Pressed Good when you meant Again? **Undo last rating** (or **U**) puts the card back and restores its earlier schedule, and removes that review from your stats. It works until you review the same card again. Adds migration `0009_review_undo` and `POST /study/review/undo`.
 - **New: print or save a study guide as PDF.** A printer button beside Export on every guide prints just the article (menus and buttons left out, headings kept with their text, code blocks and tables kept whole).

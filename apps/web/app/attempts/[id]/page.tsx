@@ -276,14 +276,25 @@ export default function AttemptPage() {
                   </tbody>
                 </table>
               )}
+              {(() => {
+                const missed = qs.flatMap((x, i) => (x.feedback && x.feedback.outcome !== "correct" && x.feedback.outcome !== "excluded" ? [i] : []));
+                return missed.length > 0 ? (
+                  <p className="text-sm">
+                    Review what you missed:{" "}
+                    {missed.map((i) => (
+                      <button key={i} className="mr-2 text-accent underline" onClick={() => { go(i); document.getElementById("question-area")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                        {i + 1}
+                      </button>
+                    ))}
+                  </p>
+                ) : null;
+              })()}
               <AssistantPanel context={{ type: "attempt", id }} label="Explain my mistakes" />
               <div className="flex gap-2">
                 <Button onClick={() => router.push(home)}>Done</Button>
-                {drill && (
-                  <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
-                    Another drill
-                  </Button>
-                )}
+                <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
+                  {drill ? "Another drill" : "Drill my weak areas"}
+                </Button>
               </div>
             </section>
           )}
@@ -330,7 +341,7 @@ export default function AttemptPage() {
           </nav>
 
           {q && (
-            <section aria-label={`Question ${idx + 1} of ${qs.length}`}>
+            <section id="question-area" className="scroll-mt-20" aria-label={`Question ${idx + 1} of ${qs.length}`}>
               <p className="mb-2 text-sm text-muted">
                 Question {idx + 1} of {qs.length}
               </p>
