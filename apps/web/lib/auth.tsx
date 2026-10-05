@@ -1,5 +1,6 @@
 "use client";
 
+import { clearOffline } from "./offline";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -129,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const signOut = useCallback(async () => {
     await post("logout").catch(() => undefined);
+    clearOffline();
     setState({ status: "anonymous" });
   }, []);
 

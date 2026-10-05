@@ -1,7 +1,7 @@
 "use client";
 
 import { ArchiveIcon } from "@ultimyr/ui-icons";
-import { Library, Plus } from "lucide-react";
+import { ArrowRight, Library, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -122,6 +122,18 @@ export default function ReadingRoom() {
               </p>
             )}
             <AlertsBanner />
+            {(() => {
+              const go = paths.find((p) => p.started && p.next) ?? paths.find((p) => p.next);
+              return go?.next ? (
+                <Link href={`/archives/${go.archiveId}?step=${go.next.stepId}#roadmap`} className="flex items-center justify-between gap-3 rounded-md border border-accent p-4 hover:bg-surface">
+                  <span className="min-w-0">
+                    <span className="block text-sm text-muted">{go.started ? "Continue where you left off" : "Start here"} · {go.title}</span>
+                    <span className="block truncate font-serif text-lg">{go.next.title}</span>
+                  </span>
+                  <ArrowRight size={20} className="shrink-0 text-accent" aria-hidden />
+                </Link>
+              ) : null;
+            })()}
             {paths.length > 0 && (
               <section aria-labelledby="paths-h">
                 <h2 id="paths-h" className="mb-3 text-xl">
