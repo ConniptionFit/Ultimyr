@@ -1,4 +1,4 @@
-import { FORMAT_EXAMPLE, FORMAT_RULES } from "@ultimyr/bundle";
+import { FORMAT_EXAMPLE, FORMAT_RULES, PASSES, depthWords, standardsLines, type Check } from "@ultimyr/bundle";
 import type { Depth } from "@ultimyr/coverage";
 
 export const DEPTH_WORDS: Record<Depth, { label: string; detail: string }> = {
@@ -30,25 +30,90 @@ export function continuePrompt(title: string, archiveId: string, depth: Depth): 
   ].join("\n");
 }
 
-/** For a chat that cannot connect to Ultimyr: it writes the whole certification as text in the bundle format. */
+const formatBlock = () => [
+  "The format:",
+  ...FORMAT_RULES.map((r) => `- ${r}`),
+  "",
+  "A complete example (follow its shape exactly):",
+  "```",
+  FORMAT_EXAMPLE.trim(),
+  "```",
+];
+
+const passLines = () => PASSES.map((p) => `${p.id}. ${p.name}: ${p.what}`);
+
+const reply = [
+  "How to reply:",
+  "- One pass per reply, as ONE code block, with a one-line label above it such as 'Pass B, domain 2 of 5'. Then wait for me to say \"next\".",
+  "- Every block closes with === end ===. If you run low on room, stop at a finished block and say what is left.",
+  "- Copy objective codes exactly as in the objectives block. Reuse block titles exactly when I ask you to fill gaps.",
+];
+
+/** For a chat that cannot connect to Ultimyr: a fixed multi-pass build that ends as text in the bundle format. */
 export function bundlePrompt(certification: string, depth: Depth): string {
   const name = certification.trim() || "<certification name>";
-  const want = { quick: "about 5 flashcards and 3 questions", standard: "about 10 flashcards and 6 questions", deep: "about 20 flashcards and 12 questions" }[depth];
   return [
-    `I am building a study archive for "${name}". You cannot connect to my app, so write everything as plain text in the exact format below, and I will paste it into Ultimyr.`,
+    `I am building a study archive for "${name}". You cannot connect to my app, so write everything as plain text in the exact format below, and I will paste it into Ultimyr, which checks it and tells me what is missing.`,
     "",
-    "Rules for you:",
-    "- First ask me for the vendor's official exam objectives (pasted or a link you can open). If I have none, tell me and stop. Never guess objectives, exam weights, passing scores or prices.",
-    `- Cover every objective with a guide, ${want} per objective, and a roadmap by week. Write in your own words. Never copy exam questions or vendor text, and leave out facts you are unsure of.`,
-    "- Work in chunks that fit in one reply. Chunk 1: the header, objectives and roadmap. Then one chunk per exam domain with its guide, deck and quiz blocks. Put each chunk in one code block, say which chunk it is, and wait for me to say \"next\".",
-    "- Every chunk must be complete: close every block with === end ===. If you run out of room, stop at a finished block.",
+    `Target depth: ${depthWords(depth)}, plus one guide for every objective group.`,
     "",
-    "The format:",
-    ...FORMAT_RULES.map((r) => `- ${r}`),
+    "Work in these passes, in this order:",
+    ...passLines(),
     "",
-    "A complete example:",
-    "```",
-    FORMAT_EXAMPLE.trim(),
-    "```",
+    "Start by asking me for the vendor's official exam objectives (pasted or a link you can open). Do not begin pass A without them.",
+    "",
+    ...standardsLines(),
+    ...reply,
+    "",
+    ...formatBlock(),
+  ].join("\n");
+}
+
+/** After a paste: ask the chat to write only what Ultimyr found missing. */
+export function gapPrompt(check: Check): string {
+  const lines = check.gaps.slice(0, 40).map((g) => {
+    const need = [g.guide ? "a guide" : "", g.cardsMissing ? `${g.cardsMissing} more flashcards` : "", g.questionsMissing ? `${g.questionsMissing} more questions` : ""].filter(Boolean);
+    return `- ${g.code}: ${need.join(", ")}`;
+  });
+  return [
+    `Ultimyr checked what you wrote. ${check.complete} of ${check.objectives} objectives are complete. Do pass C now: write only what is missing, in the same bundle format and standards as before.`,
+    ...lines,
+    check.gaps.length > 40 ? `...and ${check.gaps.length - 40} more objectives. Do these first, then I will ask again.` : "",
+    check.untaggedQuestions ? `${check.untaggedQuestions} questions have no objective code. Resend them with codes.` : "",
+    check.unknownCodes.length ? `These codes are not in the objectives block, so fix or remove them: ${check.unknownCodes.join(", ")}.` : "",
+    "Reuse the exact deck and quiz titles from before so nothing duplicates. One code block, ending each block with === end ===.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** SKILL.md for the downloadable Claude Skill: the same passes and standards, so a skill run matches a pasted run. */
+export function skillMarkdown(): string {
+  return [
+    "---",
+    "name: ultimyr-course-builder",
+    "description: Builds certification study material (objectives, roadmap, guides, flashcards, quizzes) in the Ultimyr bundle format, one exam domain per reply. Use when the user asks for a study guide, course or exam prep for a certification, or says \"ultimyr bundle\".",
+    "---",
+    "",
+    "# Ultimyr course builder",
+    "",
+    "Write certification study material as plain text in the Ultimyr bundle format. The user pastes each reply into Ultimyr, which checks it, saves drafts and reports gaps. Keep the structure identical between runs.",
+    "",
+    "## Before you start",
+    "Ask for the target certification, the depth (quick, standard or deep) and the vendor's official exam objectives. Without objectives, stop.",
+    `Depth means: quick ${depthWords("quick")}; standard ${depthWords("standard")}; deep ${depthWords("deep")}.`,
+    "",
+    "## Passes",
+    ...passLines(),
+    "",
+    "## Standards",
+    ...standardsLines(),
+    "## Replying",
+    ...reply.slice(1),
+    "- If the user pastes a gap report from Ultimyr, do pass C for exactly those objectives.",
+    "",
+    "## Format",
+    ...formatBlock().slice(1),
+    "",
   ].join("\n");
 }
