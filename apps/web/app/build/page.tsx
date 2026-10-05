@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BundleImport, BundlePrompt } from "@/components/build/bundle-import";
+import { SkillDownload } from "@/components/build/skill-download";
 import { PromptBox } from "@/components/build/prompt-box";
 import { DEPTH_WORDS, bundlePrompt, startPrompt } from "@/lib/build-prompt";
 import { useNaming } from "@/lib/naming";
@@ -58,8 +59,9 @@ function Build() {
           No connector? Copy and paste instead
         </h2>
         <p className="text-sm text-muted">Works with any chat (Gemini, ChatGPT, Claude without a connector) and needs no API key. The chat writes everything as text in a strict format, in chunks if it is long. You paste it here, Ultimyr checks it line by line, and saves it as drafts.</p>
+        <SkillDownload />
         <BundlePrompt prompt={bundlePrompt(name, depth)} />
-        <BundleImport />
+        <BundleImport depth={depth} />
       </section>
       <p className="text-sm text-muted">
         Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are in the <Link href="/reading-room" className="underline">Reading Room</Link>.

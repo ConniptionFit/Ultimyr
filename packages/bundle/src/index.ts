@@ -321,3 +321,83 @@ export const FORMAT_RULES = [
   "quiz: questions start with 'Q mcq', 'Q multi' or 'Q fib', then an optional objective code and difficulty (d1 to d5). Options are 'a) text' and the correct ones end with ' *'. Fill-in questions use ___ for each blank and one 'Answer: one | another' line per blank. Add 'Why:' for the explanation.",
   "Put the objective code (such as 1.1) on every question and list the objectives on every guide and deck.",
 ] as const;
+
+/** What "done" means per objective at each depth. Mirrors @ultimyr/coverage's DEPTH (a test keeps them equal). */
+export const DEPTH_TARGETS = {
+  quick: { cards: 5, questions: 3 },
+  standard: { cards: 10, questions: 6 },
+  deep: { cards: 20, questions: 12 },
+} as const;
+export type BundleDepth = keyof typeof DEPTH_TARGETS;
+
+/** Objective codes in an outline ("- 1.1 Explain ports"), in order. */
+export function objectiveCodes(outline: string | null): string[] {
+  const seen: string[] = [];
+  for (const line of (outline ?? "").split("\n")) {
+    const m = /^\s*[-*]\s+(\d[\w.\-]*)\b/.exec(line);
+    if (m && !seen.includes(m[1]!)) seen.push(m[1]!);
+  }
+  return seen;
+}
+
+export interface Gap {
+  code: string;
+  guide: boolean;
+  cardsMissing: number;
+  questionsMissing: number;
+}
+export interface Check {
+  objectives: number;
+  complete: number;
+  gaps: Gap[];
+  /** Codes used on guides, decks or questions that no objective declares (usually a typo). */
+  unknownCodes: string[];
+  /** Questions with no objective code, which can never count toward coverage. */
+  untaggedQuestions: number;
+}
+
+/**
+ * Compare what was written with what the depth asks for, per objective. Pass every parsed chunk (or one merged
+ * Bundle). A later chunk may declare objectives, so declared codes are pooled across all of them.
+ */
+export function checkBundles(bundles: Bundle[], depth: BundleDepth): Check {
+  const want = DEPTH_TARGETS[depth];
+  const declared = [...new Set(bundles.flatMap((b) => objectiveCodes(b.objectives)))];
+  const guides = new Set<string>();
+  const cards = new Map<string, number>();
+  const questions = new Map<string, number>();
+  const used = new Set<string>();
+  let untaggedQuestions = 0;
+  for (const b of bundles) {
+    for (const g of b.guides) for (const c of g.objectiveCodes) (guides.add(c), used.add(c));
+    for (const d of b.decks) {
+      // A deck that lists several objectives cannot say which card belongs to which, so split its cards evenly.
+      const share = d.objectiveCodes.length ? d.cards.length / d.objectiveCodes.length : 0;
+      for (const c of d.objectiveCodes) (cards.set(c, (cards.get(c) ?? 0) + share), used.add(c));
+    }
+    for (const q of b.quizzes)
+      for (const x of q.questions) {
+        if (!x.objectiveCode) untaggedQuestions++;
+        else (questions.set(x.objectiveCode, (questions.get(x.objectiveCode) ?? 0) + 1), used.add(x.objectiveCode));
+      }
+  }
+  const gaps: Gap[] = [];
+  for (const code of declared) {
+    const gap: Gap = {
+      code,
+      guide: !guides.has(code),
+      cardsMissing: Math.max(0, want.cards - Math.floor(cards.get(code) ?? 0)),
+      questionsMissing: Math.max(0, want.questions - (questions.get(code) ?? 0)),
+    };
+    if (gap.guide || gap.cardsMissing || gap.questionsMissing) gaps.push(gap);
+  }
+  return {
+    objectives: declared.length,
+    complete: declared.length - gaps.length,
+    gaps,
+    unknownCodes: declared.length ? [...used].filter((c) => !declared.includes(c)) : [],
+    untaggedQuestions,
+  };
+}
+
+export { PASSES, STANDARDS, depthWords, standardsLines } from "./standards.js";

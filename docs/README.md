@@ -11,7 +11,7 @@
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
 | [prep.md](prep.md) | Track credentials and renewals, run weak-area drills, map exam objectives, follow a countdown plan |
-| [bundle.md](bundle.md) | Build a certification with any chat by copy and paste, and see the text format |
+| [bundle.md](bundle.md) | Build a certification with any chat by copy and paste, the repeatable passes and skill, and the text format |
 | [accessibility.md](accessibility.md) | Use display settings, focus mode, extra time, install the app, see the performance budget |
 | [security.md](security.md) | Review how data is protected, run the deployment checklist, see known limits |
 | [mcp.md](mcp.md) | Connect Claude or another MCP app, see the tools, understand the safety rules and OAuth |

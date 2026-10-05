@@ -1,5 +1,7 @@
+import { DEPTH } from "@ultimyr/coverage";
 import { describe, expect, it } from "vitest";
-import { bundlePrompt, continuePrompt, startPrompt } from "./build-prompt";
+import { DEPTH_TARGETS, checkBundles, parseBundle } from "@ultimyr/bundle";
+import { bundlePrompt, continuePrompt, gapPrompt, skillMarkdown, startPrompt } from "./build-prompt";
 
 describe("build prompts", () => {
   it("names the certification, depth and the tools to use", () => {
@@ -21,8 +23,26 @@ describe("build prompts", () => {
     expect(p).toContain('"Security+"');
     expect(p).toContain("=== end ===");
     expect(p).toContain("ultimyr-bundle v1");
-    expect(p).toContain("Never guess objectives");
-    expect(p).toContain("about 5 flashcards and 3 questions");
+    expect(p).toContain("come only from the official exam guide");
+    expect(p).toContain("at least 5 flashcards and 3 questions");
     expect(p).not.toMatch(/\u2014/);
+  });
+  it("runs the same fixed passes and standards in the prompt and the skill", () => {
+    const p = bundlePrompt("Security+", "standard");
+    const k = skillMarkdown();
+    for (const text of [p, k]) {
+      for (const bit of ["A. Objectives and roadmap", "B. One domain at a time", "C. Gap fill", "## Why it matters", "Never reproduce real exam questions", "=== end ==="]) expect(text).toContain(bit);
+      expect(text).not.toMatch(/\u2014/);
+    }
+    expect(k.startsWith("---\nname: ultimyr-course-builder")).toBe(true);
+  });
+  it("turns a coverage check into a gap prompt", () => {
+    const b = parseBundle("=== objectives ===\n## 1.0 D (100%)\n- 1.1 A\n- 1.2 B\n=== end ===\n=== guide: G ===\nobjectives: 1.1\n\n# G\n=== end ===");
+    const p = gapPrompt(checkBundles([b], "quick"));
+    expect(p).toContain("0 of 2 objectives are complete");
+    expect(p).toContain("- 1.2: a guide, 5 more flashcards, 3 more questions");
+  });
+  it("keeps the bundle depth targets equal to the coverage depths", () => {
+    expect(DEPTH_TARGETS).toEqual(DEPTH);
   });
 });
