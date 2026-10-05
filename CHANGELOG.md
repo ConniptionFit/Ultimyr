@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: press / to search.** From any page (outside a text box) the slash key puts the cursor in the search box, or opens the search page on a phone. It is listed under the ? shortcuts.
 - **New: copy buttons for voucher codes and credential IDs** on each credential, with a tick to show it copied.
 - **New: copy a link to a guide section.** Hover a heading in a study guide (or tab to it) and press **#** to copy a link that opens straight at that section.
 - **New: due flashcards show in the browser tab.** On the Reading Room the tab title reads "(12) Ultimyr" while 12 cards are due, so you can see it from another tab. It clears when you leave the page.

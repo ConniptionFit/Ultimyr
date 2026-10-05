@@ -4,7 +4,13 @@ import { useRef } from "react";
 import { useDialog } from "@/lib/focus-trap";
 
 export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
-  { area: "Anywhere", keys: [["?", "Show this list"]] },
+  {
+    area: "Anywhere",
+    keys: [
+      ["/", "Search"],
+      ["?", "Show this list"],
+    ],
+  },
   {
     area: "Learning path",
     keys: [
