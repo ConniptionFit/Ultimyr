@@ -12,7 +12,7 @@ import { notesMessage, type StepNote } from "@/lib/notes";
  * The right hand side of the side-by-side view: the step's Markdown note, from your Obsidian vault via Fast Note Sync.
  * Saving sends the hash we loaded, so an edit made in Obsidian meanwhile is a conflict rather than a silent overwrite.
  */
-export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: string; stepId: string; title: string; onClose: () => void }) {
+export function NotePane({ archiveId, stepId, title, onClose, fill = false, onDirty }: { archiveId: string; stepId: string; title: string; onClose: () => void; /** Fill the height of the page (full screen) instead of a fixed card. */ fill?: boolean; onDirty?: (dirty: boolean) => void }) {
   const { api } = useAuth();
   const [note, setNote] = useState<StepNote | null>(null);
   const [text, setText] = useState("");
@@ -25,6 +25,9 @@ export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: str
   const [deckMsg, setDeckMsg] = useState<string | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
   const dirty = text !== saved;
+  useEffect(() => {
+    onDirty?.(dirty);
+  }, [dirty, onDirty]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -76,7 +79,7 @@ export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: str
   }
 
   return (
-    <aside aria-label={`Notes for ${title}`} className="flex min-h-[24rem] flex-col gap-3 rounded-md border border-line bg-bg p-3 max-lg:min-h-[calc(100dvh-1.5rem)] max-lg:border-0 max-lg:p-0">
+    <aside aria-label={`Notes for ${title}`} className={`flex flex-col gap-3 rounded-md border border-line p-3 ${fill ? "min-h-0 flex-1" : "min-h-[24rem]"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-medium">{title}</p>
@@ -134,10 +137,10 @@ export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: str
                 }
               }}
               spellCheck
-              className="min-h-[18rem] w-full flex-1 resize-y rounded-md border border-line bg-surface p-3 font-mono text-sm text-ink"
+              className={`w-full flex-1 resize-y rounded-md border border-line bg-surface p-3 font-mono text-sm text-ink ${fill ? "min-h-[50vh]" : "min-h-[18rem]"}`}
             />
           ) : (
-            <div className="prose-sm min-h-[18rem] flex-1 overflow-auto rounded-md border border-line p-3">
+            <div className={`prose-sm flex-1 overflow-auto rounded-md border border-line p-3 ${fill ? "min-h-[50vh]" : "min-h-[18rem]"}`}>
               <Markdown>{text.replace(/^---\n[\s\S]*?\n---\n/, "")}</Markdown>
             </div>
           )}

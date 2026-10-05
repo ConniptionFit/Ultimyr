@@ -3,7 +3,7 @@
 import { Button, Toggle } from "@/components/ui";
 import { useDisplay, type Display } from "@/lib/display";
 
-function Choice<T extends string | number>({ legend, value, options, onChange, hint }: { legend: string; value: T; options: Array<[T, string]>; onChange: (v: T) => void; hint?: string }) {
+export function Choice<T extends string | number>({ legend, value, options, onChange, hint }: { legend: string; value: T; options: Array<[T, string]>; onChange: (v: T) => void; hint?: string }) {
   return (
     <fieldset className="space-y-1">
       <legend className="text-sm">{legend}</legend>
