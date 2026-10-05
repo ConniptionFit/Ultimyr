@@ -17,6 +17,9 @@ export const DOT_GRID = {
   /** Shape size in grid cells (width of the icon), and drift speed in cells per second. */
   sizeCells: [15, 26] as const,
   speedCells: [3, 7] as const,
+  /** Dutch angle of each shape, in degrees away from upright (either way), and how far it slowly rocks about that angle. */
+  tilt: [12, 30] as const,
+  sway: 4,
   /** Seconds for one slow grow and shrink of a shape. */
   breathe: [15, 15] as const,
   /** Hues for shapes; lightness and saturation come from the theme below. */
@@ -60,6 +63,8 @@ export interface Shape {
   vx: number;
   vy: number;
   size: number;
+  /** Resting tilt in radians. */
+  tilt: number;
   phase: number;
   breathe: number;
 }
@@ -75,17 +80,20 @@ export function shapeCount(width: number, height: number): number {
 export function makeShapes(count: number, cols: number, rows: number, iconCount: number, seed: number): Shape[] {
   const r = mulberry32(seed);
   const out: Shape[] = [];
+  // One shared offset, so the shapes on screen are different icons until the list runs out.
+  const first = Math.floor(r() * iconCount);
   for (let i = 0; i < count; i++) {
     const heading = r() * Math.PI * 2;
     const speed = between(r, DOT_GRID.speedCells);
     out.push({
-      icon: (i + Math.floor(r() * iconCount)) % iconCount,
+      icon: (i + first) % iconCount,
       hue: DOT_GRID.hues[i % DOT_GRID.hues.length]!,
       x: r() * cols,
       y: r() * rows,
       vx: Math.cos(heading) * speed,
       vy: Math.sin(heading) * speed,
       size: between(r, DOT_GRID.sizeCells),
+      tilt: ((r() < 0.5 ? -1 : 1) * between(r, DOT_GRID.tilt) * Math.PI) / 180,
       phase: r() * Math.PI * 2,
       breathe: between(r, DOT_GRID.breathe),
     });
@@ -107,6 +115,11 @@ export function step(s: Shape, dt: number, cols: number, rows: number): void {
 /** Current drawn size of a shape, breathing gently around its base size. */
 export function sizeAt(s: Shape, t: number): number {
   return s.size * (1 + 0.08 * Math.sin((t / s.breathe) * Math.PI * 2 + s.phase));
+}
+
+/** Current angle of a shape in radians: its dutch angle, rocking a few degrees either way. */
+export function angleAt(s: Shape, t: number): number {
+  return s.tilt + ((DOT_GRID.sway * Math.PI) / 180) * Math.sin((t / (s.breathe * 1.3)) * Math.PI * 2 + s.phase * 2);
 }
 
 /** Bilinear lookup of a square coverage mask (values 0..1) at unit coordinates `u`, `v` in 0..1. */
