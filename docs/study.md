@@ -55,3 +55,6 @@ Progress > **Reviews** downloads a CSV of every flashcard review you have made, 
 With more than six courses, the Reading Room shows a filter box that matches title or vendor.
 
 While cards are due, the Reading Room also puts the count in the browser tab title, for example "(12) Ultimyr".
+
+## Linking to a section
+Press the # beside a guide heading to copy a link to that section. The link opens the guide scrolled to it (you still need access to the course).

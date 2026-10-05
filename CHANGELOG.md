@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: copy a link to a guide section.** Hover a heading in a study guide (or tab to it) and press **#** to copy a link that opens straight at that section.
 - **New: due flashcards show in the browser tab.** On the Reading Room the tab title reads "(12) Ultimyr" while 12 cards are due, so you can see it from another tab. It clears when you leave the page.
 - **New: filter your courses by name.** Once you have more than six courses, a small filter box above the list narrows it by title or vendor as you type.
 - **New: jump to what you missed on quiz results.** The results card lists the question numbers you got wrong, partly right or left blank, and each one opens that question with its answer and explanation. Finished quizzes and practice exams also offer **Drill my weak areas**.

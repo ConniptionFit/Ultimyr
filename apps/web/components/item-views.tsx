@@ -14,7 +14,20 @@ export function GuideReader({ it }: { it: ItemDetail }) {
         {it.summary && <p className="mb-4 text-lg text-muted">{it.summary}</p>}
         {sections.map((s) => (
           <section key={s.anchor} id={s.anchor} className="scroll-mt-20">
-            {s.heading !== "Introduction" && <h2 className="mt-8 text-2xl">{s.heading}</h2>}
+            {s.heading !== "Introduction" && (
+              <h2 className="group mt-8 text-2xl">
+                {s.heading}
+                <a
+                  href={`#${s.anchor}`}
+                  aria-label={`Link to ${s.heading}`}
+                  title="Copy a link to this section"
+                  onClick={() => void navigator.clipboard?.writeText(`${location.origin}${location.pathname}#${s.anchor}`).catch(() => undefined)}
+                  className="no-print ml-2 text-base text-muted opacity-0 focus:opacity-100 group-hover:opacity-100"
+                >
+                  #
+                </a>
+              </h2>
+            )}
             <Markdown>{s.body}</Markdown>
           </section>
         ))}
