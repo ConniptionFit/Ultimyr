@@ -48,4 +48,4 @@ Credential records (including voucher codes, stored as plain text so you can cop
 Unit and integration tests in every service (auth 95, quiz 25, content 26, AI gateway 45, MCP 11, plus scoring, FSRS and lore libraries), run against a real Postgres in CI. Browser checks with axe-core and Lighthouse. `scripts/loadtest.mjs` (see [operations.md](operations.md#load-check)). No third-party penetration test has been done.
 
 ## Your data download
-Settings > Your data builds a zip in the browser from calls the app already makes as you (profile, `archives/:id/export`, `notes/archives/:id/text`, `credentials`, `analytics?days=365`). Nothing new is exposed on the server, and passwords, API keys and AI keys are not part of any of those responses.
+Settings > Your data builds a zip in the browser from calls the app already makes as you (profile, `archives/:id/export`, `notes/archives/:id/text`, `credentials`, `attempts`, `analytics?days=365`). Nothing new is exposed on the server, and passwords, API keys and AI keys are not part of any of those responses.

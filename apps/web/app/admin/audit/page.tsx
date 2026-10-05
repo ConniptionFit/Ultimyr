@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import { ErrorLine, selectCls } from "@/components/admin/bits";
 import { message, when } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { downloadApi } from "@/lib/download";
 
 interface Entry { id: number; ts: string; actorId: string | null; action: string; target: string | null; ip: string | null }
 const FILTERS: Array<[string, string]> = [
@@ -56,14 +57,8 @@ export default function Audit() {
 
   async function exportCsv() {
     if (state.status !== "authenticated") return;
-    const res = await fetch(`/api/v1/admin/audit?format=csv&limit=5000${action ? `&action=${encodeURIComponent(action)}` : ""}`, { headers: { authorization: `Bearer ${state.accessToken}` } });
-    if (!res.ok) return setError("Export failed.");
-    const url = URL.createObjectURL(await res.blob());
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "ultimyr-audit-log.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    const ok = await downloadApi(state.accessToken, `admin/audit?format=csv&limit=5000${action ? `&action=${encodeURIComponent(action)}` : ""}`, "ultimyr-audit-log.csv");
+    if (!ok) setError("Export failed.");
   }
 
   return (

@@ -3,7 +3,7 @@ import { ROLES, type Role } from "@ultimyr/authz";
 import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { auditCsv } from "../audit-csv.js";
+import { auditCsv, usersCsv } from "../audit-csv.js";
 import { checkServices } from "../services-status.js";
 import { createAbout } from "../about.js";
 import { HttpError, type Ctx } from "../ctx.js";
@@ -130,15 +130,22 @@ export function adminRoutes(ctx: Ctx) {
     });
 
     // ---- users ------------------------------------------------------------
-    r.get("/v1/admin/users", async (req) => {
+    r.get("/v1/admin/users", async (req, reply) => {
       await ctx.requireAdmin(req);
       const q = z
-        .object({ q: z.string().max(100).optional(), limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0) })
+        .object({
+          q: z.string().max(100).optional(),
+          limit: z.coerce.number().int().min(1).max(10000).optional(),
+          offset: z.coerce.number().int().min(0).default(0),
+          format: z.enum(["json", "csv"]).default("json"),
+        })
         .parse(req.query);
+      if (q.format === "json" && (q.limit ?? 50) > 200) throw new HttpError(400, "limit_too_large");
+      const limit = q.limit ?? (q.format === "csv" ? 10000 : 50);
       const where = q.q ? or(ilike(users.email, `%${q.q}%`), ilike(users.displayName, `%${q.q}%`)) : undefined;
-      const rows = await db.select().from(users).where(where).orderBy(users.createdAt, users.id).limit(q.limit).offset(q.offset);
+      const rows = await db.select().from(users).where(where).orderBy(users.createdAt, users.id).limit(limit).offset(q.offset);
       const roleRows = rows.length ? await db.select().from(roleAssignments).where(inArray(roleAssignments.userId, rows.map((u) => u.id))) : [];
-      return rows.map((u) => ({
+      const out = rows.map((u) => ({
         id: u.id,
         email: u.email,
         displayName: u.displayName,
@@ -148,6 +155,13 @@ export function adminRoutes(ctx: Ctx) {
         createdAt: u.createdAt,
         roles: roleRows.filter((x) => x.userId === u.id).map((x) => x.role),
       }));
+      if (q.format === "csv") {
+        return reply
+          .type("text/csv; charset=utf-8")
+          .header("content-disposition", 'attachment; filename="ultimyr-users.csv"')
+          .send(usersCsv(out));
+      }
+      return out;
     });
 
     // Manual account creation. The person gets a temporary password (forced change at first sign-in) or a one-time invite link.
