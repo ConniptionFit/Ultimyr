@@ -17,9 +17,9 @@ export function SkillDownload() {
   }
   return (
     <div className="rounded-md border border-line p-3 text-sm text-ink">
-      <p className="font-medium">Use it every time: the Claude Skill</p>
+      <p className="font-medium">Optional: the Claude Skill (paste route only)</p>
       <p className="mt-1 text-muted">
-        Upload this once in Claude (Settings, Capabilities, Skills). From then on, ask for a study guide for any certification and Claude follows the same passes and standards as the prompt below.
+        Not needed if your assistant is connected to Ultimyr, because the prompt above already saves straight into it. For a chat without a connector, upload this once in Claude (Settings, Capabilities, Skills). From then on, ask for a study guide for any certification and Claude writes the pasteable text with the same passes and standards as the prompt, without you pasting the prompt each time.
       </p>
       <Button className="mt-2" onClick={download}>
         Download the skill

@@ -12,6 +12,8 @@ describe("build prompts", () => {
     expect(p).toContain("Do the research yourself");
     expect(p).toContain("Never save a link you did not open");
     expect(p).toContain("never copies");
+    expect(p).toContain("## Why it matters");
+    expect(p).toContain("Spread difficulty");
   });
   it("falls back to a placeholder and never uses em dashes", () => {
     expect(startPrompt("", "quick")).toContain("<certification name>");

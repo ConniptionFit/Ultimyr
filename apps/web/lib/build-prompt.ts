@@ -1,4 +1,4 @@
-import { FORMAT_EXAMPLE, FORMAT_RULES, PASSES, depthWords, standardsLines, type Check } from "@ultimyr/bundle";
+import { FORMAT_EXAMPLE, FORMAT_RULES, PASSES, STANDARDS, depthWords, standardsLines, type Check } from "@ultimyr/bundle";
 import type { Depth } from "@ultimyr/coverage";
 
 export const DEPTH_WORDS: Record<Depth, { label: string; detail: string }> = {
@@ -19,6 +19,9 @@ export function startPrompt(certification: string, depth: Depth): string {
     "4. Draft a roadmap with import_outline: stages by week, required steps first. After each guide put its flashcard deck and a short quiz, add the videos where they help, and end each stage with a milestone.",
     "5. Call get_build_queue and do every task it returns (guides, flashcards, questions, each linked to its objectives). Call it again until done is true. Guides are in your own words and go beyond the vendor guide with examples, scenarios and common mistakes. Flashcards and questions align with the guides and the research but are never copies of them or of real exam questions, and the questions follow the real exam's reported format and emphasis.",
     "6. Finish with get_coverage and tell me what is thin, what is unconfirmed and what I should review.",
+    "",
+    "Standards for everything you write:",
+    ...[...STANDARDS.guide, ...STANDARDS.deck, ...STANDARDS.quiz].map((r) => `- ${r}`),
   ].join("\n");
 }
 
