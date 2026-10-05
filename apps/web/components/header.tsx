@@ -3,7 +3,7 @@
 import { Library, Search } from "lucide-react";
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AccountMenu } from "@/components/account-menu";
 import { MobileNav } from "@/components/mobile-nav";
 import { PrepMenu } from "@/components/prep-menu";
@@ -15,6 +15,8 @@ export function Header() {
   const { state } = useAuth();
   const { t } = useNaming();
   const router = useRouter();
+  const path = usePathname();
+  const here = (href: string) => (path === href || path.startsWith(`${href}/`) ? ("page" as const) : undefined);
   const { focus, setFocus } = useDisplay();
   if (focus) {
     return (
@@ -55,13 +57,13 @@ export function Header() {
               <UIcon icon={Search} size={14} aria-hidden />
               <input name="q" type="search" aria-label="Search" placeholder="Search" className="w-24 rounded border border-line bg-transparent px-2 py-0.5 text-ink focus:w-40" />
             </form>
-            <Link href="/reading-room" className="hover:text-ink">
+            <Link href="/reading-room" aria-current={here("/reading-room")} className="hover:text-ink aria-[current=page]:text-ink aria-[current=page]:underline underline-offset-4">
               {t("dashboard")}
             </Link>
-            <Link href="/study" className="hover:text-ink">
+            <Link href="/study" aria-current={here("/study")} className="hover:text-ink aria-[current=page]:text-ink aria-[current=page]:underline underline-offset-4">
               {t("queue")}
             </Link>
-            <Link href="/progress" className="hover:text-ink">
+            <Link href="/progress" aria-current={here("/progress")} className="hover:text-ink aria-[current=page]:text-ink aria-[current=page]:underline underline-offset-4">
               Progress
             </Link>
             <PrepMenu />
