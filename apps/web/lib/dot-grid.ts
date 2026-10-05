@@ -1,30 +1,30 @@
 /**
  * A field of small dots in which a few study shapes slowly float. Where a shape passes over the grid, the dots
- * under it grow and take its colour. Everything that sets the feel lives in `DOT_GRID` so it can be tuned in one place.
+ * under it grow and take its colour. Everything that sets the feel lives in `DOT_GRID` so it can be tuned in one place. The values follow the Fast Note Sync login background (a 15 second loop of seven shapes over a dense dot grid, about 12px apart at full size, shape colours taken from its gradients, matte opacity 0.5); only the shapes differ.
  */
 export const DOT_GRID = {
   /** Distance between dots, in CSS pixels. */
-  spacing: 22,
+  spacing: 12,
   /** Dot radius away from any shape, and under the middle of one. */
-  baseRadius: 0.9,
-  maxRadius: 4.6,
+  baseRadius: 0.8,
+  maxRadius: 3,
   /** Opacity of the resting dots, and of a fully covered dot. */
-  baseAlpha: 0.22,
+  baseAlpha: 0.3,
   maxAlpha: 0.5,
   /** Shapes on screen at 1440 x 900; scaled by area, never fewer than `minShapes`. */
   shapes: 7,
   minShapes: 4,
   /** Shape size in grid cells (width of the icon), and drift speed in cells per second. */
-  sizeCells: [13, 20] as const,
-  speedCells: [0.12, 0.34] as const,
+  sizeCells: [15, 26] as const,
+  speedCells: [3, 7] as const,
   /** Seconds for one slow grow and shrink of a shape. */
-  breathe: [14, 26] as const,
+  breathe: [15, 15] as const,
   /** Hues for shapes; lightness and saturation come from the theme below. */
-  hues: [168, 38, 262, 12, 205, 330, 88] as const,
-  light: { s: 52, l: 38 },
-  dark: { s: 58, l: 66 },
+  hues: [328, 210, 156, 14, 359, 41, 204] as const,
+  light: { s: 80, l: 56 },
+  dark: { s: 85, l: 60 },
   /** Resting dot colour per theme, as `r, g, b`. */
-  restLight: "107, 102, 90",
+  restLight: "209, 209, 209",
   restDark: "163, 157, 139",
   /** Half width and height, in pixels, of the calm area around the page centre, and how much of the effect stays inside it (0 to 1). */
   quietX: 420,
