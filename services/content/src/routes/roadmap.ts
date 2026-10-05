@@ -6,6 +6,8 @@ import { ARCHIVE_REL, RANK, loadArchive, need, type Actor } from "../access.js";
 import type { Ctx } from "../ctx.js";
 import { guessKind, isSafeHttpsUrl, normalizeUrl, providerFor } from "../links.js";
 import { parseOutline, type OutlineStep } from "../outline.js";
+import { refreshIcons } from "../tagging.js";
+import { normalizeTags } from "@ultimyr/tagging";
 
 export const RESOURCE_KINDS = ["video", "playlist", "article", "course", "docs", "practice", "book", "podcast", "other"] as const;
 const MAX_STAGES = 30;
@@ -188,7 +190,10 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
   const { rows: rm } = await pool.query("SELECT * FROM content.roadmaps WHERE master_item_id = $1", [archiveId]);
   const road = rm[0];
   if (!road || (road.status === "draft" && !editor)) return empty;
-  const { rows: stages } = await pool.query("SELECT id, title, summary FROM content.roadmap_stages WHERE master_item_id = $1 ORDER BY ord", [archiveId]);
+  const { rows: stages } = await pool.query("SELECT id, title, summary, icon_name, icon_source FROM content.roadmap_stages WHERE master_item_id = $1 ORDER BY ord", [archiveId]);
+  const { rows: tagRows } = await pool.query("SELECT target_kind, target_id, tag FROM content.tag_links WHERE archive_id = $1 AND target_kind IN ('stage', 'step', 'resource')", [archiveId]);
+  const tagsOf = (kind: string, id: string, legacy: string[] = []) => normalizeTags([...tagRows.filter((t) => t.target_kind === kind && t.target_id === id).map((t) => t.tag as string), ...legacy]);
+  const iconOf = (r: Row) => ({ name: r.icon_name ?? null, source: r.icon_source });
   const { rows: steps } = await pool.query(
     `SELECT st.*, p.done_at,
             s.kind AS item_kind, s.title AS item_title, s.summary AS item_summary, s.status AS item_status,
@@ -213,13 +218,15 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
       required: s.required,
       minutes: stepMinutes(s),
       note: s.note,
+      tagSet: tagsOf("step", s.id),
+      icon: iconOf(s),
       done: !!s.done_at,
       doneAt: s.done_at ?? null,
       children: [],
     };
     if (s.kind === "milestone") out.title = s.title;
     if (s.kind === "item") out.item = { id: s.item_id, kind: s.item_kind, title: s.item_title, summary: s.item_summary, status: s.item_status };
-    if (s.kind === "resource") out.resource = { id: s.resource_id, kind: s.r_kind, title: s.r_title, url: s.r_url, provider: s.r_provider, summary: s.r_summary, minutes: s.r_minutes, tags: s.r_tags, status: s.r_status };
+    if (s.kind === "resource") out.resource = { id: s.resource_id, kind: s.r_kind, title: s.r_title, url: s.r_url, provider: s.r_provider, summary: s.r_summary, minutes: s.r_minutes, tags: s.r_tags, tagSet: tagsOf("resource", s.resource_id, s.r_tags), status: s.r_status };
     nodes.set(s.id, { row: s, out, children: [] });
   }
   const roots = new Map<string, Node[]>();
@@ -244,7 +251,7 @@ export async function buildRoadmap(pool: Pool, userId: string, archiveId: string
     totals.minutes += sum.minutes;
     totals.minutesLeft += sum.left;
     const attach = (n: Node): Row => ({ ...n.out, children: n.children.map(attach) });
-    return { id: st.id, title: st.title, summary: st.summary, progress: { done: sum.done, total: sum.leaves }, steps: top.map(attach) };
+    return { id: st.id, title: st.title, summary: st.summary, tagSet: tagsOf("stage", st.id), icon: iconOf(st), progress: { done: sum.done, total: sum.leaves }, steps: top.map(attach) };
   });
   totals.percent = totals.required ? Math.round((100 * totals.doneRequired) / totals.required) : totals.steps ? Math.round((100 * totals.done) / totals.steps) : 0;
   return {
@@ -335,7 +342,10 @@ export async function saveRoadmap(pool: Pool, archiveId: string, userId: string,
       [archiveId, body.summary, status, body.source, userId],
     );
     await c.query("UPDATE content.master_items SET updated_at = now() WHERE id = $1", [archiveId]);
+    // Tags of stages and steps that no longer exist.
+    await c.query("DELETE FROM content.tag_links WHERE archive_id = $1 AND ((target_kind = 'stage' AND NOT (target_id = ANY($2::uuid[]))) OR (target_kind = 'step' AND NOT (target_id = ANY($3::uuid[]))))", [archiveId, [...keepStage], [...keepStep]]);
   });
+  await refreshIcons(pool, archiveId);
 }
 
 

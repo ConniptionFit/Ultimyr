@@ -78,6 +78,8 @@ Access is the best of these, highest wins:
 
 Grants can expire. An item-level grant opens just that item, and the archive card appears in the recipient's list. Admins get no special read access to private material. Token scopes cap everything: an API key with only `content:read` cannot write even for its owner. Unknown and forbidden objects both answer 404, so existence never leaks.
 
+Administrators and **access delegates** can also manage group grants centrally from Admin panel > Group access, without being the owner. They see **view** (`viewer`) and **manage** (`editor`) levels. Delegates only reach archives an administrator delegated to them (table `content.access_delegations`) and cannot change visibility. See [identity.md](identity.md#admin-panel).
+
 People are found by **exact email** (never listed), groups by name. Group memberships are fetched from the auth service and cached for 30 seconds, so a membership change can take up to that long to apply. If auth is unreachable, group grants pause but ownership and direct grants keep working.
 
 ## Search
@@ -94,7 +96,7 @@ People are found by **exact email** (never listed), groups by name. Group member
 In the archive file, roadmap steps point at items by position and at resources by link, so it carries no database ids; steps on quizzes become checkpoints with the quiz's title (quizzes are not part of the file), and progress is never exported. Import and export never include other people's data. There is no lock-in: export an archive any time.
 
 ## Icons
-Pick a Lucide icon by name, or upload a **PNG with transparency** (16 to 1024 px, up to 512 KB). Uploads are re-written server side keeping only image chunks, so EXIF, text and color profile metadata are stripped. Icons are served by unguessable id with `nosniff` and a locked-down CSP, because `<img>` tags cannot send tokens.
+Pick any icon from the bundled Lucide library (about 1,900, searchable), let Ultimyr choose from the course's tags (see [tagging.md](tagging.md)), or upload a **PNG with transparency** (16 to 1024 px, up to 512 KB). Uploads are re-written server side keeping only image chunks, so EXIF, text and color profile metadata are stripped. Icons are served by unguessable id with `nosniff` and a locked-down CSP, because `<img>` tags cannot send tokens.
 
 ## Deleting
 Deleting archives and items is a soft delete. They appear in `GET /api/v1/trash` and can be restored for 30 days, then a background job removes them for good.
