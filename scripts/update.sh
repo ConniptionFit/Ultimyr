@@ -12,7 +12,13 @@ fi
 
 git pull --ff-only
 ./scripts/init-secrets.sh
-docker compose up -d --build
+# The bundled database only runs with its profile. If .env points at the host "postgres" (the bundled one),
+# keep it in the update, otherwise services fail with "getaddrinfo ENOTFOUND postgres".
+PROFILE=()
+if grep -Eq '^PG_HOST=postgres[[:space:]]*$' .env 2>/dev/null || docker compose ps -a --services 2>/dev/null | grep -qx postgres; then
+  PROFILE=(--profile bundled-db)
+fi
+docker compose "${PROFILE[@]}" up -d --build
 
 echo "Waiting for services to report healthy..."
 for _ in $(seq 1 40); do
@@ -20,4 +26,4 @@ for _ in $(seq 1 40); do
   sleep 3
 done
 echo "Version: $(git log -1 --oneline)"
-docker compose ps --format 'table {{.Name}}\t{{.Status}}'
+docker compose "${PROFILE[@]}" ps --format 'table {{.Name}}\t{{.Status}}'
