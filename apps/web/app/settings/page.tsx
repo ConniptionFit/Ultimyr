@@ -1,6 +1,6 @@
 "use client";
 
-import { terms, type TermKey } from "@ultimyr/lore";
+import { terms, termLore, type TermKey } from "@ultimyr/lore";
 import { AiPanel } from "@/components/ai-panel";
 import { DisplayPanel } from "@/components/display-panel";
 import { McpPanel } from "@/components/mcp-panel";
@@ -70,7 +70,10 @@ export default function Settings() {
               {(Object.keys(terms) as TermKey[]).map((k) => (
                 <div key={k} className="contents">
                   <dt className="text-muted">{terms[k].plain}</dt>
-                  <dd>{terms[k].themed}</dd>
+                  <dd>
+                    {terms[k].themed}
+                    <span className="block text-xs text-muted">{termLore[k].function}</span>
+                  </dd>
                 </div>
               ))}
             </dl>

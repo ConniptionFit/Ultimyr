@@ -5,6 +5,7 @@
 | [Root README](../README.md) | Install with Docker, pick a reverse proxy, develop locally |
 | [configuration.md](configuration.md) | Look up every environment variable and secret |
 | [identity.md](identity.md) | Set up MFA, passkeys, SSO (OIDC, OAuth2, SAML), SCIM and API keys, and use the admin panel |
+| [naming.md](naming.md) | Follow the Dota 2 lore naming convention and see every themed name, its function and its source |
 | [content.md](content.md) | Understand archives, guides, decks, roadmaps and external links, versions, sharing, search and import/export |
 | [tagging.md](tagging.md) | Understand tags, the bundled icon library and how icons are suggested and assigned |
 | [notes.md](notes.md) | Use the standard layout and format for study notes in Obsidian |

@@ -1,6 +1,6 @@
 # Quizzes, questions and scoring
 
-The quiz service owns the questions inside a quiz, the settings for taking it, scoring profiles, and every attempt. The quiz itself (its title, sharing and trash) is an item in the [content service](content.md), which also decides who may attempt or edit it. In the UI the themed name for a quiz is a Trial; the API always says quiz.
+The quiz service owns the questions inside a quiz, the settings for taking it, scoring profiles, and every attempt. The quiz itself (its title, sharing and trash) is an item in the [content service](content.md), which also decides who may attempt or edit it. In the UI the themed name for a quiz is a Duel; the API always says quiz.
 
 ## Question types
 | Type | Learner does | Answer key |
