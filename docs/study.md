@@ -47,3 +47,6 @@ The printer button on a study guide prints or saves it as PDF with the navigatio
 
 ## Undo a rating
 After rating a card, **Undo last rating** (or **U**) restores the card's earlier schedule and removes the review from your history, so a slip does not distort your retention numbers. It is available for the most recent rating of each card until you review that card again.
+
+## Review history export
+Progress > **Reviews** downloads a CSV of every flashcard review you have made, for your own analysis. It never includes anyone else's data.

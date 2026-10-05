@@ -1,7 +1,7 @@
 "use client";
 
 import { streakText } from "@ultimyr/lore";
-import { Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
@@ -44,6 +44,18 @@ function Progress() {
     }
   }, [api, archive, days, state.status]);
   useEffect(() => void load(), [load]);
+
+  async function downloadHistory() {
+    if (state.status !== "authenticated") return;
+    const res = await fetch("/api/v1/study/export", { headers: { authorization: `Bearer ${state.accessToken}` } });
+    if (!res.ok) return setError("Could not download your review history.");
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ultimyr-review-history.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function saveGoal(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -104,6 +116,9 @@ function Progress() {
               </select>
               <Button variant="quiet" onClick={() => window.print()} title="Print or save as PDF, a transcript of this view">
                 <Printer size={16} aria-hidden /> Print
+              </Button>
+              <Button variant="quiet" onClick={downloadHistory} title="Download every flashcard review you have made as a spreadsheet file">
+                <Download size={16} aria-hidden /> Reviews
               </Button>
             </div>
           </div>
