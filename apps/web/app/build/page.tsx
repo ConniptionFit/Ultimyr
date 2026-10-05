@@ -14,8 +14,8 @@ import { RequireSession } from "@/lib/require-session";
 const input = "w-full rounded-md border border-line bg-surface px-3 py-2 text-ink";
 const STEPS = [
   "Connect your assistant once (the address is under the prompt).",
-  "Paste the prompt. The assistant asks you for the official exam objectives, so have the vendor's exam guide handy.",
-  "It saves the objectives, a roadmap, guides, flashcards and questions, in small batches, as drafts.",
+  "Paste the prompt. The assistant researches the certification itself (official guide, exam facts, training, community guides and videos) and only asks you if it cannot find the objectives.",
+  "It saves the objectives, sources and videos (which play inside Ultimyr), a roadmap, guides, flashcards and questions, in small batches, as drafts.",
   "Open the archive, check the Coverage tab, then review and publish the drafts.",
 ];
 

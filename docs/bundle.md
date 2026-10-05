@@ -5,7 +5,7 @@ For a chat that cannot connect to Ultimyr (Gemini on the web, ChatGPT, Claude wi
 ## Steps
 1. Open **Exam prep > Build with an AI assistant** and scroll to **No connector? Copy and paste instead**.
 2. Type the certification, pick a depth, and copy the prompt into your chat.
-3. Give the chat the vendor's official exam objectives when it asks. If you have none, it stops. It never guesses objectives, weights, scores or prices.
+3. The chat researches the certification itself first (pass R): official exam guide, exam facts, vendor training and demos, study order, community guides and videos, and what people who passed report. It cites its sources and labels anything unconfirmed. It only asks you to paste the objectives if it cannot browse or cannot find them.
 4. The chat sends chunks: first the header, objectives and roadmap, then one chunk per exam domain. Say "next" until it is done.
 5. Paste each chunk into the box on the page (or upload a text file). The page lists any line it cannot read, with the line number.
 6. Choose a new archive or an existing one, and press **Save as drafts**. Review and publish in the archive. The Coverage tab shows what is still missing.
@@ -15,8 +15,8 @@ Saving twice is safe: a guide or deck with the same title is not duplicated, and
 ## Repeatable runs: passes, standards, gap check and the skill
 The same certification should come out with the same structure every time. Three things make that so:
 
-- **Fixed passes.** The prompt tells the chat to work in order: **A** objectives and roadmap, **B** one exam domain per reply (guides, deck, quiz), **C** gap fill. One code block per reply, then you say "next".
-- **Fixed standards.** Every guide has the same sections (Why it matters, Key ideas, How it shows up on the exam, Watch out, Check yourself). Cards are one idea each. Quiz questions are tagged with an objective code and difficulty, spread across d1 to d5, mixed types, with a "Why:" line. Facts such as weights and passing scores come only from the official exam guide you give the chat.
+- **Fixed passes.** The prompt tells the chat to work in order: **R** research, **A** objectives and roadmap, **B** one exam domain per reply (guides, deck, quiz), **C** gap fill. One code block per reply, then you say "next".
+- **Fixed standards.** Every guide has the same sections (Why it matters, Key ideas, How it shows up on the exam, Watch out, Check yourself). Cards are one idea each. Quiz questions are tagged with an objective code and difficulty, spread across d1 to d5, mixed types, with a "Why:" line. Facts such as weights and passing scores come only from sources the chat opened, official first, and each is cited. Guides go beyond the vendor guide, and flashcards and questions align with them and with community-reported exam format but are never copies. Videos it opened are added as roadmap links, and YouTube and Vimeo play inside Ultimyr.
 - **A coverage check on paste.** Once the text includes the objectives block, the page compares what is there with the depth you chose (quick 5 cards and 3 questions per objective, standard 10 and 6, deep 20 and 12, plus a guide) and lists what is short. Press copy under **Ask the chat to fill the gaps** and paste that into the same chat: it does pass C for exactly those objectives, reusing titles so nothing duplicates. The check looks at the text in the box, so keep earlier chunks in the box to check the whole certification.
 
 **The Claude Skill.** On the same page, **Download the skill** gives `ultimyr-course-builder.zip`. Upload it once in Claude (Settings, Capabilities, Skills). After that, "build me a study guide for <certification>" runs the same passes and standards without pasting the prompt. The skill and the prompt are generated from one source (`packages/bundle/src/index.ts`), so they cannot drift apart.
