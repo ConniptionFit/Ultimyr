@@ -44,3 +44,6 @@ The Reading Room shows one line under the alerts: cards due now (links to the da
 
 ## Printing a guide
 The printer button on a study guide prints or saves it as PDF with the navigation hidden.
+
+## Undo a rating
+After rating a card, **Undo last rating** (or **U**) restores the card's earlier schedule and removes the review from your history, so a slip does not distort your retention numbers. It is available for the most recent rating of each card until you review that card again.

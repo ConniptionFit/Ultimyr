@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: undo your last flashcard rating.** Pressed Good when you meant Again? **Undo last rating** (or **U**) puts the card back and restores its earlier schedule, and removes that review from your stats. It works until you review the same card again. Adds migration `0009_review_undo` and `POST /study/review/undo`.
 - **New: print or save a study guide as PDF.** A printer button beside Export on every guide prints just the article (menus and buttons left out, headings kept with their text, code blocks and tables kept whole).
 - **New: a friendly error page.** If a page fails while loading, you now see "Something went wrong" with **Try again** and a link back to the reading room (plus a reference code for your admin) instead of the browser's bare "This page couldn't load".
 - **New: filter search results by kind.** When a search finds more than one kind of thing (courses, material, guide sections, flashcards, links), chips with counts above the list narrow it without searching again.
