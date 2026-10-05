@@ -53,6 +53,7 @@
 - **New: download all your data.** Settings > **Your data** > **Download my data** builds one zip in your browser with your profile, every archive you own (the same file Export gives), your step notes, credentials and a year of progress, plus a README. A part that cannot be read is listed instead of stopping the download. Passwords and keys are never included. No migrations or API changes.
 - **Improved: screen readers and tests.** Table headers are marked as column headers, and meters (readiness, accuracy) now announce a percentage. More of the app's front-end logic (roadmap editing, display settings, return paths after sign in, review intervals) is covered by tests. No migrations or API changes.
 - **New: a Services card in Admin panel > General (themed: Towers).** Shows whether the content, quiz, AI gateway, MCP and notes services answer their health check, how long they took, and what to look at when one does not (`docker compose logs <name>`). **Check again** re-runs it. New admin only `GET /admin/services`; the auth service gets the internal service addresses from `docker-compose.yml` (`CONTENT_URL` and friends), so `git pull && docker compose up -d --build` is enough. No migrations.
+- **New: Sign out all other devices.** Settings > Security > Signed-in devices has a button that ends every session except the one you are using (new `DELETE /me/sessions`, logged as `session.revoked_others`). No migrations.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
