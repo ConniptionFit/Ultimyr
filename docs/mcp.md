@@ -43,6 +43,12 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `link_questions` | `quiz:write` | Tag questions with an objective |
 | `get_coverage` | `content:read`, `quiz:read` | Per objective: cards, questions, your accuracy, and the biggest gaps |
 | `get_build_queue` | `content:read` (`quiz:read` for exact question counts) | The to-do list for building an archive out: the next few tasks (a guide per domain, flashcards and questions per objective), the decks and quizzes that exist, and progress. Depth: quick, standard, deep |
+| `get_tag_vocabulary` | `content:read` | The shared tags (`topic:ai`, `content-type:video`, `level:beginner`) |
+| `get_tags` | `content:read` | The tags on an archive's parts: set, implied by type, and read from text, plus icons and their source. Filter by kind or tag |
+| `set_tags` | `content:write` | Set the exact tags on the archive, stages, steps, links, material or objectives. Applies at once (tags are not drafts); icons not chosen by a person are re-picked |
+| `search_icons` | `content:read` | The whole bundled Lucide library, by name or word, or the icons best suited to a tag |
+| `suggest_icons` | `content:read` | Icons ranked for a stage, step or archive (more matching tags rank higher), or for any list of tags |
+| `set_icons` | `content:write` | Choose an icon for an archive, stage or step (never replaced automatically), or `null` to hand it back to automatic assignment |
 | `get_credentials` | `content:read` | Your credentials with exam dates, renewals, CEU totals and current alerts. Voucher codes are never returned |
 | `get_exam_plan` | `quiz:read` | The day by day plan to an exam date |
 | `get_progress`, `get_weak_areas` | `quiz:read` | Let an AI coach you from your results |
@@ -60,6 +66,8 @@ How the assistant works through it:
 4. **Report.** `get_coverage` shows what is thin. Everything is a draft until you publish it.
 
 Because the queue is computed from what already exists, a new chat can pick up exactly where an old one stopped (`continue_build`). Draft questions count, so nothing is written twice. Writes are rate limited per minute; the assistant is told to wait and continue.
+
+No connector? Any chat can write the same thing as text and you paste it in. See [bundle.md](bundle.md).
 
 ## Safety
 - **Drafts.** New material and quiz questions are saved as drafts with source `mcp`, visible only to editors until a person publishes them. Editing **published** material creates a new version (so it can be restored) and moves the item back to draft until republished. Pass `holdForReview: false` on a tool call to skip that hold.

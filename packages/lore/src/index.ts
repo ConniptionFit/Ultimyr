@@ -30,6 +30,8 @@ export const terms = {
   drills: { themed: "Whetstone", plain: "Weak-area drills" },
   coverage: { themed: "Atlas", plain: "Coverage" },
   build: { themed: "Commission the Archivist", plain: "Build with an AI assistant" },
+  groupAccess: { themed: "Keys of Passage", plain: "Group access" },
+  about: { themed: "Colophon", plain: "About this app" },
   countdown: { themed: "The Eve", plain: "Exam countdown" },
 } as const;
 export type TermKey = keyof typeof terms;

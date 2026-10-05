@@ -15,6 +15,8 @@ COPY packages/db/package.json packages/db/
 COPY packages/authz/package.json packages/authz/
 COPY packages/lore/package.json packages/lore/
 COPY packages/coverage/package.json packages/coverage/
+COPY packages/tagging/package.json packages/tagging/
+COPY packages/bundle/package.json packages/bundle/
 COPY packages/ui-icons/package.json packages/ui-icons/
 COPY packages/service-kit/package.json packages/service-kit/
 COPY services/auth/package.json services/auth/

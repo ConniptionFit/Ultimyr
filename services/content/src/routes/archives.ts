@@ -4,6 +4,8 @@ import { z } from "zod";
 import { ARCHIVE_REL, ITEM_GRANT, RANK, RELATION_BY_RANK, loadArchive, need } from "../access.js";
 import type { Ctx } from "../ctx.js";
 import { cleanIconPng } from "../png.js";
+import { refreshIcons } from "../tagging.js";
+import { hasIcon, DEFAULT_ICON } from "@ultimyr/tagging";
 
 const httpUrl = z.url().refine((u) => /^https?:\/\//i.test(u), "must be http or https");
 const quickStats = z.object({
@@ -20,7 +22,7 @@ const fields = {
   purchaseLinks: z.array(z.object({ label: z.string().trim().min(1).max(80), url: httpUrl })).max(10),
   validityMonths: z.number().int().min(1).max(600).nullable(),
   quickStats,
-  iconName: z.string().regex(/^[a-z0-9-]{1,60}$/, "a Lucide icon name such as book-open"),
+  iconName: z.string().regex(/^[a-z0-9-]{1,60}$/, "a Lucide icon name such as book-open").refine(hasIcon, "not in the Lucide icon library"),
   visibility: z.enum(["private", "shared", "org", "public"]),
   tags: z.array(z.string().trim().min(1).max(40)).max(20),
   scoringProfileId: z.uuid().nullable(),
@@ -35,7 +37,7 @@ const createBody = z.object({ ...fields, overview: fields.overview.default(""), 
   tags: true,
   scoringProfileId: true,
 });
-const patchBody = z.object(fields).partial();
+const patchBody = z.object({ ...fields, iconName: fields.iconName.nullable() }).partial();
 const listQuery = pageQuery.extend({ q: z.string().trim().max(200).optional(), scope: z.enum(["all", "mine", "shared"]).default("all") });
 
 const slugify = (s: string) =>
@@ -57,7 +59,7 @@ export function archiveOut(row: Record<string, any>, rel: number) {
     purchaseLinks: row.purchase_links,
     validityMonths: row.validity_months,
     quickStats: row.quick_stats,
-    icon: { kind: row.icon_kind, name: row.icon_name, assetId: row.icon_asset_id, url: row.icon_asset_id ? `/api/v1/assets/${row.icon_asset_id}` : null },
+    icon: { kind: row.icon_kind, name: row.icon_name, source: row.icon_source, assetId: row.icon_asset_id, url: row.icon_asset_id ? `/api/v1/assets/${row.icon_asset_id}` : null },
     visibility: row.visibility,
     scoringProfileId: row.scoring_profile_id,
     tags: row.tags,
@@ -82,8 +84,8 @@ export async function createArchive(pool: Pool, ownerId: string, body: z.infer<t
   const id = uuidv7();
   const slug = await uniqueSlug(pool, ownerId, body.slug ?? slugify(body.title));
   const { rows } = await pool.query(
-    `INSERT INTO content.master_items (id, owner_id, slug, title, overview, vendor, purchase_links, validity_months, quick_stats, icon_name, visibility, tags, scoring_profile_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    `INSERT INTO content.master_items (id, owner_id, slug, title, overview, vendor, purchase_links, validity_months, quick_stats, icon_name, visibility, tags, scoring_profile_id, icon_source)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
     [
       id,
       ownerId,
@@ -94,10 +96,11 @@ export async function createArchive(pool: Pool, ownerId: string, body: z.infer<t
       JSON.stringify(body.purchaseLinks ?? []),
       body.validityMonths ?? null,
       JSON.stringify(body.quickStats ?? {}),
-      body.iconName ?? "book-open",
+      body.iconName ?? DEFAULT_ICON,
       body.visibility ?? "private",
       body.tags ?? [],
       body.scoringProfileId ?? null,
+      body.iconName ? "user" : "default",
     ],
   );
   return rows[0]!;
@@ -133,7 +136,8 @@ export function archiveRoutes(ctx: Ctx) {
       const a = await ctx.actor(req, "content:write");
       ctx.requireAuthor(a);
       const body = parse(createBody, req.body);
-      const row = await createArchive(pool, a.userId, body);
+      const created = await createArchive(pool, a.userId, body);
+      const row = (await refreshIcons(pool, created.id)) ?? created;
       return reply.code(201).send(archiveOut(row, RANK.owner));
     });
 
@@ -172,9 +176,11 @@ export function archiveRoutes(ctx: Ctx) {
       if (body.validityMonths !== undefined) add("validity_months", body.validityMonths);
       if (body.quickStats !== undefined) add("quick_stats", JSON.stringify(body.quickStats));
       if (body.iconName !== undefined) {
-        add("icon_name", body.iconName);
+        // A name is a person's own choice and is never replaced automatically; null hands the icon back to automatic assignment.
+        add("icon_name", body.iconName ?? DEFAULT_ICON);
         add("icon_kind", "lucide");
         add("icon_asset_id", null);
+        add("icon_source", body.iconName === null ? "default" : "user");
       }
       if (body.visibility !== undefined) add("visibility", body.visibility);
       if (body.tags !== undefined) add("tags", body.tags);
@@ -182,7 +188,9 @@ export function archiveRoutes(ctx: Ctx) {
       if (!set.length) return archiveOut(row, rel);
       vals.push(row.id);
       const { rows } = await pool.query(`UPDATE content.master_items SET ${set.join(", ")}, updated_at = now() WHERE id = $${vals.length} RETURNING *`, vals);
-      return archiveOut(rows[0]!, rel);
+      const retag = body.title !== undefined || body.overview !== undefined || body.tags !== undefined || body.iconName === null;
+      const fresh = retag ? await refreshIcons(pool, row.id) : null;
+      return archiveOut(fresh ?? rows[0]!, rel);
     });
 
     // Deleting is recoverable for 30 days (see purge in main.ts).
@@ -229,7 +237,7 @@ export function archiveRoutes(ctx: Ctx) {
         png.width,
         png.height,
       ]);
-      await pool.query("UPDATE content.master_items SET icon_kind = 'upload', icon_asset_id = $1, updated_at = now() WHERE id = $2", [assetId, row.id]);
+      await pool.query("UPDATE content.master_items SET icon_kind = 'upload', icon_asset_id = $1, icon_source = 'user', updated_at = now() WHERE id = $2", [assetId, row.id]);
       await pool.query("DELETE FROM content.assets a WHERE a.owner_id = $1 AND a.kind = 'icon' AND a.id <> $2 AND NOT EXISTS (SELECT 1 FROM content.master_items m WHERE m.icon_asset_id = a.id)", [a.userId, assetId]);
       return { assetId, url: `/api/v1/assets/${assetId}`, width: png.width, height: png.height };
     });
@@ -238,7 +246,8 @@ export function archiveRoutes(ctx: Ctx) {
       const a = await ctx.actor(req, "content:write");
       const { rel, row } = await loadArchive(pool, a, idParam(req));
       need(rel, RANK.editor);
-      await pool.query("UPDATE content.master_items SET icon_kind = 'lucide', icon_asset_id = NULL, updated_at = now() WHERE id = $1", [row.id]);
+      await pool.query("UPDATE content.master_items SET icon_kind = 'lucide', icon_asset_id = NULL, icon_name = $2, icon_source = 'default', updated_at = now() WHERE id = $1", [row.id, DEFAULT_ICON]);
+      await refreshIcons(pool, row.id);
       return reply.code(204).send();
     });
 

@@ -1,7 +1,10 @@
 **/node_modules
 **/dist
 **/.next
-.git
+.git/*
+!.git/HEAD
+!.git/packed-refs
+!.git/refs
 .env
 secrets
 docs
