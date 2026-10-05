@@ -47,6 +47,9 @@ services:
       <<: *db-env
       PG_PASSWORD_FILE: /run/secrets/pg_password
     secrets: [pg_password]
+    # Wait for the bundled database when it is enabled; with your own Postgres (profile off) this is skipped.
+    depends_on:
+      postgres: { condition: service_healthy, required: false }
     restart: "no"
 
   auth:

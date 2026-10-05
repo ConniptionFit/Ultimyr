@@ -33,8 +33,8 @@ async function waitForDatabase() {
           : code === "28P01" || code === "28000"
             ? "The database refused the login. Check PG_USER and secrets/pg_password."
             : "Check the database settings in .env.";
-      console.error(`Database not ready (attempt ${attempt}/15): ${e instanceof Error ? e.message : String(e)}`);
-      if (attempt >= 15) {
+      console.error(`Database not ready (attempt ${attempt}/30): ${e instanceof Error ? e.message : String(e)}`);
+      if (attempt >= 30) {
         console.error(`Giving up. ${hint}`);
         process.exit(1);
       }
