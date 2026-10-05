@@ -50,3 +50,6 @@ After rating a card, **Undo last rating** (or **U**) restores the card's earlier
 
 ## Review history export
 Progress > **Reviews** downloads a CSV of every flashcard review you have made, for your own analysis. It never includes anyone else's data.
+
+## Filtering courses
+With more than six courses, the Reading Room shows a filter box that matches title or vendor.
