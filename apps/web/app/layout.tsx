@@ -29,8 +29,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </a>
         <NamingProvider initial={mode}>
           <DisplayProvider initial={display}>
-            <AuthProvider>{children}</AuthProvider>
-            <TabIcon />
+            <AuthProvider>
+              {children}
+              <TabIcon />
+            </AuthProvider>
             <ServiceWorker />
           </DisplayProvider>
         </NamingProvider>
