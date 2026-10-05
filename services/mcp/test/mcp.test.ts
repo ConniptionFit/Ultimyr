@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await boot();
     const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name).sort();
     const reader = await names(["content:read"]);
-    expect(reader).toEqual(["get_archive", "get_build_queue", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "list_archives", "list_resources", "search_materials"]);
+    expect(reader).toEqual(["get_archive", "get_build_queue", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "get_tag_vocabulary", "get_tags", "list_archives", "list_resources", "search_icons", "search_materials", "suggest_icons"]);
     const full = await names(["content:read", "content:write", "quiz:read", "quiz:write"]);
     expect(full).toContain("create_quiz_questions");
     expect(full).toContain("get_progress");
@@ -295,6 +295,36 @@ describe("MCP server", () => {
     const names = (await reader.listTools()).tools.map((t) => t.name);
     expect(names).not.toContain("set_objectives");
     expect(names).not.toContain("link_questions");
+  });
+
+  it("reads and writes tags and icons through the content service", async () => {
+    fresh();
+    await boot();
+    respond = (c) => {
+      if (c.path === "/v1/tags/vocabulary") return { tagPattern: "p", namespaces: [{ namespace: "topic", label: "Topic", description: "d", iconWeight: 1, values: [{ tag: "topic:ai", label: "AI", synonyms: ["llm"], icons: ["bot"] }] }] };
+      return { ok: true };
+    };
+    const c = await connect(await issuer.token({ scopes: ["content:read", "content:write"] }));
+    const vocab = JSON.parse(text(await c.callTool({ name: "get_tag_vocabulary", arguments: {} })));
+    expect(vocab.namespaces[0].values).toEqual([{ tag: "topic:ai", label: "AI" }]);
+    await c.callTool({ name: "get_tags", arguments: { archiveId: ID, kind: "stage", tag: "ai" } });
+    expect(calls.at(-1)).toMatchObject({ service: "content", path: `/v1/archives/${ID}/tags`, method: "GET", query: { kind: "stage", tag: "ai" } });
+    await c.callTool({ name: "set_tags", arguments: { archiveId: ID, targets: [{ kind: "stage", id: ITEM, tags: ["topic:ai", "video"] }] } });
+    expect(calls.at(-1)).toMatchObject({ path: `/v1/archives/${ID}/tags`, method: "PUT", body: { targets: [{ kind: "stage", id: ITEM, tags: ["topic:ai", "video"] }] } });
+    await c.callTool({ name: "search_icons", arguments: { query: "robot", limit: 5 } });
+    expect(calls.at(-1)).toMatchObject({ path: "/v1/icons", query: { query: "robot", limit: 5, offset: 0 } });
+    await c.callTool({ name: "suggest_icons", arguments: { tags: ["ai"] } });
+    expect(calls.at(-1)).toMatchObject({ path: "/v1/icons/suggest", method: "POST", body: { tags: ["ai"], limit: 8 } });
+    await c.callTool({ name: "suggest_icons", arguments: { archiveId: ID, kind: "stage", id: ITEM } });
+    expect(calls.at(-1)).toMatchObject({ path: `/v1/archives/${ID}/icon-suggestions`, query: { kind: "stage", id: ITEM, limit: 8 } });
+    const none = await c.callTool({ name: "suggest_icons", arguments: {} });
+    expect(none.isError).toBe(true);
+    await c.callTool({ name: "set_icons", arguments: { archiveId: ID, targets: [{ kind: "archive", id: ID, icon: null }] } });
+    expect(calls.at(-1)).toMatchObject({ path: `/v1/archives/${ID}/icons`, method: "PUT", body: { targets: [{ kind: "archive", id: ID, icon: null }] } });
+    const reader = await connect(await issuer.token({ scopes: ["content:read"] }));
+    const names = (await reader.listTools()).tools.map((t) => t.name);
+    expect(names).not.toContain("set_tags");
+    expect(names).not.toContain("set_icons");
   });
 
   it("reports coverage by joining objectives with question stats, and copes without quiz access", async () => {

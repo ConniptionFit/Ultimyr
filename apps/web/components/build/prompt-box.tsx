@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/admin/copy-button";
 
 /** A ready-to-paste prompt with the connection address beside it. */
-export function PromptBox({ prompt, label }: { prompt: string; label: string }) {
+export function PromptBox({ prompt, label, connection = true }: { prompt: string; label: string; connection?: boolean }) {
   const [address, setAddress] = useState("");
   useEffect(() => setAddress(`${window.location.origin}/mcp`), []);
   return (
@@ -19,6 +19,7 @@ export function PromptBox({ prompt, label }: { prompt: string; label: string }) 
           {prompt}
         </pre>
       </div>
+      {connection && (
       <p className="text-sm text-muted">
         Not connected yet? In Claude, add a custom connector with this address, sign in to Ultimyr and approve it:{" "}
         <code className="rounded bg-surface px-1">{address || "/mcp"}</code> <CopyButton text={address} label="connection address" />{" "}
@@ -26,6 +27,7 @@ export function PromptBox({ prompt, label }: { prompt: string; label: string }) 
           Connected apps
         </Link>
       </p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogIcon } from "@/components/catalog-icon";
 import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -368,8 +369,9 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
               return (
                 <li key={st.id}>
                   <div className="mb-2 flex items-baseline justify-between gap-3">
-                    <h3 className="text-lg">
+                    <h3 className="flex items-center gap-2 text-lg">
                       <span className="text-muted">{i + 1}. </span>
+                      {st.icon?.name && <CatalogIcon name={st.icon.name} size={18} className="shrink-0 text-muted" />}
                       {st.title}
                     </h3>
                     <span className="text-xs text-muted">
@@ -377,6 +379,15 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
                     </span>
                   </div>
                   {st.summary && <p className="mb-2 text-sm text-muted">{st.summary}</p>}
+                  {!!st.tagSet?.length && (
+                    <p className="mb-2 flex flex-wrap gap-1 text-xs text-muted" aria-label="Tags">
+                      {st.tagSet.map((tag) => (
+                        <span key={tag} className="rounded-full border border-line px-2 py-0.5">
+                          {tag.replace(/^(topic|content-type):/, "").replaceAll("-", " ")}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                   <ul className="divide-y divide-line rounded-md border border-line">
                     {st.steps.length === 0 && <li className="p-3 text-sm text-muted">Nothing in this stage yet.</li>}
                     {st.steps.map((x) => (

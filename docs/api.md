@@ -45,6 +45,7 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/admin/overview` | Counts, deployment details and the settings below. |
+| GET | `/admin/about` | Running version and commit, latest GitHub release, commits behind main, and the matching changelog section. `?refresh=1` re-checks (at most every 30 seconds). Returns `status: "unknown"` when GitHub is unreachable and `"disabled"` when `ULTIMYR_UPDATE_CHECK=false`. |
 | GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen?: boolean or null, localUsersDisabled?: boolean }`. `registrationOpen: null` removes the override and uses `AUTH_REGISTRATION`. `localUsersDisabled: true` returns 409 `no_identity_provider` unless a provider is enabled. |
 | POST | `/admin/users` | Create a local account: `{ email, displayName, roles?, method: "invite" or "password", password? }`. `invite` (default) returns a one-time `inviteUrl` valid 7 days. `password` returns a `temporaryPassword` (generated unless you pass one, 12 or more characters) that must be changed at first sign-in. Both are shown once. 409 `email_taken`, or `local_users_disabled`. |
 | POST | `/admin/users/:id/invite` | New one-time link for a local account. Older links stop working. 409 `not_local_account` for SSO and SCIM users. |
@@ -55,7 +56,7 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | GET, POST, DELETE | `/admin/scim-tokens`, `/admin/scim-tokens/:id` | Token shown once on create. |
 | GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions. |
 
-Roles: `platform_admin`, `org_admin`, `author`, `learner`.
+Roles: `platform_admin`, `org_admin`, `author`, `learner`, `access_delegate` (manages group access for the courses delegated to it, nothing else).
 
 ### Connected apps and OAuth (MCP)
 See [mcp.md](mcp.md#oauth-details-for-client-authors) for the flow. Routes marked interactive reject API key and connected-app tokens.
@@ -132,11 +133,35 @@ See [content.md](content.md#roadmaps-and-external-resources). Reading needs `vie
 | PUT | `/roadmap/steps/:id/progress` | `{ done: boolean }`. Your own tick only. On a step with children it ticks every step under it. Returns new `totals` and `next`. |
 | GET | `/roadmaps` | Up to 12 published roadmaps you can read, most recently worked on first, with `totals` and `next`. Used by the dashboard. |
 
+## Tags and icons (content service)
+See [tagging.md](tagging.md). Reading needs `viewer` on the archive; writing needs `editor` and `content:write`. Tags are `namespace:value`; bare words are normalized (`AI` becomes `topic:ai`).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/tags/vocabulary` | Namespaces and values with synonyms and curated icons. |
+| GET | `/icons` | `?query=&tag=&limit=&offset=`. The bundled Lucide library (`totalInLibrary`). Each icon has `tags` (what it depicts) and `suggestFor` (the vocabulary tags it suits). With `tag`, ordered best first for that tag. |
+| GET | `/icons/:name` | One icon's info. 404 if not in the library. |
+| POST | `/icons/suggest` | `{ tags: (string \| { tag, weight? })[], limit? }` returns `suggestions: [{ name, score, matched }]`. Weight 0 to 1 counts a tag less. |
+| GET | `/archives/:id/tags` | `?kind=&tag=`. `summary` (count per tag) and `targets: [{ kind, id, title, tags, derived, inferred, icon? }]` for the archive, stages, steps, resources, items and objectives. Viewers do not see drafts. |
+| PUT | `/archives/:id/tags` | `{ targets: [{ kind: archive\|stage\|step\|resource\|item\|objective, id, tags }] }` sets the exact list for each (empty clears), up to 300 targets and 30 tags each. Every id must belong to the archive (400 otherwise). Returns `stored` and `iconChanges`. |
+| GET | `/archives/:id/icon-suggestions` | `?kind=archive\|stage\|step&id=&limit=`. Ranked icons for that target with the weighted tags used. |
+| PUT | `/archives/:id/icons` | `{ targets: [{ kind, id, icon: name \| null }] }`. A name is the person's choice (`source: user`, never replaced automatically); `null` hands it back to automatic assignment. |
+| POST | `/archives/:id/icons/auto` | Re-run automatic assignment. Returns `iconChanges`. Never touches a `user` icon. |
+
+Archives, roadmap stages and steps now return `icon: { name, source }` (`source` is `auto`, `user`, or `default` and `none` when nothing is set), and stages, steps and resources in the roadmap return `tagSet`. `PATCH /archives/:id` accepts `iconName: null` to return to automatic assignment, and rejects names that are not in the library.
+
 ## Sharing and access
 | Method | Path | Notes |
 |---|---|---|
 | GET, POST | `/archives/:id/grants`, `/items/:id/grants` | Owner only. `{ subjectType: user\|group, subjectId, relation: attempt\|viewer\|editor\|owner, expiresAt? }`. Needs `content:share` to change. |
 | DELETE | `/archives/:id/grants/:grantId`, `/items/:id/grants/:grantId` | |
+| GET | `/group-access/archives` | Archives you may manage group access for (all for `platform_admin`, delegated ones for `access_delegate`), with `access` (`everyone` or `restricted`) and `groupGrants`. Needs `content:read`. |
+| GET | `/group-access/groups/:groupId` | One group's `level` (`none`, `view`, `manage`, plus legacy `attempt`, `owner`) on each archive you manage. |
+| PUT | `/group-access/archives/:id/groups/:groupId` | `{ level: none\|view\|manage, expiresAt? }`. `view` is a `viewer` grant, `manage` is `editor`. Replaces the group's grant on that archive. Admin or delegate of that archive. Needs `content:share`. |
+| PUT | `/group-access/archives/:id/access` | `{ mode: everyone\|restricted }`. Admin only. |
+| GET, POST | `/group-access/archives/:id/delegates` | Admin only. `{ userId }` to add. |
+| DELETE | `/group-access/archives/:id/delegates/:userId` | Admin only. |
+| GET | `/group-access/delegates/:userId` | Archives delegated to one person. Admin only. |
 | GET | `/access/archive/:id`, `/access/item/:id` | What can I do here? Any valid token. Used by other services. |
 
 ## Search and import

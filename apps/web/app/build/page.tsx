@@ -4,8 +4,9 @@ import type { Depth } from "@ultimyr/coverage";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { BundleImport, BundlePrompt } from "@/components/build/bundle-import";
 import { PromptBox } from "@/components/build/prompt-box";
-import { DEPTH_WORDS, startPrompt } from "@/lib/build-prompt";
+import { DEPTH_WORDS, bundlePrompt, startPrompt } from "@/lib/build-prompt";
 import { useNaming } from "@/lib/naming";
 import { RequireSession } from "@/lib/require-session";
 
@@ -52,6 +53,14 @@ function Build() {
         </fieldset>
         <PromptBox label="Prompt to paste" prompt={startPrompt(name, depth)} />
       </div>
+      <section aria-labelledby="paste-h" className="space-y-4 border-t border-line pt-6">
+        <h2 id="paste-h" className="text-xl">
+          No connector? Copy and paste instead
+        </h2>
+        <p className="text-sm text-muted">Works with any chat (Gemini, ChatGPT, Claude without a connector) and needs no API key. The chat writes everything as text in a strict format, in chunks if it is long. You paste it here, Ultimyr checks it line by line, and saves it as drafts.</p>
+        <BundlePrompt prompt={bundlePrompt(name, depth)} />
+        <BundleImport />
+      </section>
       <p className="text-sm text-muted">
         Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are in the <Link href="/reading-room" className="underline">Reading Room</Link>.
       </p>

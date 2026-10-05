@@ -10,6 +10,8 @@ const schema = z.object({
   COOKIE_SECURE: booleanFromEnv.optional(),
   ULTIMYR_PUBLIC_URL: z.url().optional(),
   ULTIMYR_ALLOW_INSECURE_IDP: booleanFromEnv.optional(),
+  ULTIMYR_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/, "owner/name").default("ConniptionFit/Ultimyr"),
+  ULTIMYR_UPDATE_CHECK: booleanFromEnv.optional(),
 });
 
 export interface AuthConfig {
@@ -26,6 +28,10 @@ export interface AuthConfig {
   pepper: string;
   /** Allow http:// identity providers (development and tests only). */
   allowInsecureIdp: boolean;
+  /** GitHub repository (owner/name) shown in About and checked for newer releases. */
+  repo: string;
+  /** Admin panel > About asks GitHub for the latest release. Off for air-gapped installs. */
+  updateCheck: boolean;
 }
 
 export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
@@ -52,5 +58,7 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
     encKeyB64: encKey ?? DEV_ENC_KEY_B64,
     pepper: pepper ?? DEV_PEPPER,
     allowInsecureIdp: e.ULTIMYR_ALLOW_INSECURE_IDP ?? e.NODE_ENV !== "production",
+    repo: e.ULTIMYR_REPO,
+    updateCheck: e.ULTIMYR_UPDATE_CHECK ?? e.NODE_ENV !== "test",
   };
 }
