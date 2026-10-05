@@ -47,7 +47,7 @@ export function Markdown({ children }: { children: string }) {
           pre: ({ children: c }) => <pre className="my-3 overflow-x-auto rounded-md border border-line bg-surface p-3 text-sm">{c}</pre>,
           blockquote: ({ children: c }) => <blockquote className="my-3 border-l-2 border-line pl-4 text-muted">{c}</blockquote>,
           table: ({ children: c }) => <div className="my-3 overflow-x-auto"><table className="w-full border-collapse text-sm">{c}</table></div>,
-          th: ({ children: c }) => <th className="border border-line px-2 py-1 text-left">{c}</th>,
+          th: ({ children: c }) => <th scope="col" className="border border-line px-2 py-1 text-left">{c}</th>,
           td: ({ children: c }) => <td className="border border-line px-2 py-1">{c}</td>,
         }}
       >
