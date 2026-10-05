@@ -57,7 +57,7 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 **Resources:** `ultimyr://archive/{id}`, `ultimyr://guide/{id}` (Markdown), `ultimyr://deck/{id}`. **Prompts:** `make_study_guide`, `quiz_me_on`, `explain_my_mistakes`, `build_roadmap`, `build_certification`, `continue_build`. Tools, resources and prompts use plain names even when themed names are on.
 
 ## Build a whole certification from one prompt
-Open **Exam prep > Build with an AI assistant** (themed: Commission the Archivist), type the certification and pick a depth, then paste the prompt into Claude. On an archive's **Coverage** tab, the same panel shows build progress and a prompt to continue.
+Open **Exam prep > Build with an AI assistant** (themed: Commission the Curator), type the certification and pick a depth, then paste the prompt into Claude. On an archive's **Coverage** tab, the same panel shows build progress and a prompt to continue.
 
 How the assistant works through it:
 1. **Facts first.** It asks you for the vendor's exam objectives and stops if you have none. It never guesses objectives, weights, scores or prices.

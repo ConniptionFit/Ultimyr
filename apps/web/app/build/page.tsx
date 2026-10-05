@@ -64,7 +64,7 @@ function Build() {
         <SkillDownload />
       </section>
       <p className="text-sm text-muted">
-        Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are in the <Link href="/reading-room" className="underline">Reading Room</Link>.
+        Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are on the <Link href="/reading-room" className="underline">{t("dashboard")}</Link>.
       </p>
     </div>
   );
