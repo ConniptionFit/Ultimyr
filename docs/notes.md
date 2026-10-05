@@ -84,6 +84,31 @@ Notes are saved in Ultimyr and need no setup. Under any lesson, video or other i
 
 **Make a deck** turns the `Question :: Answer` lines under a `## Flashcards` heading into a new deck in the archive.
 
+### Formatting buttons
+A toolbar above the note box writes plain Markdown, so a note looks the same in Obsidian. Select text and press a button, or press it with nothing selected to insert a placeholder. Pressing it again undoes it. Undo and Redo also reach edits made with the buttons.
+
+| Button | Writes | Shortcut |
+| --- | --- | --- |
+| Heading 1, 2, 3 | `#`, `##`, `###` | |
+| Bold | `**text**` | Ctrl/Cmd+B |
+| Italic | `_text_` | Ctrl/Cmd+I |
+| Underline | `<u>text</u>` | Ctrl/Cmd+U |
+| Strikethrough | `~~text~~` | Ctrl/Cmd+Shift+X |
+| Inline code | `` `text` `` | Ctrl/Cmd+E |
+| Clear formatting | removes marks, links, headings, quotes and list markers | |
+| Bulleted, numbered list, checklist | `- `, `1. `, `- [ ] ` | |
+| Decrease, increase indent | a tab per level | |
+| Quote | `> ` | |
+| Code block | a fenced block | |
+| Link | `[text](https://)`, with the address selected | Ctrl/Cmd+K |
+| Table, divider line | a starter table, `---` | |
+
+- **Underline has no Markdown syntax.** Ultimyr writes `<u>text</u>`, which Obsidian renders as underlined text in reading view and live preview. Anywhere else that shows plain Markdown it appears as the tags.
+- **Enter continues a list** (the next bullet, number or checkbox) and Enter on an empty item ends it.
+- Lists, headings and quotes apply to every line you have selected.
+- Ultimyr's Preview only reads `<u>` among HTML tags; any other raw HTML in a note is not shown.
+- The toolbar is one Tab stop: use the arrow keys to move along it.
+
 ## Also keep them in Obsidian (optional)
 Ultimyr can mirror every note to your Obsidian vault through [Fast Note Sync](https://github.com/haierkeys/obsidian-fast-note-sync) (FNS), a self-hosted server plus an Obsidian plugin. Once connected the notes are kept in step **both ways**, so Obsidian is another way to read and edit them and a backup. Ultimyr looks and behaves the same with or without it.
 
