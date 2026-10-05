@@ -69,12 +69,24 @@ function stepNote(input: PlanInput, stage: string, s: PlanStep): string {
   return fm.join("\n") + (s.url ? `Source: ${s.url}\n\n` : "") + STEP_BODY;
 }
 
-export function indexPath(slug: string): string {
-  return `Ultimyr/${slug}/00 Index.md`;
+export const DEFAULT_ROOT = "Ultimyr";
+
+/** The folder in the vault that holds everything Ultimyr writes: up to three plain folder names, no slashes at the ends. */
+export function cleanRoot(raw: string | null | undefined): string {
+  const parts = (raw ?? "")
+    .split("/")
+    .map((x) => safeName(x, ""))
+    .filter(Boolean)
+    .slice(0, 3);
+  return parts.length ? parts.join("/") : DEFAULT_ROOT;
 }
 
-export function planNotes(input: PlanInput): PlannedNote[] {
-  const root = `Ultimyr/${input.slug}`;
+export function indexPath(slug: string, rootFolder = DEFAULT_ROOT): string {
+  return `${cleanRoot(rootFolder)}/${slug}/00 Index.md`;
+}
+
+export function planNotes(input: PlanInput, rootFolder = DEFAULT_ROOT): PlannedNote[] {
+  const root = `${cleanRoot(rootFolder)}/${input.slug}`;
   const out: PlannedNote[] = [];
   const stageLinks: string[] = [];
 
@@ -115,7 +127,7 @@ export function planNotes(input: PlanInput): PlannedNote[] {
     "## Reviews",
     "",
   ].join("\n");
-  return [{ kind: "index", path: indexPath(input.slug), title: input.archiveTitle, content: index }, ...out];
+  return [{ kind: "index", path: indexPath(input.slug, rootFolder), title: input.archiveTitle, content: index }, ...out];
 }
 
 /** Opens a note in the Obsidian app on this device. */

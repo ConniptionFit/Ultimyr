@@ -77,9 +77,9 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 |---|---|---|
 | `PORT`, `HOST` | `4006`, `0.0.0.0` | Listen address. |
 | `AUTH_URL`, `CONTENT_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`. |
-| `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Operator only: people cannot change it. Empty means notes are off. See [notes.md](notes.md#sync-with-obsidian). |
+| `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Optional: an administrator can instead set it in Admin panel > Notes (Obsidian). The environment value wins. People cannot change it. See [notes.md](notes.md#sync-with-obsidian). |
 | `ULTIMYR_VAULT_KEK`, `_VERSION`, `_PREVIOUS` | as the AI gateway | The same master key. It seals each person's sync token. Without it notes are off. |
-| `NOTES_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
+| `NOTES_AUTO_MIGRATE` | true | The notes service runs its own migrations at start. Set `false` to rely on the `migrate` job only. |
 
 ## MCP server
 | Variable | Default | Purpose |
