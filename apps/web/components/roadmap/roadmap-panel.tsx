@@ -254,7 +254,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
       return { ...n, steps };
     });
   const rail = road.stages.length > 1 && (
-    <nav aria-label="Stages" className="sticky top-0 z-10 -mx-4 overflow-x-auto bg-bg/95 px-4 py-2 backdrop-blur">
+    <nav aria-label={t("stages")} className="sticky top-0 z-10 -mx-4 overflow-x-auto bg-bg/95 px-4 py-2 backdrop-blur">
       <ul className="flex gap-2 text-sm">
         {road.stages.map((st, i) => (
           <li key={st.id} className="shrink-0">
@@ -327,10 +327,10 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
             <FileText size={16} aria-hidden /> Paste an outline
           </Button>
           <label className="sr-only" htmlFor="copy-from">
-            Copy a roadmap from another course
+            {t("copyRoadmap")} from another course
           </label>
           <select id="copy-from" value="" onFocus={loadOthers} onChange={(e) => void copyFrom(e.target.value)} className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
-            <option value="">Copy from another {t("archive").toLowerCase()}…</option>
+            <option value="">{t("copyRoadmap")} from another {t("archive").toLowerCase()}…</option>
             {(others ?? []).map((o) => (
               <option key={o.id} value={o.id}>
                 {o.title}

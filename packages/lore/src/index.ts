@@ -33,6 +33,13 @@ export const terms = {
   groupAccess: { themed: "Party Access", plain: "Group access" },
   about: { themed: "Lore", plain: "About this app" },
   countdown: { themed: "Roshan Timer", plain: "Exam countdown" },
+  continue: { themed: "Town Portal", plain: "Continue" },
+  session: { themed: "Farming Route", plain: "Today's session" },
+  stages: { themed: "Minimap", plain: "Stages" },
+  stats: { themed: "Scoreboard", plain: "Your stats" },
+  noteSearch: { themed: "Scan", plain: "Search" },
+  offline: { themed: "Backpack", plain: "Offline copy" },
+  copyRoadmap: { themed: "Tempest Double", plain: "Copy" },
 } as const;
 export type TermKey = keyof typeof terms;
 
@@ -66,6 +73,13 @@ export const termLore: Record<TermKey, { source: string; function: string }> = {
   groupAccess: { source: "Party, the group you play with", function: "Which groups can view or manage which courses." },
   about: { source: "Lore, the history tab on a hero's page", function: "App name, version, license and links." },
   countdown: { source: "Roshan's respawn timer, the clock toward the big fight", function: "Days until your real exam." },
+  continue: { source: "Town Portal Scroll, teleports you back to a friendly building", function: "Jump back to the step you left off at." },
+  session: { source: "Farming Route, the camps a hero clears in the time available", function: "Pick today's minutes and see which steps fit." },
+  stages: { source: "Minimap, the whole map at a glance, click to jump", function: "The stages of a roadmap, with progress, to jump between." },
+  stats: { source: "Scoreboard, a hero's running numbers in a match", function: "Your streak, readiness and weakest area for this course." },
+  noteSearch: { source: "Scan, the ability that reveals a chosen area of the map", function: "Search your own notes for a course." },
+  offline: { source: "Backpack, items a hero carries without equipping", function: "Keep a copy of a guide or deck to read without a connection." },
+  copyRoadmap: { source: "Tempest Double (Arc Warden), a copy that carries the original's items and abilities", function: "Copy a roadmap from another course." },
 };
 
 export function term(key: TermKey, mode: NamingMode): string {
@@ -121,6 +135,10 @@ export const copy = {
     themed: "Your answer sets when this rune spawns again. The time under each choice is when you will see it next.",
     plain: "Your answer sets when you see this card again. The time under each choice is when it comes back.",
   },
+  continueResume: { themed: "Town Portal to where you left off", plain: "Continue where you left off" },
+  todayBadge: { themed: "On route", plain: "Today" },
+  offlineKeep: { themed: "Stow in the Backpack for offline reading", plain: "Keep for offline reading" },
+  offlineDrop: { themed: "Take out of the Backpack", plain: "Remove the offline copy" },
   rateAgain: { themed: "Slipped away. Returns shortly.", plain: "Forgot it. Comes back soon." },
   rateHard: { themed: "Faint. Returns sooner than usual.", plain: "Barely remembered. Comes back sooner." },
   rateGood: { themed: "Recalled. Returns on the usual schedule.", plain: "Remembered. Normal gap." },

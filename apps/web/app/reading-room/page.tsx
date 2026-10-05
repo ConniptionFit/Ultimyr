@@ -127,7 +127,7 @@ export default function ReadingRoom() {
               return go?.next ? (
                 <Link href={`/archives/${go.archiveId}?step=${go.next.stepId}#roadmap`} className="flex items-center justify-between gap-3 rounded-md border border-accent p-4 hover:bg-surface">
                   <span className="min-w-0">
-                    <span className="block text-sm text-muted">{go.started ? "Continue where you left off" : "Start here"} · {go.title}</span>
+                    <span className="block text-sm text-muted">{go.started ? copy("continueResume") : "Start here"} · {go.title}</span>
                     <span className="block truncate font-serif text-lg">{go.next.title}</span>
                   </span>
                   <ArrowRight size={20} className="shrink-0 text-accent" aria-hidden />

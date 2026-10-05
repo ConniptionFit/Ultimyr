@@ -4,6 +4,7 @@ import { Flame, Search, Target } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 import { useDisplay } from "@/lib/display";
 import { searchNotes, type NoteText } from "@/lib/note-search";
 import { pct } from "@/lib/quiz";
@@ -34,10 +35,11 @@ export function useSessionPlan(leaves: RoadmapStep[]): { minutes: number; setMin
 }
 
 export function SessionBar({ minutes, setMinutes, plan }: { minutes: number; setMinutes: (m: number) => void; plan: SessionPlan | null }) {
+  const { t, copy } = useNaming();
   return (
     <div className="space-y-2 rounded-md border border-line p-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Today's session length">
-        <span className="text-muted">Today's session:</span>
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`${t("session")} length`}>
+        <span className="text-muted">{t("session")}:</span>
         {SESSION_CHOICES.map((m) => (
           <button key={m} type="button" aria-pressed={minutes === m} onClick={() => setMinutes(m)} className={`rounded-md border px-2 py-1 ${minutes === m ? "border-accent text-ink" : "border-line text-muted hover:text-ink"}`}>
             {m === 0 ? "Off" : `${m} min`}
@@ -46,7 +48,7 @@ export function SessionBar({ minutes, setMinutes, plan }: { minutes: number; set
       </div>
       {plan && plan.ids.length > 0 && (
         <p className="text-muted">
-          {plan.ids.length} {plan.ids.length === 1 ? "step" : "steps"}, about {plan.minutes} min, marked <span className="rounded-full border border-accent px-2 text-xs text-ink">Today</span> below.
+          {plan.ids.length} {plan.ids.length === 1 ? "step" : "steps"}, about {plan.minutes} min, marked <span className="rounded-full border border-accent px-2 text-xs text-ink">{copy("todayBadge")}</span> below.
         </p>
       )}
       {plan && plan.ids.length === 0 && <p className="text-accent">Nothing left to plan. The required steps are done.</p>}
@@ -58,6 +60,7 @@ export function SessionBar({ minutes, setMinutes, plan }: { minutes: number; set
 export function PathStats({ archiveId }: { archiveId: string }) {
   const { api } = useAuth();
   const { display } = useDisplay();
+  const { mode, t } = useNaming();
   const [a, setA] = useState<Analytics | null>(null);
   useEffect(() => {
     let live = true;
@@ -75,6 +78,7 @@ export function PathStats({ archiveId }: { archiveId: string }) {
   if (bp === null && !weak && !(streak > 0 && !display.calm)) return null;
   return (
     <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+      {mode === "themed" && <span className="font-medium text-ink">{t("stats")}</span>}
       {streak > 0 && !display.calm && (
         <span className="inline-flex items-center gap-1">
           <Flame size={14} aria-hidden /> {streak} {streak === 1 ? "day" : "days"} of practice in a row
@@ -101,6 +105,7 @@ export function PathStats({ archiveId }: { archiveId: string }) {
 /** Search your own notes for this path. Loads them once, when you first type. */
 export function NoteFinder({ archiveId, titleOf }: { archiveId: string; titleOf: (stepId: string) => string | null }) {
   const { api } = useAuth();
+  const { t } = useNaming();
   const [q, setQ] = useState("");
   const [notes, setNotes] = useState<NoteText[] | null>(null);
   useEffect(() => {
@@ -114,8 +119,8 @@ export function NoteFinder({ archiveId, titleOf }: { archiveId: string; titleOf:
     <div className="space-y-2">
       <label className="flex items-center gap-2 rounded-md border border-line px-3 py-1.5 text-sm">
         <Search size={14} className="text-muted" aria-hidden />
-        <span className="sr-only">Search your notes</span>
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your notes" className="w-full bg-transparent text-ink outline-none" />
+        <span className="sr-only">{t("noteSearch")} your notes</span>
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${t("noteSearch")} your notes`} className="w-full bg-transparent text-ink outline-none" />
       </label>
       {q.trim() && notes && (
         <ul className="divide-y divide-line rounded-md border border-line text-sm" aria-live="polite">

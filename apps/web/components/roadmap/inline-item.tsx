@@ -15,7 +15,7 @@ import { type ItemDetail } from "@/lib/types";
 /** A guide, deck or quiz shown right inside its step, so the learner never leaves the path to read, drill or test. */
 export function InlineItem({ itemId, returnTo, onComplete }: { itemId: string; returnTo: string; onComplete?: () => void }) {
   const { api } = useAuth();
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const [it, setIt] = useState<ItemDetail | null>(null);
   const [error, setError] = useState(false);
   const [studying, setStudying] = useState(false);
@@ -92,7 +92,7 @@ export function InlineItem({ itemId, returnTo, onComplete }: { itemId: string; r
               } else setKept(saveOffline(it));
             }}
           >
-            {kept ? "Remove the offline copy" : "Keep for offline reading"}
+            {kept ? copy("offlineDrop") : copy("offlineKeep")}
           </button>
         )}
         <Link href={`/items/${itemId}`} className="underline hover:text-ink">
