@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: download your flashcard review history as a spreadsheet.** On Progress, **Reviews** saves a CSV of every review you have made (date, course, deck, card, rating, whether it was new, days until next, seconds spent). Only your own reviews are included. New route `GET /study/export`.
 - **New: undo your last flashcard rating.** Pressed Good when you meant Again? **Undo last rating** (or **U**) puts the card back and restores its earlier schedule, and removes that review from your stats. It works until you review the same card again. Adds migration `0009_review_undo` and `POST /study/review/undo`.
 - **New: print or save a study guide as PDF.** A printer button beside Export on every guide prints just the article (menus and buttons left out, headings kept with their text, code blocks and tables kept whole).
 - **New: a friendly error page.** If a page fails while loading, you now see "Something went wrong" with **Try again** and a link back to the reading room (plus a reference code for your admin) instead of the browser's bare "This page couldn't load".
