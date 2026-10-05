@@ -8,8 +8,8 @@ import { playbackFor, type Playback } from "@/lib/video";
 type VideoResource = Pick<Resource, "url" | "kind" | "tags" | "title" | "provider">;
 
 /** Open or close state for one video, plus what to render. `playable` is false for anything that is not a known video. */
-export function useVideo(resource: VideoResource) {
-  const [open, setOpen] = useState(false);
+export function useVideo(resource: VideoResource, initialOpen = false) {
+  const [open, setOpen] = useState(initialOpen);
   const panelId = useId();
   const playback = playbackFor(resource);
   return { playable: playback.mode !== "external", playback, open, panelId, toggle: () => setOpen((o) => !o), close: () => setOpen(false) };

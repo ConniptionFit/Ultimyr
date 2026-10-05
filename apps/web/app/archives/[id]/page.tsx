@@ -21,7 +21,7 @@ import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
 const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
-const TABS = ["material", "roadmap", "resources", "coverage"] as const;
+const TABS = ["roadmap", "material", "resources", "coverage"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function ArchivePage() {
@@ -36,14 +36,19 @@ export default function ArchivePage() {
   const [sharing, setSharing] = useState(false);
   const [tab, setTabState] = useState<Tab>("material");
 
-  // The tab lives in the address (#roadmap) so a link can open straight onto it.
+  // The tab lives in the address (#roadmap) so a link can open straight onto it. With no tab named,
+  // an archive that has a roadmap opens on it: the path is the front door, the material list is the shelf.
   useEffect(() => {
     const h = window.location.hash.slice(1) as Tab;
-    if (TABS.includes(h)) setTabState(h);
-  }, []);
+    if (TABS.includes(h)) return setTabState(h);
+    if (state.status !== "authenticated") return;
+    void api<{ exists: boolean; stages: unknown[] }>("GET", `archives/${id}/roadmap`)
+      .then((r) => r.exists && r.stages.length > 0 && setTabState("roadmap"))
+      .catch(() => {});
+  }, [api, id, state.status]);
   const setTab = (next: Tab) => {
     setTabState(next);
-    history.replaceState(null, "", next === "material" ? window.location.pathname : `#${next}`);
+    history.replaceState(null, "", `#${next}`);
   };
 
   const load = useCallback(async () => {
