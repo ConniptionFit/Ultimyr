@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { auditCsv } from "../audit-csv.js";
+import { checkServices } from "../services-status.js";
 import { createAbout } from "../about.js";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
@@ -80,6 +81,13 @@ export function adminRoutes(ctx: Ctx) {
         deployment: { publicUrl: ctx.config.publicUrl, environment: ctx.config.nodeEnv },
         settings: await settingsView(),
       };
+    });
+
+    // Is each service up? Checks the internal /readyz of every sibling service set in the environment.
+    r.get("/v1/admin/services", async (req) => {
+      await ctx.requireAdmin(req);
+      const checked = await checkServices(ctx.config.services);
+      return [{ name: "Auth", ok: true, ms: 0 }, ...checked];
     });
 
     // Running build, latest GitHub release and changelog. Cached for an hour; `?refresh=1` re-checks (at most every 30 seconds).

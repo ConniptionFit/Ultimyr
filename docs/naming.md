@@ -35,6 +35,7 @@ Ultimyr has two name sets for the same things. **Plain names** (Course, Study gu
 | Build with an AI assistant | Commission the Curator | Have an assistant build a course | Demnok Lannik, Head of Acquisitions |
 | Group access | Party Access | Which groups see which courses | Party, the group you play with |
 | About this app | Lore | Name, version, license, links | Lore, the history tab on a hero's page |
+| Services | Towers | Whether each part of Ultimyr is running | Towers guard each lane and either stand or have fallen |
 | Exam countdown | Roshan Timer | Days until your real exam | Roshan's respawn timer |
 
 The story the names tell: study in the Archives (Tomes, Grimoires, Runes), practise in Aghanim's Trial, face the real exam like Roshan, and earn the Aegis.

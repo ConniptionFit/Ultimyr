@@ -83,3 +83,25 @@ describe.skipIf(!testDbUrl)("admin audit log", () => {
     }
   });
 });
+
+describe.skipIf(!testDbUrl)("admin service status", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  beforeEach(async () => {
+    await h.reset();
+    await h.boot({ AUTH_REGISTRATION: "open", CONTENT_URL: "http://127.0.0.1:9" });
+  });
+  afterAll(() => h.close());
+
+  it("is admin only and lists auth plus configured services", async () => {
+    const admin = (await register(h.app, "ada@example.com")).json();
+    const learner = (await register(h.app, "bob@example.com")).json();
+    expect((await h.app.inject({ url: "/v1/admin/services", headers: bearer(learner.accessToken) })).statusCode).toBe(403);
+    const rows = (await h.app.inject({ url: "/v1/admin/services", headers: bearer(admin.accessToken) })).json();
+    expect(rows[0]).toMatchObject({ name: "Auth", ok: true });
+    expect(rows[1]).toMatchObject({ name: "Content", ok: false });
+    expect(rows).toHaveLength(2);
+  });
+});
