@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
+import { useNarrow } from "@/lib/use-narrow";
 import { notesMessage, type ArchiveNotes, type ScaffoldResult } from "@/lib/notes";
 import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
 import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
@@ -106,6 +107,7 @@ function move<T>(list: T[], i: number, by: -1 | 1): T[] {
 }
 
 export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archiveId: string; items: ItemSummary[]; canEdit: boolean; onChanged?: () => void }) {
+  const narrow = useNarrow();
   const { api } = useAuth();
   const { t, copy } = useNaming();
   const [road, setRoad] = useState<Roadmap | null>(null);
@@ -260,8 +262,9 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
 
   const prefs = notes?.prefs;
   const inObsidian = !!prefs && (prefs.editor === "obsidian" || prefs.pane === "off");
-  const split = !inObsidian && prefs?.pane === "split";
-  const full = !inObsidian && prefs?.pane === "full";
+  // On a phone there is no room for two panes, so a saved "split" choice opens the note full screen.
+  const split = !inObsidian && prefs?.pane === "split" && !narrow;
+  const full = !inObsidian && (prefs?.pane === "full" || (prefs?.pane === "split" && narrow));
   const flat = (x: RoadmapStep): RoadmapStep[] => [x, ...x.children.flatMap(flat)];
   const noteSteps = road.stages
     .flatMap((st) => st.steps.flatMap(flat))

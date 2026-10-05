@@ -7,7 +7,7 @@ const MIN = 25;
 const MAX = 75;
 const clamp = (n: number) => Math.min(MAX, Math.max(MIN, Math.round(n)));
 
-/** The roadmap on the left, the note on the right, with a divider you can drag (or move with the arrow keys). Stacks on narrow screens. */
+/** The roadmap on the left, the note on the right, with a divider you can drag (or move with the arrow keys). Stacks on narrow screens (the roadmap panel opens notes full screen there instead). */
 export function SplitView({ left, right }: { left: ReactNode; right: ReactNode }) {
   const [ratio, setRatio] = useState(50);
   const box = useRef<HTMLDivElement>(null);
