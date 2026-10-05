@@ -241,15 +241,22 @@ Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
 See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
 
 ## Notes service
-Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-obsidian)). Scope `notes:use`. Answers 503 `notes_disabled` when `FNS_URL` or the vault key is not set. The token is write-only.
+Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-obsidian)). Scope `notes:use`. Answers 503 `notes_disabled` (with `reason`: `no_key` or `no_server`) when the vault key or the server address is missing, and 503 `notes_not_migrated` if the notes tables are missing. The token is write-only.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/notes/connection` | `{ enabled, server, connected, vault }` |
+| GET | `/notes/admin` | Platform administrators. `{ url, source: env\|admin\|none }`. |
+| PUT | `/notes/admin` | Platform administrators. `{ url }` (empty or null removes). Probes the server first: 400 `invalid_address` or `server_unreachable`; 409 `set_by_environment` when `FNS_URL` is set. |
+| GET | `/notes/connection` | `{ enabled, reason, server, connected, vault, admin, prefs }` |
+| POST | `/notes/connection/check` | `{ token }` returns `{ vaults }` without saving. 401 `fns_token_rejected`. |
+| GET | `/notes/preferences` | `{ rootFolder, editor: ultimyr\|obsidian, pane: split\|full\|off }` |
+| PUT | `/notes/preferences` | Any of those fields. |
+| GET | `/notes/folders` | Existing vault folders (three levels) to suggest as the root. |
+| GET | `/notes/archives/:id/preview?root=` | The files a scaffold would write, and which already exist. Writes nothing. |
 | PUT | `/notes/connection` | `{ token, vault }`. Checks the token and that the vault exists (400 `vault_not_found` lists the vaults), then stores the token sealed. |
 | DELETE | `/notes/connection` | Removes the connection and the step to note mapping. Notes in the vault stay. |
-| GET | `/notes/archives/:id` | `{ enabled, connected, scaffolded, steps: { [stepId]: { path, obsidianUrl } } }` |
-| POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Returns `{ total, created, existing, failed, indexUrl }`. Safe to repeat. |
+| GET | `/notes/archives/:id` | `{ enabled, connected, scaffolded, prefs, steps: { [stepId]: { path, obsidianUrl } } }` |
+| POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Uses the person's root folder. Returns `{ total, created, existing, failed, root, indexUrl }`. Safe to repeat. |
 | GET | `/notes/steps/:stepId` | `{ path, exists, content, hash, obsidianUrl }` |
 | PUT | `/notes/steps/:stepId` | `{ content, baseHash }`. 409 `conflict` if the note changed since `hash`. |
 | POST | `/notes/steps/:stepId/append` | `{ text }`. Adds text to the end of the note; never replaces anything. |

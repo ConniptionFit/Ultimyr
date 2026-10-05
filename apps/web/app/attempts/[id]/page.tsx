@@ -288,7 +288,7 @@ export default function AttemptPage() {
               const out = x.feedback?.outcome;
               const tone = closed || x.feedback ? (out === "correct" ? "border-accent" : out === "partial" ? "border-line" : "border-danger") : answered(x) ? "border-accent" : "border-line";
               return (
-                <button key={x.id} onClick={() => go(i)} aria-current={i === idx ? "step" : undefined} aria-label={`Question ${i + 1}${x.flagged ? ", flagged" : ""}${answered(x) ? ", answered" : ""}`} className={`relative h-9 w-9 rounded-md border text-sm ${tone} ${i === idx ? "bg-surface font-medium" : ""}`}>
+                <button key={x.id} onClick={() => go(i)} aria-current={i === idx ? "step" : undefined} aria-label={`Question ${i + 1}${x.flagged ? ", flagged" : ""}${answered(x) ? ", answered" : ""}`} className={`relative h-10 w-10 rounded-md border text-sm sm:h-9 sm:w-9 ${tone} ${i === idx ? "bg-surface font-medium" : ""}`}>
                   {i + 1}
                   {x.flagged && <Flag size={10} className="absolute right-0.5 top-0.5" aria-hidden />}
                 </button>

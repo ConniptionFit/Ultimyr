@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description: "A quiet place to know things. Study guides, flashcards and practice exams.",
   icons: { icon: [{ url: "/icons/favicon.svg", type: "image/svg+xml" }], apple: "/icons/apple-touch-icon.png" },
 };
-export const viewport: Viewport = { colorScheme: "light dark", themeColor: "#2f6f62" };
+export const viewport: Viewport = { colorScheme: "light dark", width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#2f6f62" };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();

@@ -266,7 +266,7 @@ export default function ArchivePage() {
             </form>
           )}
 
-          <div role="tablist" aria-label="Sections" className="flex gap-1 border-b border-line">
+          <div role="tablist" aria-label="Sections" className="flex gap-1 overflow-x-auto border-b border-line">
             {TABS.map((k) => (
               <button
                 key={k}
@@ -275,7 +275,7 @@ export default function ArchivePage() {
                 aria-selected={tab === k}
                 aria-controls={`panel-${k}`}
                 onClick={() => setTab(k)}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}
+                className={`-mb-px shrink-0 border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}
               >
                 {k === "material" ? "Material" : k === "roadmap" ? t("roadmap") : k === "resources" ? t("resources") : t("coverage")}
               </button>

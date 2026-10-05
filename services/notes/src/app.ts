@@ -11,16 +11,19 @@ export interface AppDeps {
   pool: Pool;
   keySource: KeySource;
   content: ContentReader;
-  /** Null when FNS_URL is unset: notes are switched off and every route answers 503. */
-  fns: Fns | null;
+  /** Null when there is no master key: notes are switched off and every route answers 503. */
   sealer: Sealer | null;
-  fnsHost?: string | null;
+  /** The Fast Note Sync address from the environment. When set it wins over the one an administrator saves in the web app. */
+  envUrl: string | null;
+  makeFns: (url: string) => Fns;
+  /** Is a Fast Note Sync server answering at this address? Used when an administrator saves one. */
+  probe: (url: string) => Promise<boolean>;
   logger?: boolean;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const svc = await createService({ name: "notes", pool: deps.pool, keySource: deps.keySource, logger: deps.logger });
-  const ctx = createCtx(svc, deps.pool, deps.content, deps.fns, deps.sealer, deps.fnsHost ?? null);
-  await svc.mount(noteRoutes(ctx));
+  const ctx = createCtx({ svc, pool: deps.pool, content: deps.content, sealer: deps.sealer, envUrl: deps.envUrl, makeFns: deps.makeFns });
+  await svc.mount(noteRoutes(ctx, deps.probe));
   return svc.app;
 }

@@ -11,7 +11,7 @@ export interface NavItem {
 export function SideNav({ label, items, current }: { label: string; items: NavItem[]; current: string }) {
   return (
     <nav aria-label={label} className="md:w-48 md:shrink-0">
-      <ul className="flex flex-wrap gap-1 md:sticky md:top-6 md:flex-col">
+      <ul className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 md:mx-0 md:sticky md:top-6 md:flex-col md:overflow-visible md:px-0 md:pb-0">
         {items.map((i) => {
           const active = i.href === current;
           return (
@@ -19,7 +19,7 @@ export function SideNav({ label, items, current }: { label: string; items: NavIt
               <Link
                 href={i.href}
                 aria-current={active ? "page" : undefined}
-                className={`block rounded-md px-3 py-1.5 text-sm ${active ? "bg-surface text-ink ring-1 ring-line" : "text-muted hover:text-ink"}`}
+                className={`block whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${active ? "bg-surface text-ink ring-1 ring-line" : "text-muted hover:text-ink"}`}
               >
                 {i.label}
               </Link>

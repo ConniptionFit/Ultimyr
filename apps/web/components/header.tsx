@@ -5,6 +5,7 @@ import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AccountMenu } from "@/components/account-menu";
+import { MobileNav } from "@/components/mobile-nav";
 import { PrepMenu } from "@/components/prep-menu";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
@@ -34,7 +35,14 @@ export function Header() {
           Ultimyr
         </Link>
         {state.status === "authenticated" && (
-          <nav className="flex items-center gap-4 text-sm text-muted">
+          <>
+          <div className="flex items-center gap-2 md:hidden">
+            <Link href="/search" aria-label="Search" className="flex h-10 w-10 items-center justify-center rounded-md border border-line text-ink">
+              <UIcon icon={Search} size={18} />
+            </Link>
+            <MobileNav />
+          </div>
+          <nav className="hidden items-center gap-4 text-sm text-muted md:flex">
             <form
               role="search"
               onSubmit={(e) => {
@@ -59,6 +67,7 @@ export function Header() {
             <PrepMenu />
             <AccountMenu />
           </nav>
+          </>
         )}
       </div>
     </header>

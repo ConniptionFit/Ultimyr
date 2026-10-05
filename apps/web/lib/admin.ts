@@ -12,6 +12,7 @@ export const ADMIN_SECTIONS: Array<{ href: string; label: string; term?: TermKey
   { href: "/admin/group-access", label: "Group access", term: "groupAccess", delegate: true },
   { href: "/admin/sign-in", label: "Sign-in methods" },
   { href: "/admin/provisioning", label: "Provisioning" },
+  { href: "/admin/notes", label: "Notes (Obsidian)" },
   { href: "/admin/audit", label: "Audit log" },
   { href: "/admin/about", label: "About this app", term: "about" },
 ];
