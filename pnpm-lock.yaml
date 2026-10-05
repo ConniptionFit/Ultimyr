@@ -38,6 +38,9 @@ importers:
       '@ultimyr/lore':
         specifier: workspace:^
         version: link:../../packages/lore
+      '@ultimyr/tagging':
+        specifier: workspace:^
+        version: link:../../packages/tagging
       '@ultimyr/ui-icons':
         specifier: workspace:^
         version: link:../../packages/ui-icons
@@ -169,6 +172,12 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
 
+  packages/tagging:
+    devDependencies:
+      lucide-static:
+        specifier: 1.52.0
+        version: 1.52.0
+
   packages/ui-icons:
     dependencies:
       lucide-react:
@@ -294,6 +303,9 @@ importers:
       '@ultimyr/service-kit':
         specifier: workspace:^
         version: link:../../packages/service-kit
+      '@ultimyr/tagging':
+        specifier: workspace:^
+        version: link:../../packages/tagging
       fastify:
         specifier: ^5.12.5
         version: 5.12.5
@@ -2387,6 +2399,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  lucide-static@1.52.0:
+    resolution: {integrity: sha512-0zZYihAze4ZmUCcyNa9OkWYqn/Y5f9AdTh02AZIxMtP5ravcTTfoSIAnUPBH6ZvKxt+ZW28JB0ldzLRyD82fcw==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -4960,6 +4975,8 @@ snapshots:
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
+
+  lucide-static@1.52.0: {}
 
   magic-string@0.30.21:
     dependencies:

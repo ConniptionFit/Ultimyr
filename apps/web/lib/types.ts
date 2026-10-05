@@ -15,7 +15,7 @@ export interface Archive {
   purchaseLinks: { label: string; url: string }[];
   validityMonths: number | null;
   quickStats: QuickStats;
-  icon: { kind: "lucide" | "upload"; name: string; assetId: string | null; url: string | null };
+  icon: { kind: "lucide" | "upload"; name: string; source?: "default" | "auto" | "user"; assetId: string | null; url: string | null };
   visibility: "private" | "shared" | "org" | "public";
   tags: string[];
   relation: "none" | "attempt" | "viewer" | "editor" | "owner";
@@ -81,6 +81,9 @@ export interface RoadmapStep {
   required: boolean;
   minutes: number | null;
   note: string;
+  /** Canonical tags (namespace:value) set on this step. */
+  tagSet?: string[];
+  icon?: { name: string | null; source: "none" | "auto" | "user" };
   done: boolean;
   /** Steps inside this one. Only leaves carry a tick; a parent is done when what it requires is done. */
   children: RoadmapStep[];
@@ -111,7 +114,7 @@ export interface Roadmap {
   exists: boolean;
   status: "draft" | "published" | null;
   summary: string;
-  stages: { id: string; title: string; summary: string; progress: { done: number; total: number }; steps: RoadmapStep[] }[];
+  stages: { id: string; title: string; summary: string; tagSet?: string[]; icon?: { name: string | null; source: "none" | "auto" | "user" }; progress: { done: number; total: number }; steps: RoadmapStep[] }[];
   totals: RoadmapTotals;
   next: RoadmapNext | null;
 }

@@ -15,7 +15,8 @@ import { ResourcesPanel } from "@/components/roadmap/resources-panel";
 import { RoadmapPanel } from "@/components/roadmap/roadmap-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
-import { ICONS, iconFor } from "@/lib/icons";
+import { AUTO_ICON, IconPicker } from "@/components/icon-picker";
+import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
@@ -79,7 +80,7 @@ export default function ArchivePage() {
         title: String(f.get("title")).trim(),
         overview: String(f.get("overview")),
         vendor: String(f.get("vendor")).trim() || null,
-        iconName: String(f.get("icon")),
+        ...(f.get("icon") === AUTO_ICON ? { iconName: null } : f.get("icon") ? { iconName: String(f.get("icon")) } : {}),
         validityMonths: Number(f.get("validity")) || null,
         quickStats: {
           ...(String(f.get("passing")).trim() ? { passingScore: String(f.get("passing")).trim() } : {}),
@@ -236,14 +237,7 @@ export default function ArchivePage() {
               <Field id="e-link" name="link" type="url" label="Purchase or scheduling link" defaultValue={a.purchaseLinks[0]?.url ?? ""} />
               <fieldset className="space-y-2">
                 <legend className="text-sm text-muted">Icon</legend>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(ICONS).map(([name, Icon]) => (
-                    <label key={name} className="cursor-pointer rounded-md border border-line p-2 has-[:checked]:border-accent has-[:checked]:text-accent">
-                      <input type="radio" name="icon" value={name} defaultChecked={a.icon.kind === "lucide" && a.icon.name === name} className="sr-only" />
-                      <Icon size={20} aria-label={name} />
-                    </label>
-                  ))}
-                </div>
+                <IconPicker archiveId={id} icon={a.icon} />
                 <label className="block text-sm text-muted">
                   Or upload a PNG with a transparent background (16 to 1024 px, up to 512 KB)
                   <input type="file" accept="image/png" className="mt-1 block text-ink" onChange={(e) => e.target.files?.[0] && uploadIcon(e.target.files[0])} />

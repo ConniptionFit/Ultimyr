@@ -1,0 +1,19 @@
+{
+  "name": "@ultimyr/tagging",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./nodes": "./src/nodes.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run",
+    "build:catalog": "node scripts/build-catalog.mjs"
+  },
+  "devDependencies": {
+    "lucide-static": "1.52.0"
+  }
+}
