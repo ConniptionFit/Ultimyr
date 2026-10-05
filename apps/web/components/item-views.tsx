@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui";
 import { useNaming } from "@/lib/naming";
@@ -38,12 +38,18 @@ export function GuideReader({ it }: { it: ItemDetail }) {
 }
 
 /** Simple flip-through of a deck. Spaced repetition (the daily queue) arrives with the study queue. */
-export function Study({ cards, onDone }: { cards: Card[]; onDone: () => void }) {
+export function Study({ cards, onDone, onFinished }: { cards: Card[]; onDone: () => void; onFinished?: () => void }) {
   const { copy } = useNaming();
   const [order] = useState(() => [...cards].sort(() => Math.random() - 0.5));
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const c = order[i];
+  const finished = useRef(onFinished);
+  finished.current = onFinished;
+  const over = !c;
+  useEffect(() => {
+    if (over) finished.current?.();
+  }, [over]);
   if (!c) {
     return (
       <div className="space-y-3 text-center">

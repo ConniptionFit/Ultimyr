@@ -1,108 +1,20 @@
 "use client";
 
 import { CatalogIcon } from "@/components/catalog-icon";
-import { ArrowDown, ArrowUp, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, Pencil, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Button, Field } from "@/components/ui";
+import { FileText, Pencil } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import type { ArchiveNotes } from "@/lib/notes";
-import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
-import { VideoPanel, VideoToggleButton, useVideo } from "@/components/video-player";
-import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
-import { InlineItem } from "./inline-item";
-import { StepNotes } from "./step-notes";
+import { leafSteps } from "@/lib/session";
+import type { ItemSummary, Resource, Roadmap, RoadmapStep } from "@/lib/types";
+import { ProgressBar, totalsText } from "./bits";
+import { NoteFinder, PathStats, SessionBar, StageDigest, useSessionPlan } from "./path-tools";
+import { Editor } from "./roadmap-editor";
+import { copiedStages, nest, toDrafts, type DraftStage } from "./roadmap-draft";
+import { StepRow } from "./step-row";
 
-const ITEM_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
-
-/** What a step looks like while it is being edited. Kept ids keep people's progress. */
-interface Draft {
-  /** 0 is a step of the stage, 1 sits inside the step above it, 2 inside that. Saved as nested steps. */
-  depth: number;
-  id?: string;
-  itemId?: string;
-  resourceId?: string;
-  resource?: { url: string; title: string; kind?: ResourceKind; minutes?: number };
-  milestone?: string;
-  label: string;
-  note: string;
-  required: boolean;
-  minutes: number | null;
-}
-interface DraftStage {
-  id?: string;
-  title: string;
-  summary: string;
-  steps: Draft[];
-}
-
-function toDrafts(r: Roadmap): DraftStage[] {
-  const flat = (x: RoadmapStep, depth: number): Draft[] => [
-    {
-      depth,
-      id: x.id,
-      itemId: x.item?.id,
-      resourceId: x.resource?.id,
-      milestone: x.kind === "milestone" ? x.title : undefined,
-      label: x.kind === "milestone" ? (x.title ?? "") : x.kind === "item" ? x.item!.title : x.resource!.title,
-      note: x.note,
-      required: x.required,
-      // A step's own estimate wins; only send one if it differs from the link's.
-      minutes: x.kind === "resource" && x.minutes === x.resource!.minutes ? null : x.minutes,
-    },
-    ...x.children.flatMap((c) => flat(c, depth + 1)),
-  ];
-  return r.stages.map((s) => ({ id: s.id, title: s.title, summary: s.summary, steps: s.steps.flatMap((x) => flat(x, 0)) }));
-}
-
-interface SaveStep {
-  id?: string;
-  note: string;
-  required: boolean;
-  minutes: number | null;
-  steps?: SaveStep[];
-  [k: string]: unknown;
-}
-/** Turn the flat, indented list back into nested steps. */
-function nest(steps: Draft[]): SaveStep[] {
-  const roots: SaveStep[] = [];
-  const open: SaveStep[] = []; // open[d] is the latest step at depth d
-  for (const x of steps) {
-    const node: SaveStep = {
-      id: x.id,
-      ...(x.itemId ? { itemId: x.itemId } : x.resourceId ? { resourceId: x.resourceId } : x.resource ? { resource: x.resource } : { milestone: x.milestone || x.label || "Checkpoint" }),
-      note: x.note,
-      required: x.required,
-      minutes: x.minutes,
-    };
-    const d = Math.min(x.depth, open.length, 2);
-    const parent = d > 0 ? open[d - 1] : undefined;
-    if (parent) (parent.steps ??= []).push(node);
-    else roots.push(node);
-    open.length = d;
-    open[d] = node;
-  }
-  return roots;
-}
-
-/** Keep indents sensible: the first step is at the top and nothing sits more than one level below the step above it. */
-function normalize(steps: Draft[]): Draft[] {
-  let prev = -1;
-  return steps.map((x) => {
-    const depth = Math.max(0, Math.min(x.depth, prev + 1, 2));
-    prev = depth;
-    return depth === x.depth ? x : { ...x, depth };
-  });
-}
-
-function move<T>(list: T[], i: number, by: -1 | 1): T[] {
-  const j = i + by;
-  if (j < 0 || j >= list.length) return list;
-  const next = [...list];
-  [next[i], next[j]] = [next[j]!, next[i]!];
-  return next;
-}
 
 export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archiveId: string; items: ItemSummary[]; canEdit: boolean; onChanged?: () => void }) {
   const { api } = useAuth();
@@ -115,6 +27,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   const [busy, setBusy] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [others, setOthers] = useState<{ id: string; title: string }[] | null>(null);
   const [notes, setNotes] = useState<ArchiveNotes | null>(null);
   // Guided is the default: the step you are on opens in place, with its video, material, notes and quiz, one after another.
   const [guided, setGuidedState] = useState(true);
@@ -161,6 +74,53 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
     }
   }
 
+  // Keyboard: J next step, K previous step, D done (and on to the next). Ignored while typing.
+  const [cursor, setCursor] = useState<string | null>(null);
+  const leaves = useMemo(() => (road ? road.stages.flatMap((st) => leafSteps(st.steps)) : []), [road]);
+  const { minutes: sessionMinutes, setMinutes: setSessionMinutes, plan: sessionPlan } = useSessionPlan(leaves);
+  const [digest, setDigest] = useState<string | null>(null);
+  const titleOf = (id: string) => {
+    const x = leaves.find((l) => l.id === id);
+    return x ? (x.kind === "milestone" ? (x.title ?? null) : x.kind === "item" ? x.item!.title : x.resource!.title) : null;
+  };
+  const leavesRef = useRef(leaves);
+  leavesRef.current = leaves;
+  const cursorRef = useRef<string | null>(null);
+  cursorRef.current = cursor ?? road?.next?.stepId ?? null;
+  const tickRef = useRef<(s: RoadmapStep, d: boolean, a?: boolean) => void>(() => {});
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+      const k = e.key.toLowerCase();
+      if (k !== "j" && k !== "k" && k !== "d") return;
+      const list = leavesRef.current;
+      if (!list.length) return;
+      const at = Math.max(0, list.findIndex((x) => x.id === cursorRef.current));
+      if (k === "d") {
+        const cur = list[at];
+        if (cur) tickRef.current(cur, !cur.done, !cur.done);
+        return;
+      }
+      const next = list[Math.min(list.length - 1, Math.max(0, at + (k === "j" ? 1 : -1)))];
+      if (!next) return;
+      setCursor(next.id);
+      document.getElementById(`step-${next.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Opened from Continue (?step=...): scroll to that step once the path has loaded.
+  const jumped = useRef(false);
+  useEffect(() => {
+    if (jumped.current || !road?.exists) return;
+    const id = new URLSearchParams(window.location.search).get("step");
+    jumped.current = true;
+    if (id) requestAnimationFrame(() => document.getElementById(`step-${id}`)?.scrollIntoView({ block: "start" }));
+  }, [road]);
+
   // After "Done, next step", bring the next step into view once the new state has rendered.
   useEffect(() => {
     if (!advanceTo.current || !road) return;
@@ -182,6 +142,8 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
       await load();
     }
   }
+
+  tickRef.current = tick;
 
   async function save() {
     if (!draft) return;
@@ -221,6 +183,29 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
       setError(err instanceof ApiError ? (err.issues[0] ?? err.code.replaceAll("_", " ")) : "Could not import that outline.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadOthers() {
+    if (others) return;
+    try {
+      const r = await api<{ archives: { id: string; title: string; relation: string }[] }>("GET", "archives");
+      setOthers(r.archives.filter((x) => x.id !== archiveId).map((x) => ({ id: x.id, title: x.title })));
+    } catch {
+      setOthers([]);
+    }
+  }
+
+  async function copyFrom(otherId: string) {
+    if (!otherId) return;
+    setError(null);
+    try {
+      const other = await api<Roadmap>("GET", `archives/${otherId}/roadmap`);
+      if (!other.exists || !other.stages.length) return setError("That course has no roadmap to copy.");
+      setSummary(road?.summary || other.summary);
+      setDraft([...(road?.exists ? toDrafts(road) : []), ...copiedStages(other)]);
+    } catch {
+      setError("Could not read that roadmap.");
     }
   }
 
@@ -268,20 +253,43 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
       else delete steps[stepId];
       return { ...n, steps };
     });
+  const rail = road.stages.length > 1 && (
+    <nav aria-label="Stages" className="sticky top-0 z-10 -mx-4 overflow-x-auto bg-bg/95 px-4 py-2 backdrop-blur">
+      <ul className="flex gap-2 text-sm">
+        {road.stages.map((st, i) => (
+          <li key={st.id} className="shrink-0">
+            <a href={`#stage-${st.id}`} className={`block rounded-full border px-3 py-1 ${st.progress.total > 0 && st.progress.done === st.progress.total ? "border-accent text-ink" : "border-line text-muted hover:text-ink"}`}>
+              {i + 1}. {st.title} <span className="text-xs">{st.progress.done}/{st.progress.total}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
   const list = (
     <ol className="space-y-8">
       {road.stages.map((st, i) => (
-        <li key={st.id}>
+        <li key={st.id} id={`stage-${st.id}`} className="scroll-mt-24">
           <div className="mb-2 flex items-baseline justify-between gap-3">
             <h3 className="flex items-center gap-2 text-lg">
               <span className="text-muted">{i + 1}. </span>
               {st.icon?.name && <CatalogIcon name={st.icon.name} size={18} className="shrink-0 text-muted" />}
               {st.title}
             </h3>
-            <span className="text-xs text-muted">
+            <span className="flex items-center gap-3 text-xs text-muted">
+              {notes && (
+                <button type="button" aria-expanded={digest === st.id} onClick={() => setDigest(digest === st.id ? null : st.id)} className="underline hover:text-ink">
+                  {digest === st.id ? "Hide my notes" : "My notes"}
+                </button>
+              )}
               {st.progress.done}/{st.progress.total}
             </span>
           </div>
+          {digest === st.id && (
+            <div className="mb-2">
+              <StageDigest archiveId={archiveId} steps={leafSteps(st.steps).map((x) => x.id)} titleOf={titleOf} />
+            </div>
+          )}
           {st.summary && <p className="mb-2 text-sm text-muted">{st.summary}</p>}
           {!!st.tagSet?.length && (
             <p className="mb-2 flex flex-wrap gap-1 text-xs text-muted" aria-label="Tags">
@@ -295,7 +303,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
           <ul className="divide-y divide-line rounded-md border border-line">
             {st.steps.length === 0 && <li className="p-3 text-sm text-muted">Nothing in this stage yet.</li>}
             {st.steps.map((x) => (
-              <StepRow key={x.id} step={x} depth={0} onTick={tick} archiveId={archiveId} notes={notes} onNoteSaved={noteSaved} guided={guided} currentId={road.next?.stepId ?? null} returnTo={`/archives/${archiveId}#roadmap`} />
+              <StepRow key={x.id} step={x} depth={0} onTick={tick} archiveId={archiveId} notes={notes} onNoteSaved={noteSaved} guided={guided} currentId={road.next?.stepId ?? null} cursorId={cursor} today={sessionPlan?.ids ?? null} returnTo={`/archives/${archiveId}#roadmap`} />
             ))}
           </ul>
         </li>
@@ -318,6 +326,17 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
           <Button variant="quiet" onClick={() => setPasting(!pasting)}>
             <FileText size={16} aria-hidden /> Paste an outline
           </Button>
+          <label className="sr-only" htmlFor="copy-from">
+            Copy a roadmap from another course
+          </label>
+          <select id="copy-from" value="" onFocus={loadOthers} onChange={(e) => void copyFrom(e.target.value)} className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
+            <option value="">Copy from another {t("archive").toLowerCase()}…</option>
+            {(others ?? []).map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.title}
+              </option>
+            ))}
+          </select>
           {road.exists && road.status === "draft" && <Button onClick={() => setStatus("published")}>Publish</Button>}
           {road.exists && road.status === "published" && (
             <Button variant="quiet" onClick={() => setStatus("draft")}>
@@ -384,6 +403,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
             <p className="text-sm text-muted">
               {road.totals.percent}% · {totalsText(road.totals)}
             </p>
+            <p className="hidden text-xs text-muted md:block">Keys: J next step, K previous step, D done.</p>
             <div className="flex flex-wrap items-center justify-between gap-2" role="group" aria-label="How to show the steps">
               {road.next ? (
                 <p className="text-sm">
@@ -406,6 +426,10 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
             </div>
             {!road.next && road.totals.required > 0 && <p className="text-sm text-accent">{copy("roadmapDone")}</p>}
           </div>
+          <PathStats archiveId={archiveId} />
+          <SessionBar minutes={sessionMinutes} setMinutes={setSessionMinutes} plan={sessionPlan} />
+          {notes && <NoteFinder archiveId={archiveId} titleOf={titleOf} />}
+          {rail}
           {list}
         </>
       )}
@@ -413,316 +437,3 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   );
 }
 
-interface RowProps {
-  onTick: (step: RoadmapStep, done: boolean, advance?: boolean) => void;
-  archiveId: string;
-  /** Guided: the step you are on opens in place with everything it needs. Compact: the plain checklist. */
-  guided: boolean;
-  /** The next required step that is not done: the one to work on now. */
-  currentId: string | null;
-  /** Where a quiz taken from this path returns to. */
-  returnTo: string;
-  /** This person's notes for the archive; null while loading or if the notes service is unavailable. */
-  notes: ArchiveNotes | null;
-  onNoteSaved: (stepId: string, has: boolean) => void;
-}
-
-/** Stands in for a step that is not a link, so the video hook can always run. Never playable. */
-const NO_VIDEO: Pick<Resource, "url" | "kind" | "tags" | "title" | "provider"> = { url: "", kind: "other", tags: [], title: "", provider: "" };
-
-function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved, guided, currentId, returnTo }: { step: RoadmapStep; depth: number } & RowProps) {
-  const { t } = useNaming();
-  const [open, setOpen] = useState(!step.done);
-  const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
-  const Icon = step.kind === "milestone" ? Flag : step.kind === "item" ? ITEM_ICON[step.item!.kind] : KIND_ICON[step.resource!.kind];
-  const draftTarget = (step.item?.status ?? step.resource?.status) === "draft";
-  const video = useVideo(step.resource ?? NO_VIDEO, guided && step.id === currentId);
-  const parent = step.children.length > 0;
-  const current = guided && !parent && step.id === currentId;
-  const [inline, setInline] = useState(current);
-  // When the path moves on to this step, open what it holds. Closing it again is the learner's call.
-  useEffect(() => {
-    if (!current) return;
-    setInline(true);
-    if (video.playable && !video.open) video.toggle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
-  const partial = parent && !step.done && (step.progress?.done ?? 0) > 0;
-  const optional = !step.required || step.effectiveRequired === false;
-  const meta = [
-    step.kind === "item" ? t(step.item!.kind) : step.kind === "resource" ? `${KIND_LABEL[step.resource!.kind]} · ${step.resource!.provider}` : "Checkpoint",
-    parent ? `${step.progress!.done} of ${step.progress!.total} done` : null,
-    minutesText(parent ? (step.minutesTotal ?? step.minutes) : step.minutes),
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  return (
-    <li id={`step-${step.id}`} className={`scroll-mt-20 ${depth ? "border-t border-line first:border-t-0" : ""} ${current ? "border-l-2 border-l-accent bg-surface/60" : ""}`}>
-      <div className="flex flex-wrap items-start gap-3 p-3" style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}>
-        {parent ? (
-          <button type="button" aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${label}`} onClick={() => setOpen(!open)} className="mt-0.5 text-muted hover:text-ink">
-            {open ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}
-          </button>
-        ) : (
-          depth > 0 && <span className="w-[18px] shrink-0" aria-hidden />
-        )}
-        <button
-          role="checkbox"
-          aria-checked={partial ? "mixed" : step.done}
-          aria-label={`${step.done ? "Mark not done" : "Mark done"}: ${label}${parent ? " and everything inside it" : ""}`}
-          onClick={() => onTick(step, !step.done)}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${step.done ? "border-accent bg-accent text-accent-ink" : partial ? "border-accent text-accent" : "border-line hover:border-accent"}`}
-        >
-          {step.done ? <Check size={14} aria-hidden /> : partial ? <Minus size={14} aria-hidden /> : null}
-        </button>
-        <VideoToggleButton video={video} title={label}>
-          <Icon size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
-        </VideoToggleButton>
-        <div className="min-w-0 flex-1">
-          <p className={step.done ? "text-muted line-through decoration-line" : ""}>
-            {step.kind === "item" ? (
-              <Link href={`/items/${step.item!.id}`} className="text-accent underline">
-                {label}
-              </Link>
-            ) : step.kind === "resource" ? (
-              <ExternalLinkText resource={step.resource!} />
-            ) : (
-              label
-            )}
-            {optional && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted no-underline">optional</span>}
-            {draftTarget && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted">draft</span>}
-          </p>
-          <p className="text-xs text-muted">
-            {current && <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-accent-ink">You are here</span>}
-            {meta}
-          </p>
-          {step.note && <p className="mt-1 text-sm text-ink/80">{step.note}</p>}
-          {step.kind === "resource" && step.resource!.summary && <p className="mt-1 text-sm text-muted">{step.resource!.summary}</p>}
-          {step.kind === "item" && !parent && (
-            <button type="button" aria-expanded={inline} onClick={() => setInline(!inline)} className="mt-1 text-sm text-accent underline">
-              {inline ? "Close" : step.item!.kind === "guide" ? "Read here" : step.item!.kind === "deck" ? "Study here" : "Take it here"}
-            </button>
-          )}
-        </div>
-        {step.kind === "item" && !parent && inline && (
-          <div className="basis-full">
-            <InlineItem itemId={step.item!.id} returnTo={returnTo} />
-          </div>
-        )}
-        {step.resource && <VideoPanel video={video} resource={step.resource} />}
-        {!parent && step.kind !== "milestone" && notes && (
-          <div className="basis-full pl-8">
-            <StepNotes key={`${step.id}-${current}`} defaultOpen={current} archiveId={archiveId} stepId={step.id} title={label} hasNote={!!notes.steps[step.id]} obsidian={notes.connected} onChange={(has) => onNoteSaved(step.id, has)} />
-          </div>
-        )}
-        {current && (
-          <div className="flex basis-full items-center justify-end gap-3 pl-8 pt-1">
-            <p className="text-xs text-muted">Finished with everything above?</p>
-            <Button onClick={() => onTick(step, true, true)}>
-              Done, next step <ArrowRight size={16} aria-hidden />
-            </Button>
-          </div>
-        )}
-      </div>
-      {parent && open && (
-        <ul>
-          {step.children.map((c) => (
-            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} archiveId={archiveId} notes={notes} onNoteSaved={onNoteSaved} guided={guided} currentId={currentId} returnTo={returnTo} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-
-function Editor(props: {
-  stages: DraftStage[];
-  setStages: (s: DraftStage[]) => void;
-  summary: string;
-  setSummary: (s: string) => void;
-  items: ItemSummary[];
-  resources: Resource[];
-  busy: boolean;
-  error: string | null;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  const { stages, setStages, items, resources } = props;
-  const { t } = useNaming();
-  const setStage = (i: number, patch: Partial<DraftStage>) => setStages(stages.map((s, j) => (j === i ? { ...s, ...patch } : s)));
-  const setSteps = (i: number, steps: Draft[]) => setStage(i, { steps: normalize(steps) });
-  const setStep = (i: number, k: number, patch: Partial<Draft>) => setSteps(i, stages[i]!.steps.map((x, j) => (j === k ? { ...x, ...patch } : x)));
-  const addStep = (i: number, step: Omit<Draft, "depth">) => setSteps(i, [...stages[i]!.steps, { ...step, depth: 0 }]);
-  const [linking, setLinking] = useState<number | null>(null);
-
-  function addPicked(i: number, value: string) {
-    if (!value) return;
-    const [type, id] = value.split(":") as ["item" | "resource", string];
-    if (type === "item") {
-      const it = items.find((x) => x.id === id);
-      if (it) addStep(i, { itemId: it.id, label: it.title, note: "", required: true, minutes: null });
-    } else {
-      const r = resources.find((x) => x.id === id);
-      if (r) addStep(i, { resourceId: r.id, label: r.title, note: "", required: true, minutes: null });
-    }
-  }
-
-  function addLink(i: number, e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const minutes = Number(f.get("minutes")) || undefined;
-    const title = String(f.get("title")).trim();
-    addStep(i, { resource: { url: String(f.get("url")).trim(), title, kind: (String(f.get("kind")) || undefined) as ResourceKind | undefined, minutes }, label: title, note: "", required: true, minutes: null });
-    setLinking(null);
-  }
-
-  return (
-    <div className="space-y-5">
-      <div className="space-y-1">
-        <label htmlFor="rm-summary" className="text-sm text-muted">
-          About this {t("roadmap").toLowerCase()} (who it is for, how long it takes)
-        </label>
-        <textarea id="rm-summary" value={props.summary} onChange={(e) => props.setSummary(e.target.value)} rows={2} maxLength={2000} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" />
-      </div>
-
-      {stages.map((st, i) => (
-        <fieldset key={st.id ?? `new-${i}`} className="space-y-3 rounded-md border border-line p-3">
-          <legend className="px-1 text-sm text-muted">Stage {i + 1}</legend>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <Field id={`st-${i}`} label="Stage name" value={st.title} onChange={(e) => setStage(i, { title: e.target.value })} maxLength={160} />
-            </div>
-            <Button type="button" variant="quiet" aria-label="Move stage up" disabled={i === 0} onClick={() => setStages(move(stages, i, -1))}>
-              <ArrowUp size={16} />
-            </Button>
-            <Button type="button" variant="quiet" aria-label="Move stage down" disabled={i === stages.length - 1} onClick={() => setStages(move(stages, i, 1))}>
-              <ArrowDown size={16} />
-            </Button>
-            <Button type="button" variant="quiet" aria-label="Remove stage" className="text-danger" onClick={() => confirm("Remove this stage and its steps? Anyone's ticks on them are lost.") && setStages(stages.filter((_, j) => j !== i))}>
-              <Trash2 size={16} />
-            </Button>
-          </div>
-          <Field id={`st-sum-${i}`} label="Short description (optional)" value={st.summary} onChange={(e) => setStage(i, { summary: e.target.value })} maxLength={1000} />
-
-          <ul className="space-y-2">
-            {st.steps.map((x, k) => (
-              <li key={x.id ?? `s-${k}`} style={{ marginLeft: `${x.depth * 1.5}rem` }} className="space-y-2 rounded-md border border-line p-2">
-                <div className="flex items-center gap-1">
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {x.itemId ? "Item: " : x.resourceId || x.resource ? "Link: " : "Checkpoint: "}
-                    {x.label}
-                    {x.depth > 0 && <span className="ml-2 text-xs text-muted">inside the step above</span>}
-                  </span>
-                  <Button type="button" variant="quiet" aria-label="Move step out one level" disabled={x.depth === 0} onClick={() => setStep(i, k, { depth: x.depth - 1 })}>
-                    <IndentDecrease size={14} />
-                  </Button>
-                  <Button type="button" variant="quiet" aria-label="Move step into the step above" disabled={k === 0 || x.depth > st.steps[k - 1]!.depth || x.depth >= 2} onClick={() => setStep(i, k, { depth: x.depth + 1 })}>
-                    <IndentIncrease size={14} />
-                  </Button>
-                  <Button type="button" variant="quiet" aria-label="Move step up" disabled={k === 0} onClick={() => setSteps(i, move(st.steps, k, -1))}>
-                    <ArrowUp size={14} />
-                  </Button>
-                  <Button type="button" variant="quiet" aria-label="Move step down" disabled={k === st.steps.length - 1} onClick={() => setSteps(i, move(st.steps, k, 1))}>
-                    <ArrowDown size={14} />
-                  </Button>
-                  <Button type="button" variant="quiet" aria-label="Remove step" className="text-danger" onClick={() => setSteps(i, st.steps.filter((_, j) => j !== k))}>
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-                {!x.itemId && !x.resourceId && !x.resource && <Field id={`m-${i}-${k}`} label="Checkpoint text" value={x.milestone ?? x.label} onChange={(e) => setStep(i, k, { milestone: e.target.value, label: e.target.value })} maxLength={160} />}
-                <div className="grid gap-2 sm:grid-cols-[1fr_7rem_auto]">
-                  <Field id={`n-${i}-${k}`} label="Note for the learner (optional)" value={x.note} onChange={(e) => setStep(i, k, { note: e.target.value })} maxLength={1000} />
-                  <Field id={`mi-${i}-${k}`} label="Minutes" type="number" min={1} max={6000} value={x.minutes ?? ""} onChange={(e) => setStep(i, k, { minutes: Number(e.target.value) || null })} />
-                  <label className="flex items-center gap-2 self-end pb-2 text-sm">
-                    <input type="checkbox" checked={x.required} onChange={(e) => setStep(i, k, { required: e.target.checked })} /> Required
-                  </label>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="sr-only" htmlFor={`pick-${i}`}>
-              Add an item or saved link to stage {i + 1}
-            </label>
-            <select id={`pick-${i}`} value="" onChange={(e) => addPicked(i, e.target.value)} className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
-              <option value="">Add from this {t("archive").toLowerCase()}…</option>
-              {items.length > 0 && (
-                <optgroup label="Material">
-                  {items.map((it) => (
-                    <option key={it.id} value={`item:${it.id}`}>
-                      {t(it.kind)}: {it.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {resources.length > 0 && (
-                <optgroup label={t("resources")}>
-                  {resources.map((r) => (
-                    <option key={r.id} value={`resource:${r.id}`}>
-                      {KIND_LABEL[r.kind]}: {r.title}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-            <Button type="button" variant="quiet" onClick={() => setLinking(linking === i ? null : i)}>
-              <Plus size={14} aria-hidden /> New link
-            </Button>
-            <Button type="button" variant="quiet" onClick={() => addStep(i, { milestone: "Checkpoint", label: "Checkpoint", note: "", required: true, minutes: null })}>
-              <Flag size={14} aria-hidden /> Checkpoint
-            </Button>
-          </div>
-          {linking === i && (
-            <form onSubmit={(e) => addLink(i, e)} className="grid gap-2 rounded-md border border-line p-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field id={`l-url-${i}`} name="url" type="url" label="Link (https)" placeholder="https://www.youtube.com/watch?v=..." required pattern="https://.*" maxLength={2000} />
-              </div>
-              <Field id={`l-title-${i}`} name="title" label="Title" required maxLength={200} />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label htmlFor={`l-kind-${i}`} className="text-sm text-muted">
-                    Kind
-                  </label>
-                  <select id={`l-kind-${i}`} name="kind" defaultValue="" className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink">
-                    <option value="">Auto</option>
-                    {RESOURCE_KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {KIND_LABEL[k]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Field id={`l-min-${i}`} name="minutes" type="number" min={1} max={6000} label="Minutes" />
-              </div>
-              <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit">Add link</Button>
-                <Button type="button" variant="quiet" onClick={() => setLinking(null)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          )}
-        </fieldset>
-      ))}
-
-      <Button type="button" variant="quiet" onClick={() => setStages([...stages, { title: `Week ${stages.length + 1}`, summary: "", steps: [] }])} disabled={stages.length >= 30}>
-        <Plus size={14} aria-hidden /> Add stage
-      </Button>
-
-      {props.error && (
-        <p role="alert" className="text-sm text-danger">
-          {props.error}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <Button onClick={props.onSave} disabled={props.busy}>
-          Save {t("roadmap").toLowerCase()}
-        </Button>
-        <Button variant="quiet" onClick={props.onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </div>
-  );
-}

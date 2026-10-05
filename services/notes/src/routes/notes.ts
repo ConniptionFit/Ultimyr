@@ -246,6 +246,17 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
       };
     });
 
+    /** The caller's own note text for every step of an archive, for searching and for a stage digest. Only their own rows. */
+    r.get("/v1/notes/archives/:id/text", async (req) => {
+      const a = await ctx.actor(req);
+      const archiveId = idParam(req);
+      const { rows } = await pool.query(
+        "SELECT step_id, content FROM notes.step_text WHERE user_id = $1 AND archive_id = $2 AND length(trim(content)) > 0 ORDER BY updated_at DESC LIMIT $3",
+        [a.userId, archiveId, MAX_NOTES],
+      );
+      return { notes: rows.map((x) => ({ stepId: x.step_id as string, content: (x.content as string).slice(0, 20_000) })) };
+    });
+
     /** The file tree that Create notes would make for this archive, in the person's chosen folder. Writes nothing. */
     r.get("/v1/notes/archives/:id/preview", async (req) => {
       const a = await ctx.actor(req);

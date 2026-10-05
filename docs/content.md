@@ -28,6 +28,19 @@ Ultimyr **never opens the links you save on the server**. It does not fetch titl
 ### Following the roadmap (guided path)
 An archive that has a roadmap opens on it. In **Guided** view (the default) the step you are on, the first required step not yet done, is marked **You are here** and opens in place: a video plays under the row, a guide is read inline, a deck is studied inline (**Study here**), a quiz starts from the step (**Take it here**) and returns you to the roadmap afterwards, and your note opens beneath. **Done, next step** ticks it and scrolls to the next one, which opens in turn. Other steps open with the same buttons whenever you like. **Compact** shows the plain checklist; the choice is stored in your browser (`ultimyr_path_view`). Articles and other sites still open in a new tab because they cannot be shown inside Ultimyr.
 
+**More on the path**
+- **Continue** (Reading Room) jumps straight to your current step.
+- **Keys:** `J` next step, `K` previous step, `D` mark done and move on (not while typing).
+- **Finished that?** After you open an article or other site from a step and come back to the tab, the step asks whether to tick it.
+- **Ticks itself:** a video ticks its step when it ends (YouTube, Vimeo and direct video files report this; Loom and other embeds cannot), a deck when its queue is caught up, a quiz once you have passed it. Videos remember where you stopped (kept in this browser).
+- **Today's session** (Off, 20, 45 or 90 minutes) marks the next required steps that fit with a **Today** badge. Steps with no minutes count as 10.
+- **Stage bar** along the top jumps between stages and shows progress for each.
+- **Deck steps** use the real spaced-repetition queue with the four ratings, so path study and the Study page feed the same schedule.
+- **Streak and readiness** (your quiz days in a row, readiness estimate, weakest area with a Drill link) show above the steps; the streak is hidden in Calm mode.
+- **Notes:** search your notes for the archive, and **My notes** on a stage shows all of that stage's notes in order.
+- **Offline copies:** **Keep for offline reading** under a guide or deck saves a copy in this browser only (removed when you sign out). If the server cannot be reached the copy is shown. Course and item pages keep a copy of their empty page shell for the same reason; no account data is cached.
+- **Copy from another course** (editors, in the roadmap toolbar) pulls another course's roadmap into this one as an unsaved draft. Links come across; guides, decks and quizzes become checkpoints with the same title because they belong to the other course. To share a path read-only, use Share on the course.
+
 A link that is a video (kind `video` or `playlist`, or tagged `content-type:video`) gets a play button in place of its icon, on the Resources tab and on roadmap steps. Press it and a player drops down under the row; press it again, or **Close**, to fold it away. **Nothing loads from another site until you press play.**
 
 | Link | Played as |

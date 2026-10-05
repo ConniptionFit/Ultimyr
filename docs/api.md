@@ -266,6 +266,7 @@ A person's step notes, kept in Ultimyr (schema `notes`) and optionally mirrored 
 | DELETE | `/notes/connection` | Removes the connection. Notes stay in Ultimyr and in the vault. |
 | GET, PUT | `/notes/preferences` | `{ rootFolder }` (the vault folder, default `Ultimyr`). `editor` and `pane` are accepted for older clients and ignored. |
 | GET | `/notes/folders` | Existing vault folders (three levels) to suggest as the root. |
+| GET | `/notes/archives/:id/text` | `{ notes: [{ stepId, content }] }`: your own non-empty note text for the archive (newest first, up to 400), used for note search and the stage digest. |
 | GET | `/notes/archives/:id/preview?root=` | The vault files a full sync would write. Writes nothing. |
 | POST | `/notes/archives/:id/scaffold` | Creates empty template notes for every step in the vault (create only). Not needed for normal use. |
 
