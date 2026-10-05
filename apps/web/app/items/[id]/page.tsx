@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, History, Pencil, Trash2 } from "lucide-react";
+import { Download, History, Pencil, Printer, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -106,7 +106,7 @@ export default function ItemPage() {
       <Header />
       <Shell>
         <div className="ulti-fade space-y-6">
-          <Link href={`/archives/${it.archive.id}`} className="text-sm text-muted hover:text-ink">
+          <Link href={`/archives/${it.archive.id}`} className="no-print text-sm text-muted hover:text-ink">
             ← {it.archive.title}
           </Link>
           <div className="flex items-start justify-between gap-4">
@@ -119,7 +119,12 @@ export default function ItemPage() {
                 {it.version ? ` · version ${it.version.number}` : ""}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="no-print flex gap-2">
+              {it.kind === "guide" && (
+                <Button variant="quiet" aria-label="Print or save as PDF" title="Print or save as PDF" onClick={() => window.print()}>
+                  <Printer size={16} />
+                </Button>
+              )}
               {it.kind !== "quiz" && (
                 <Button variant="quiet" aria-label="Export" onClick={() => (it.kind === "guide" ? download("markdown", "guide.md") : download("anki-csv", "deck.csv"))}>
                   <Download size={16} />

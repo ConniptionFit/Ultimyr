@@ -109,4 +109,14 @@ img, svg, video { max-width: 100%; }
   .no-print {
     display: none !important;
   }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+  pre,
+  table,
+  blockquote {
+    break-inside: avoid;
+  }
 }
