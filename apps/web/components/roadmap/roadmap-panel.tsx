@@ -10,6 +10,7 @@ import { useNaming } from "@/lib/naming";
 import { useNarrow } from "@/lib/use-narrow";
 import { notesMessage, type ArchiveNotes, type ScaffoldResult } from "@/lib/notes";
 import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
+import { VideoPanel, VideoToggleButton, useVideo } from "@/components/video-player";
 import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
 import { NoteFull } from "./note-full";
 import { NotePane } from "./note-pane";
@@ -436,12 +437,16 @@ interface RowProps {
   onNote: (n: { id: string; title: string }) => void;
 }
 
+/** Stands in for a step that is not a link, so the video hook can always run. Never playable. */
+const NO_VIDEO: Pick<Resource, "url" | "kind" | "tags" | "title" | "provider"> = { url: "", kind: "other", tags: [], title: "", provider: "" };
+
 function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { step: RoadmapStep; depth: number } & RowProps) {
   const { t } = useNaming();
   const [open, setOpen] = useState(!step.done);
   const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
   const Icon = step.kind === "milestone" ? Flag : step.kind === "item" ? ITEM_ICON[step.item!.kind] : KIND_ICON[step.resource!.kind];
   const draftTarget = (step.item?.status ?? step.resource?.status) === "draft";
+  const video = useVideo(step.resource ?? NO_VIDEO);
   const parent = step.children.length > 0;
   const partial = parent && !step.done && (step.progress?.done ?? 0) > 0;
   const optional = !step.required || step.effectiveRequired === false;
@@ -454,7 +459,7 @@ function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { s
     .join(" · ");
   return (
     <li id={`step-${step.id}`} className={depth ? "border-t border-line first:border-t-0" : ""}>
-      <div className="flex items-start gap-3 p-3" style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}>
+      <div className="flex flex-wrap items-start gap-3 p-3" style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}>
         {parent ? (
           <button type="button" aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${label}`} onClick={() => setOpen(!open)} className="mt-0.5 text-muted hover:text-ink">
             {open ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}
@@ -471,7 +476,9 @@ function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { s
         >
           {step.done ? <Check size={14} aria-hidden /> : partial ? <Minus size={14} aria-hidden /> : null}
         </button>
-        <Icon size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+        <VideoToggleButton video={video} title={label}>
+          <Icon size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+        </VideoToggleButton>
         <div className="min-w-0 flex-1">
           <p className={step.done ? "text-muted line-through decoration-line" : ""}>
             {step.kind === "item" ? (
@@ -508,6 +515,7 @@ function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { s
               <NotebookPen size={18} aria-hidden />
             </button>
           ))}
+        {step.resource && <VideoPanel video={video} resource={step.resource} />}
       </div>
       {parent && open && (
         <ul>

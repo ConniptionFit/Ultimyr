@@ -21,7 +21,21 @@ An archive can carry a **roadmap** (themed name: Path) and a library of **resour
 | **Step** | One of: a guide, deck or quiz from the same archive; a resource; or a **milestone** (a checkpoint with no link, such as "Take a practice exam"). Each step can be required or optional, carry a note and its own time estimate. A step can hold **steps of its own**, up to three levels: a course holds lessons, a lesson holds pages or videos. |
 | **Progress** | Each person ticks steps off for themselves. Only the innermost steps (leaves) carry a tick. A parent shows how many of its steps are done and counts as done when everything it requires is done; ticking a parent ticks everything under it, and a parent that is optional makes everything inside it optional. A course's own minutes are used only when its lessons have none. Nobody sees anyone else's ticks. The roadmap shows percent of required steps done, minutes left, and the next step. The dashboard shows where you are on every roadmap you can read. |
 
-Ultimyr **never opens the links you save**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host, and nothing is embedded from other sites. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
+Ultimyr **never opens the links you save on the server**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
+
+### Watching videos in the app
+
+A link that is a video (kind `video` or `playlist`, or tagged `content-type:video`) gets a play button in place of its icon, on the Resources tab and on roadmap steps. Press it and a player drops down under the row; press it again, or **Close**, to fold it away. **Nothing loads from another site until you press play.**
+
+| Link | Played as |
+|---|---|
+| YouTube watch, `youtu.be`, shorts, embed, playlist links | YouTube's privacy-enhanced player (`youtube-nocookie.com`). A `t=` start time and a playlist are kept. |
+| Vimeo, including unlisted links with a hash | Vimeo's player with do-not-track on. |
+| Loom shares | Loom's embed player. |
+| A direct `.mp4`, `.m4v`, `.webm`, `.ogv` or `.mov` link | The browser's own video player. |
+| Anything else | Stays a normal link that opens in a new tab. |
+
+Only these known providers are embedded, never an address typed into the page, and the iframe is sandboxed. Every player has an **Open the original** link for videos the owner has set to not allow embedding. If you put Ultimyr behind a proxy that adds a `Content-Security-Policy`, allow `frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com` and, for direct files, `media-src https:`. Ultimyr itself sets no page-wide policy that would block them.
 
 ### Example: Claude's training pages and YouTube videos
 The prep hub for Claude Certified Architect Foundations (`https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep`) is a good first resource: add it as a `course`, then place it in an early stage of the roadmap, followed by your guides and decks, optional YouTube videos, and a milestone for each practice test.
