@@ -54,7 +54,8 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | GET, POST, DELETE | `/admin/groups/:id/members`, `/admin/groups/:id/members/:userId` | |
 | GET, POST, PATCH, DELETE | `/admin/idp-providers`, `/admin/idp-providers/:id` | See [identity.md](identity.md). `clientSecret` is write-only. |
 | GET, POST, DELETE | `/admin/scim-tokens`, `/admin/scim-tokens/:id` | Token shown once on create. |
-| GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions. |
+| GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions, newest first. `?limit=` (1 to 500, up to 5000 with `format=csv`), `?action=`, `?before=<id>` for the next page, `?format=csv` for a spreadsheet download (cells that start with `=`, `+`, `-` or `@` are prefixed so they are never run as formulas). |
+| GET | `/admin/audit/actions` | Every action name in the log, for filters. |
 
 Roles: `platform_admin`, `org_admin`, `author`, `learner`, `access_delegate` (manages group access for the courses delegated to it, nothing else).
 

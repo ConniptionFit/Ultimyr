@@ -1,8 +1,9 @@
 import { hash } from "@node-rs/argon2";
 import { ROLES, type Role } from "@ultimyr/authz";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { auditCsv } from "../audit-csv.js";
 import { createAbout } from "../about.js";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
@@ -328,10 +329,37 @@ export function adminRoutes(ctx: Ctx) {
     });
 
     // ---- audit log --------------------------------------------------------
-    r.get("/v1/admin/audit", async (req) => {
+    r.get("/v1/admin/audit", async (req, reply) => {
       await ctx.requireAdmin(req);
-      const q = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), action: z.string().max(80).optional() }).parse(req.query);
-      return db.select().from(auditLog).where(q.action ? eq(auditLog.action, q.action) : undefined).orderBy(desc(auditLog.id)).limit(q.limit);
+      const q = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(5000).default(100),
+          action: z.string().max(80).optional(),
+          before: z.coerce.number().int().positive().optional(),
+          format: z.enum(["json", "csv"]).default("json"),
+        })
+        .parse(req.query);
+      if (q.format === "json" && q.limit > 500) throw new HttpError(400, "limit_too_large");
+      const rows = await db
+        .select()
+        .from(auditLog)
+        .where(and(q.action ? eq(auditLog.action, q.action) : undefined, q.before ? lt(auditLog.id, q.before) : undefined))
+        .orderBy(desc(auditLog.id))
+        .limit(q.limit);
+      if (q.format === "csv") {
+        return reply
+          .type("text/csv; charset=utf-8")
+          .header("content-disposition", 'attachment; filename="ultimyr-audit-log.csv"')
+          .send(auditCsv(rows));
+      }
+      return rows;
+    });
+
+    // Every action name that has been logged, so the audit page can offer them all as filters.
+    r.get("/v1/admin/audit/actions", async (req) => {
+      await ctx.requireAdmin(req);
+      const rows = await db.selectDistinct({ action: auditLog.action }).from(auditLog).orderBy(auditLog.action);
+      return rows.map((r) => r.action);
     });
   };
 }
