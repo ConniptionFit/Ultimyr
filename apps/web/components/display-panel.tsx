@@ -33,6 +33,7 @@ export function DisplayPanel() {
       <Choice<Display["size"]> legend="Text size" value={display.size} onChange={(size) => setDisplay({ size })} options={[["default", "Default"], ["large", "Large"], ["xlarge", "Extra large"]]} />
       <Toggle label="Readable text" hint="A wider spaced, evenly shaped font with more room between lines." on={display.readable} onChange={(readable) => setDisplay({ readable })} />
       <Toggle label="Calm mode" hint="Turn off animation and motion everywhere." on={display.calm} onChange={(calm) => setDisplay({ calm })} />
+      <Toggle label="Flashcard flip" hint="A short, gentle turn when a flashcard shows its answer. Off when Calm mode is on or your device asks for less motion." on={display.flip} onChange={(flip) => setDisplay({ flip })} />
       <Choice<Display["extraTime"]>
         legend="Extra time on timed exams"
         hint="Adds time to the limit when you start a timed attempt. It is recorded on the attempt, and practice mode is not timed."
@@ -40,7 +41,7 @@ export function DisplayPanel() {
         onChange={(extraTime) => setDisplay({ extraTime })}
         options={[[0, "None"], [25, "+25%"], [50, "+50%"], [100, "+100%"]]}
       />
-      <Button variant="quiet" onClick={() => setDisplay({ theme: "system", size: "default", readable: false, calm: false, extraTime: 0 })}>
+      <Button variant="quiet" onClick={() => setDisplay({ theme: "system", size: "default", readable: false, calm: false, flip: false, extraTime: 0 })}>
         Reset to defaults
       </Button>
     </section>
