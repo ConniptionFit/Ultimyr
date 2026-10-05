@@ -53,3 +53,5 @@ Progress > **Reviews** downloads a CSV of every flashcard review you have made, 
 
 ## Filtering courses
 With more than six courses, the Reading Room shows a filter box that matches title or vendor.
+
+While cards are due, the Reading Room also puts the count in the browser tab title, for example "(12) Ultimyr".
