@@ -1,9 +1,9 @@
 "use client";
 
 import { CatalogIcon } from "@/components/catalog-icon";
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
@@ -11,6 +11,7 @@ import type { ArchiveNotes } from "@/lib/notes";
 import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
 import { VideoPanel, VideoToggleButton, useVideo } from "@/components/video-player";
 import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
+import { InlineItem } from "./inline-item";
 import { StepNotes } from "./step-notes";
 
 const ITEM_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
@@ -115,6 +116,20 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   const [pasting, setPasting] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [notes, setNotes] = useState<ArchiveNotes | null>(null);
+  // Guided is the default: the step you are on opens in place, with its video, material, notes and quiz, one after another.
+  const [guided, setGuidedState] = useState(true);
+  const advanceTo = useRef<string | null>(null);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("ultimyr_path_view") === "compact") setGuidedState(false);
+    } catch {}
+  }, []);
+  const setGuided = (g: boolean) => {
+    setGuidedState(g);
+    try {
+      localStorage.setItem("ultimyr_path_view", g ? "guided" : "compact");
+    } catch {}
+  };
 
   const loadNotes = useCallback(async () => {
     try {
@@ -146,11 +161,20 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
     }
   }
 
-  async function tick(step: RoadmapStep, done: boolean) {
+  // After "Done, next step", bring the next step into view once the new state has rendered.
+  useEffect(() => {
+    if (!advanceTo.current || !road) return;
+    const id = road.next?.stepId;
+    advanceTo.current = null;
+    if (id) requestAnimationFrame(() => document.getElementById(`step-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [road]);
+
+  async function tick(step: RoadmapStep, done: boolean, advance = false) {
     setError(null);
     try {
       await api("PUT", `roadmap/steps/${step.id}/progress`, { done });
       syncStatus(step, done);
+      if (advance) advanceTo.current = step.id;
       setRoad(await api<Roadmap>("GET", `archives/${archiveId}/roadmap`));
       onChanged?.();
     } catch {
@@ -271,7 +295,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
           <ul className="divide-y divide-line rounded-md border border-line">
             {st.steps.length === 0 && <li className="p-3 text-sm text-muted">Nothing in this stage yet.</li>}
             {st.steps.map((x) => (
-              <StepRow key={x.id} step={x} depth={0} onTick={tick} archiveId={archiveId} notes={notes} onNoteSaved={noteSaved} />
+              <StepRow key={x.id} step={x} depth={0} onTick={tick} archiveId={archiveId} notes={notes} onNoteSaved={noteSaved} guided={guided} currentId={road.next?.stepId ?? null} returnTo={`/archives/${archiveId}#roadmap`} />
             ))}
           </ul>
         </li>
@@ -360,16 +384,27 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
             <p className="text-sm text-muted">
               {road.totals.percent}% · {totalsText(road.totals)}
             </p>
-            {road.next ? (
-              <p className="text-sm">
-                <span className="text-muted">Next up: </span>
-                <a href={`#step-${road.next.stepId}`} className="text-accent underline">
-                  {road.next.title}
-                </a>
-              </p>
-            ) : (
-              road.totals.required > 0 && <p className="text-sm text-accent">{copy("roadmapDone")}</p>
-            )}
+            <div className="flex flex-wrap items-center justify-between gap-2" role="group" aria-label="How to show the steps">
+              {road.next ? (
+                <p className="text-sm">
+                  <span className="text-muted">Next up: </span>
+                  <a href={`#step-${road.next.stepId}`} className="text-accent underline">
+                    {road.next.title}
+                  </a>
+                </p>
+              ) : (
+                <span />
+              )}
+              <span className="flex gap-1 text-sm">
+                <button type="button" aria-pressed={guided} onClick={() => setGuided(true)} className={`rounded-md border px-2 py-1 ${guided ? "border-accent text-ink" : "border-line text-muted hover:text-ink"}`}>
+                  Guided
+                </button>
+                <button type="button" aria-pressed={!guided} onClick={() => setGuided(false)} className={`rounded-md border px-2 py-1 ${!guided ? "border-accent text-ink" : "border-line text-muted hover:text-ink"}`}>
+                  Compact
+                </button>
+              </span>
+            </div>
+            {!road.next && road.totals.required > 0 && <p className="text-sm text-accent">{copy("roadmapDone")}</p>}
           </div>
           {list}
         </>
@@ -379,8 +414,14 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
 }
 
 interface RowProps {
-  onTick: (step: RoadmapStep, done: boolean) => void;
+  onTick: (step: RoadmapStep, done: boolean, advance?: boolean) => void;
   archiveId: string;
+  /** Guided: the step you are on opens in place with everything it needs. Compact: the plain checklist. */
+  guided: boolean;
+  /** The next required step that is not done: the one to work on now. */
+  currentId: string | null;
+  /** Where a quiz taken from this path returns to. */
+  returnTo: string;
   /** This person's notes for the archive; null while loading or if the notes service is unavailable. */
   notes: ArchiveNotes | null;
   onNoteSaved: (stepId: string, has: boolean) => void;
@@ -389,14 +430,23 @@ interface RowProps {
 /** Stands in for a step that is not a link, so the video hook can always run. Never playable. */
 const NO_VIDEO: Pick<Resource, "url" | "kind" | "tags" | "title" | "provider"> = { url: "", kind: "other", tags: [], title: "", provider: "" };
 
-function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved }: { step: RoadmapStep; depth: number } & RowProps) {
+function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved, guided, currentId, returnTo }: { step: RoadmapStep; depth: number } & RowProps) {
   const { t } = useNaming();
   const [open, setOpen] = useState(!step.done);
   const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
   const Icon = step.kind === "milestone" ? Flag : step.kind === "item" ? ITEM_ICON[step.item!.kind] : KIND_ICON[step.resource!.kind];
   const draftTarget = (step.item?.status ?? step.resource?.status) === "draft";
-  const video = useVideo(step.resource ?? NO_VIDEO);
+  const video = useVideo(step.resource ?? NO_VIDEO, guided && step.id === currentId);
   const parent = step.children.length > 0;
+  const current = guided && !parent && step.id === currentId;
+  const [inline, setInline] = useState(current);
+  // When the path moves on to this step, open what it holds. Closing it again is the learner's call.
+  useEffect(() => {
+    if (!current) return;
+    setInline(true);
+    if (video.playable && !video.open) video.toggle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
   const partial = parent && !step.done && (step.progress?.done ?? 0) > 0;
   const optional = !step.required || step.effectiveRequired === false;
   const meta = [
@@ -407,7 +457,7 @@ function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved }: { step:
     .filter(Boolean)
     .join(" · ");
   return (
-    <li id={`step-${step.id}`} className={depth ? "border-t border-line first:border-t-0" : ""}>
+    <li id={`step-${step.id}`} className={`scroll-mt-20 ${depth ? "border-t border-line first:border-t-0" : ""} ${current ? "border-l-2 border-l-accent bg-surface/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-3 p-3" style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}>
         {parent ? (
           <button type="button" aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${label}`} onClick={() => setOpen(!open)} className="mt-0.5 text-muted hover:text-ink">
@@ -442,21 +492,42 @@ function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved }: { step:
             {optional && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted no-underline">optional</span>}
             {draftTarget && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted">draft</span>}
           </p>
-          <p className="text-xs text-muted">{meta}</p>
+          <p className="text-xs text-muted">
+            {current && <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-accent-ink">You are here</span>}
+            {meta}
+          </p>
           {step.note && <p className="mt-1 text-sm text-ink/80">{step.note}</p>}
           {step.kind === "resource" && step.resource!.summary && <p className="mt-1 text-sm text-muted">{step.resource!.summary}</p>}
+          {step.kind === "item" && !parent && (
+            <button type="button" aria-expanded={inline} onClick={() => setInline(!inline)} className="mt-1 text-sm text-accent underline">
+              {inline ? "Close" : step.item!.kind === "guide" ? "Read here" : step.item!.kind === "deck" ? "Study here" : "Take it here"}
+            </button>
+          )}
         </div>
+        {step.kind === "item" && !parent && inline && (
+          <div className="basis-full">
+            <InlineItem itemId={step.item!.id} returnTo={returnTo} />
+          </div>
+        )}
         {step.resource && <VideoPanel video={video} resource={step.resource} />}
         {!parent && step.kind !== "milestone" && notes && (
           <div className="basis-full pl-8">
-            <StepNotes archiveId={archiveId} stepId={step.id} title={label} hasNote={!!notes.steps[step.id]} obsidian={notes.connected} onChange={(has) => onNoteSaved(step.id, has)} />
+            <StepNotes key={`${step.id}-${current}`} defaultOpen={current} archiveId={archiveId} stepId={step.id} title={label} hasNote={!!notes.steps[step.id]} obsidian={notes.connected} onChange={(has) => onNoteSaved(step.id, has)} />
+          </div>
+        )}
+        {current && (
+          <div className="flex basis-full items-center justify-end gap-3 pl-8 pt-1">
+            <p className="text-xs text-muted">Finished with everything above?</p>
+            <Button onClick={() => onTick(step, true, true)}>
+              Done, next step <ArrowRight size={16} aria-hidden />
+            </Button>
           </div>
         )}
       </div>
       {parent && open && (
         <ul>
           {step.children.map((c) => (
-            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} archiveId={archiveId} notes={notes} onNoteSaved={onNoteSaved} />
+            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} archiveId={archiveId} notes={notes} onNoteSaved={onNoteSaved} guided={guided} currentId={currentId} returnTo={returnTo} />
           ))}
         </ul>
       )}

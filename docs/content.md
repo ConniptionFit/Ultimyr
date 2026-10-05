@@ -25,6 +25,9 @@ Ultimyr **never opens the links you save on the server**. It does not fetch titl
 
 ### Watching videos in the app
 
+### Following the roadmap (guided path)
+An archive that has a roadmap opens on it. In **Guided** view (the default) the step you are on, the first required step not yet done, is marked **You are here** and opens in place: a video plays under the row, a guide is read inline, a deck is studied inline (**Study here**), a quiz starts from the step (**Take it here**) and returns you to the roadmap afterwards, and your note opens beneath. **Done, next step** ticks it and scrolls to the next one, which opens in turn. Other steps open with the same buttons whenever you like. **Compact** shows the plain checklist; the choice is stored in your browser (`ultimyr_path_view`). Articles and other sites still open in a new tab because they cannot be shown inside Ultimyr.
+
 A link that is a video (kind `video` or `playlist`, or tagged `content-type:video`) gets a play button in place of its icon, on the Resources tab and on roadmap steps. Press it and a player drops down under the row; press it again, or **Close**, to fold it away. **Nothing loads from another site until you press play.**
 
 | Link | Played as |
