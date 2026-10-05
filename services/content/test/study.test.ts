@@ -156,3 +156,35 @@ describe.skipIf(!testDbUrl)("undo a review", () => {
     expect(stats.cards[0].due).toBe(one.due);
   });
 });
+
+describe.skipIf(!testDbUrl)("review history export", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+  const alice = uuid();
+  const bob = uuid();
+  const call = async (u: string, method: string, url: string, payload?: unknown) => h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId: u }), ...(payload !== undefined ? { payload: payload as any } : {}) });
+  const json = (r: { body: string }) => JSON.parse(r.body);
+
+  it("lists only your own reviews as CSV, with commas in cards quoted", async () => {
+    h.clock.now = new Date("2026-10-04T12:00:00Z");
+    const archive = json(await call(alice, "POST", "/v1/archives", { title: "Export" })).id;
+    const deck = json(await call(alice, "POST", `/v1/archives/${archive}/items`, { kind: "deck", title: "D", cards: [{ front: "Ports, common", back: "A" }, { front: "=1+1", back: "B" }] })).id;
+    const cards = json(await call(alice, "GET", `/v1/items/${deck}`)).cards as { id: string; front: string }[];
+    const card = cards.find((c) => c.front.startsWith("Ports"))!.id;
+    await call(alice, "POST", "/v1/study/review", { cardId: card, rating: 3, durationMs: 4200 });
+    await call(alice, "POST", "/v1/study/review", { cardId: cards.find((c) => c.front === "=1+1")!.id, rating: 3 });
+    const mine = await call(alice, "GET", "/v1/study/export");
+    expect(mine.statusCode).toBe(200);
+    expect(mine.headers["content-type"]).toContain("text/csv");
+    const lines = mine.body.trim().split("\n");
+    expect(lines[0]).toBe("reviewed_at,course,deck,card,rating,was_new,scheduled_days,seconds");
+    expect(lines).toHaveLength(3);
+    expect(mine.body).toContain("'=1+1");
+    expect(mine.body).toContain('"Ports, common"');
+    expect(mine.body).toContain(",3,yes,");
+    expect((await call(bob, "GET", "/v1/study/export")).body.trim().split("\n")).toHaveLength(1);
+  });
+});

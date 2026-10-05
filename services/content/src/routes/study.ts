@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ARCHIVE_REL, ITEM_GRANT, RANK, loadItem } from "../access.js";
 import type { Ctx } from "../ctx.js";
+import { csvField } from "../markdown.js";
 
 const queueQuery = z.object({
   archive: z.uuid().optional(),
@@ -178,6 +179,27 @@ export function studyRoutes(ctx: Ctx) {
       } finally {
         client.release();
       }
+    });
+
+    /** Your own review history as CSV, newest first (capped at 100,000 rows). */
+    r.get("/v1/study/export", async (req, reply) => {
+      const a = await ctx.actor(req, "content:read");
+      const { rows } = await pool.query(
+        `SELECT v.reviewed_at, v.rating, v.state_before, v.scheduled_days, v.duration_ms, c.front, d.title AS deck, m.title AS course
+           FROM content.srs_reviews v
+           LEFT JOIN content.cards c ON c.id = v.card_id
+           LEFT JOIN content.sub_items d ON d.id = c.deck_id
+           LEFT JOIN content.master_items m ON m.id = v.archive_id
+          WHERE v.user_id = $1 ORDER BY v.reviewed_at DESC LIMIT 100000`,
+        [a.userId],
+      );
+      // A cell starting with = + - or @ would run as a formula in a spreadsheet, so it gets a leading apostrophe.
+      const safe = (v: string) => csvField(/^[=+\-@]/.test(v) ? `'${v}` : v);
+      const head = "reviewed_at,course,deck,card,rating,was_new,scheduled_days,seconds";
+      const lines = rows.map((x) =>
+        [new Date(x.reviewed_at).toISOString(), safe(x.course ?? ""), safe(x.deck ?? ""), safe(x.front ?? ""), x.rating, x.state_before === 0 ? "yes" : "no", Math.round(x.scheduled_days * 100) / 100, Math.round(x.duration_ms / 100) / 10].join(","),
+      );
+      return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", 'attachment; filename="ultimyr-review-history.csv"').send([head, ...lines].join("\n") + "\n");
     });
 
     /** Counts, retention and a seven day forecast for the progress page. */

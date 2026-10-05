@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- **Improved: keyboard and high-contrast use.** The menu sheet on phones and the keyboard shortcuts list now keep Tab inside them, close with Escape and hand focus back to the button that opened them. The current page is marked in the top bar and the phone menu (`aria-current`, with an underline), and Windows high contrast mode gets system-colour focus rings and borders. No migrations or API changes.
+- **New: download your flashcard review history as a spreadsheet.** On Progress, **Reviews** saves a CSV of every review you have made (date, course, deck, card, rating, whether it was new, days until next, seconds spent). Only your own reviews are included. New route `GET /study/export`.
 - **New: undo your last flashcard rating.** Pressed Good when you meant Again? **Undo last rating** (or **U**) puts the card back and restores its earlier schedule, and removes that review from your stats. It works until you review the same card again. Adds migration `0009_review_undo` and `POST /study/review/undo`.
 - **New: print or save a study guide as PDF.** A printer button beside Export on every guide prints just the article (menus and buttons left out, headings kept with their text, code blocks and tables kept whole).
 - **New: a friendly error page.** If a page fails while loading, you now see "Something went wrong" with **Try again** and a link back to the reading room (plus a reference code for your admin) instead of the browser's bare "This page couldn't load".
@@ -46,6 +46,7 @@
 - **Settings rework:** your own settings now live behind the account icon in the menu bar (Your settings: display, security, AI keys, connected apps, themed names, which stays at the bottom and is off by default). Administrators also get an **Admin panel** there, with a category list on the left that opens on General, then Users, Groups, Sign-in methods, Provisioning and the Audit log. Non-admins never see it, and the server rejects admin calls from anyone without the administrator role.
 - **New:** admins can open or close registration from General (`GET/PATCH /api/v1/admin/settings`, `GET /api/v1/admin/overview`). It overrides `AUTH_REGISTRATION` until reset. Adds migration `0004_instance_settings`.
 - **Fix:** clicking the Ultimyr logo no longer looks like a sign out. The splash page ignored your session and its button led to the sign in form. Signed in people now go straight to the reading room from the logo and the splash, and the sign in and register pages send them on instead of showing the form.
+- **Improved: keyboard and high-contrast use.** The menu sheet on phones and the keyboard shortcuts list now keep Tab inside them, close with Escape and hand focus back to the button that opened them. The current page is marked in the top bar and the phone menu (`aria-current`, with an underline), and Windows high contrast mode gets system-colour focus rings and borders. No migrations or API changes.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

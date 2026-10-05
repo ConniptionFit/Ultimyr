@@ -280,5 +280,6 @@ Scopes: reads `content:read`, reviews and settings `content:write`. Only publish
 | GET | `/study/queue?archive=&deck=&limit=` | Due cards first, then new cards up to today's allowance. Each card carries `next`: what every rating would schedule. |
 | POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns `reviewId`, the new `state`, `due` and `scheduledDays`. |
 | POST | `/study/review/undo` | `{ reviewId }`. Restores the schedule the review replaced (or makes a first review new again) and removes it from your history. 404 if it is not your review, 409 `cannot_undo` if the card was reviewed again since or the review predates undo. |
+| GET | `/study/export` | Your own review history as CSV (`reviewed_at, course, deck, card, rating, was_new, scheduled_days, seconds`), newest first, up to 100,000 rows. Cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them. |
 | GET | `/study/stats?archive=` | `learning`, `review`, `dueNow`, `reviewedToday`, `retentionBp`, `forecast` (7 days). |
 | GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99) and `newPerDay` (0 to 500). |
