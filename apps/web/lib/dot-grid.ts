@@ -26,6 +26,10 @@ export const DOT_GRID = {
   /** Resting dot colour per theme, as `r, g, b`. */
   restLight: "107, 102, 90",
   restDark: "163, 157, 139",
+  /** Half width and height, in pixels, of the calm area around the page centre, and how much of the effect stays inside it (0 to 1). */
+  quietX: 420,
+  quietY: 300,
+  quietFloor: 0.08,
   /** Cap on the frame rate. */
   fps: 30,
 } as const;

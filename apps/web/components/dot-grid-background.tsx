@@ -99,6 +99,11 @@ export function DotGridBackground() {
       const tone = dark ? G.dark : G.light;
       const restStyle = `rgba(${rest}, ${G.baseAlpha})`;
       const sizes = shapes.map((s) => sizeAt(s, t));
+      // Keep the middle, where the text and buttons sit, calm so words stay easy to read.
+      const cx = canvas.clientWidth / 2;
+      const cy = canvas.clientHeight / 2;
+      const rx = Math.min(G.quietX, canvas.clientWidth * 0.5);
+      const ry = Math.min(G.quietY, canvas.clientHeight * 0.45);
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
           let cov = 0;
@@ -117,8 +122,12 @@ export function DotGridBackground() {
               }
             }
           }
+          const d = Math.hypot((i * G.spacing - cx) / rx, (j * G.spacing - cy) / ry);
+          const k = Math.min(1, Math.max(0, (d - 0.55) / 0.6));
+          const calm = G.quietFloor + (1 - G.quietFloor) * k * k * (3 - 2 * k);
+          cov *= calm;
           const r = G.baseRadius + (G.maxRadius - G.baseRadius) * cov;
-          ctx.fillStyle = cov > 0.02 ? `hsla(${hue}, ${tone.s}%, ${tone.l}%, ${G.baseAlpha + (G.maxAlpha - G.baseAlpha) * cov})` : restStyle;
+          ctx.fillStyle = cov > 0.02 ? `hsla(${hue}, ${tone.s}%, ${tone.l}%, ${G.baseAlpha + (G.maxAlpha - G.baseAlpha) * cov})` : (calm < 1 ? `rgba(${rest}, ${G.baseAlpha * (0.4 + 0.6 * calm)})` : restStyle);
           ctx.beginPath();
           ctx.arc(i * G.spacing, j * G.spacing, r, 0, Math.PI * 2);
           ctx.fill();
