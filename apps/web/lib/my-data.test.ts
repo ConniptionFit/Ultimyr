@@ -23,6 +23,7 @@ describe("collectMyData", () => {
     expect(names).toContain("archives/a-2.ultimyr.json");
     expect(names).toContain("notes/a.json");
     expect(names).toContain("credentials.json");
+    expect(names).toContain("attempts.json");
     expect(r.files.find((f) => f.path === "README.txt")!.text).toContain("Everything was read.");
   });
   it("reports parts that cannot be read and carries on", async () => {

@@ -13,7 +13,7 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
 
 /**
  * Collects what Ultimyr holds about you, using only the calls the app already makes as you: your profile,
- * every archive you own (the same file Export gives), your credentials, your progress and your notes.
+ * every archive you own (the same file Export gives), your credentials, quiz attempts, progress and notes.
  * A part that cannot be read is listed in `skipped` instead of stopping the download.
  */
 export async function collectMyData(api: Api, profile: unknown, now = new Date()): Promise<MyDataResult> {
@@ -29,6 +29,7 @@ export async function collectMyData(api: Api, profile: unknown, now = new Date()
 
   files.push({ path: "profile.json", text: json(profile) });
   await grab("credentials", "credentials.json", async () => json(await api("GET", "credentials")));
+  await grab("quiz attempts", "attempts.json", async () => json(await api("GET", "attempts")));
   await grab("progress", "progress.json", async () => json(await api("GET", "analytics?days=365")));
 
   let archives: ArchiveRow[] = [];
@@ -52,7 +53,7 @@ export async function collectMyData(api: Api, profile: unknown, now = new Date()
       `Your Ultimyr data, collected ${now.toISOString()}.`,
       "archives/  each archive you own, in the format Export and Import use.",
       "notes/     your step notes per archive.",
-      "credentials.json, progress.json, profile.json  your records and account details.",
+      "attempts.json, credentials.json, progress.json, profile.json  your records and account details.",
       "Passwords, API keys and AI keys are never included.",
       skipped.length ? `Could not read: ${skipped.join(", ")}.` : "Everything was read.",
     ].join("\n"),

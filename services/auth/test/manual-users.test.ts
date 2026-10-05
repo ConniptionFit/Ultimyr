@@ -157,4 +157,18 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("manual user creation", () => {
       expect((await h.app.inject({ url: "/v1/me", headers: bearer(bob.accessToken) })).statusCode).toBe(200);
     });
   });
+
+  it("exports people as CSV for admins only, with formula-looking names neutralised", async () => {
+    await create({ email: "e@example.com", displayName: "=HYPERLINK(\"x\")", method: "invite" });
+    const csv = await h.app.inject({ url: "/v1/admin/users?format=csv", headers: bearer(admin.accessToken) });
+    expect(csv.statusCode).toBe(200);
+    expect(csv.headers["content-type"]).toContain("text/csv");
+    expect(csv.body.split("\r\n")[0]).toBe("email,name,status,created_via,roles,created");
+    expect(csv.body).toContain("e@example.com");
+    expect(csv.body).toContain("\"'=HYPERLINK(\"\"x\"\")\"");
+    expect(csv.body).not.toMatch(/password/i);
+    expect((await h.app.inject({ url: "/v1/admin/users?limit=500", headers: bearer(admin.accessToken) })).statusCode).toBe(400);
+    const learner = (await register(h.app, "learner@example.com")).json();
+    expect((await h.app.inject({ url: "/v1/admin/users?format=csv", headers: bearer(learner.accessToken) })).statusCode).toBe(403);
+  });
 });

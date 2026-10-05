@@ -22,3 +22,20 @@ export function auditCsv(rows: AuditRow[]): string {
   );
   return [head, ...lines].join("\r\n") + "\r\n";
 }
+
+export interface UserCsvRow {
+  email: string;
+  displayName: string;
+  status: string;
+  createdVia: string;
+  createdAt: Date | string;
+  roles: string[];
+}
+
+export function usersCsv(rows: UserCsvRow[]): string {
+  const head = ["email", "name", "status", "created_via", "roles", "created"].join(",");
+  const lines = rows.map((u) =>
+    [u.email, u.displayName, u.status, u.createdVia, u.roles.join(" "), u.createdAt instanceof Date ? u.createdAt.toISOString() : u.createdAt].map(csvCell).join(","),
+  );
+  return [head, ...lines].join("\r\n") + "\r\n";
+}
