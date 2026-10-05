@@ -118,6 +118,6 @@ Connect Claude to Ultimyr's MCP and grant `notes:use` (offered on the consent pa
 - The notes service creates and updates its own database tables at start (`NOTES_AUTO_MIGRATE`, on by default).
 
 **Troubleshooting**
-- *The Notes settings look old or show an error:* check the build you are running. `git log -1 --oneline` in the Ultimyr folder should match the latest commit on GitHub; if `git pull` was refused because of local edits, run `git stash`, `git pull`, then `docker compose up -d --build`. Then `docker compose logs --tail 40 notes` shows the cause of any error.
+- *The Notes settings look old or show an error:* check the build you are running. `git log -1 --oneline` in the Ultimyr folder should match the latest commit on GitHub; if `git pull` was refused because of local edits, run `./scripts/update.sh` (it stashes them for you). An error message now ends with a short `ref`; search for it in `docker compose logs notes`. Then `docker compose logs --tail 40 notes` shows the cause of any error.
 - *"Obsidian needs a Fast Note Sync server first":* an administrator sets the address in Admin panel > Notes (Obsidian).
 - *"server unreachable":* the address must be reachable from the `notes` container (use `http://fns:9000` with the bundled file, not `localhost`).

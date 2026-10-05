@@ -100,9 +100,10 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
       if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
       if (err.validation) return reply.code(400).send({ error: "invalid_request" });
       if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.message });
-      req.log.error(err);
-      if (err.code === "42P01" || err.code === "3F000") return reply.code(503).send({ error: "notes_not_migrated" });
-      return reply.code(500).send({ error: "internal_error" });
+      req.log.error({ err, ref: req.id }, "notes error");
+      if (err.code === "42P01" || err.code === "3F000") return reply.code(503).send({ error: "notes_not_migrated", ref: req.id });
+      if (err.code && /^(ECONNREFUSED|ENOTFOUND|ETIMEDOUT|57P0\d|08\w+|28\w+)$/.test(err.code)) return reply.code(503).send({ error: "notes_db_unavailable", ref: req.id });
+      return reply.code(500).send({ error: "internal_error", ref: req.id });
     });
 
     // ---- the administrator's one setting: where the Fast Note Sync server is ----

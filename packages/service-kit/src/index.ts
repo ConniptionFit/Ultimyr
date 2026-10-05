@@ -96,12 +96,13 @@ export async function createService(opts: ServiceOptions): Promise<Service> {
     return payload;
   });
 
-  app.setErrorHandler((err: Error & { validation?: unknown; statusCode?: number }, _req, reply) => {
+  app.setErrorHandler((err: Error & { validation?: unknown; statusCode?: number }, req, reply) => {
     if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
     if (err.validation) return reply.code(400).send({ error: "invalid_request" });
     if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.message });
-    app.log.error(err);
-    return reply.code(500).send({ error: "internal_error" });
+    // `ref` is the request id in the log line, so a person can quote it and an administrator can find the cause.
+    app.log.error({ err, ref: req.id }, "unhandled error");
+    return reply.code(500).send({ error: "internal_error", ref: req.id });
   });
 
   app.get("/healthz", async () => ({ status: "ok", service: opts.name }));

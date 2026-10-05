@@ -71,6 +71,7 @@ export function notesMessage(code: string): string {
     invalid_address: "That is not a usable address. Use something like http://fns:9000 or https://notes.example.com, with no password or query.",
     set_by_environment: "The address is set in the server's environment (FNS_URL), so it cannot be changed here.",
     notes_not_migrated: "The notes tables are missing from the database. An administrator should run: docker compose up -d --build",
+    notes_db_unavailable: "The notes service cannot reach its database. An administrator can check it with: docker compose logs --tail 60 notes db",
     internal_error: "The notes service hit an unexpected error. An administrator can see why with: docker compose logs --tail 40 notes",
     unknown_error: "The notes service did not answer properly. An administrator can check it with: docker compose logs --tail 40 notes",
     forbidden: "Only an administrator can change that.",
