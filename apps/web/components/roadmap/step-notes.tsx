@@ -23,9 +23,9 @@ const MIRROR_TEXT: Record<MirrorState, string> = {
  * Your note for one step, directly under the step (and its video). It is kept in Ultimyr; if you connect Obsidian it is
  * mirrored both ways and this looks exactly the same. Saves by itself a moment after you stop typing.
  */
-export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChange }: { archiveId: string; stepId: string; title: string; hasNote: boolean; obsidian: boolean; onChange: (has: boolean) => void }) {
+export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChange, defaultOpen = false }: { archiveId: string; stepId: string; title: string; hasNote: boolean; obsidian: boolean; onChange: (has: boolean) => void; defaultOpen?: boolean }) {
   const { api } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [note, setNote] = useState<StepNote | null>(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState("");
