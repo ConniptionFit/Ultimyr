@@ -315,7 +315,7 @@ export const FORMAT_RULES = [
   "Start with: ultimyr-bundle v1, then archive:, vendor: and overview: lines.",
   'Write blocks that open with "=== kind: Title ===" and close with "=== end ===". Kinds: objectives, roadmap, guide, deck, quiz. The objectives and roadmap blocks take no title.',
   "objectives: an outline. '## 1.0 Domain name (15%)' for a domain with its exam weight, then '- 1.1 Objective' lines. Only objectives from the vendor's published exam guide.",
-  "roadmap: '## Week 1: Title' stages, then '- [[Guide title]]' lines that name a guide, deck or quiz you wrote, '- [Title](https://link) 20m' for links you were given, and '- Text (optional)' for checkpoints.",
+  "roadmap: '## Week 1: Title' stages, then '- [[Guide title]]' lines that name a guide, deck or quiz you wrote, '- [Title](https://link) 20m' for links you opened (YouTube and Vimeo videos play inside Ultimyr), and '- Text (optional)' for checkpoints.",
   "guide: optional 'objectives: 1.1, 1.2' and 'summary:' lines, a blank line, then Markdown.",
   "deck: optional 'objectives:' line, then one card per line as 'Question :: Answer'.",
   "quiz: questions start with 'Q mcq', 'Q multi' or 'Q fib', then an optional objective code and difficulty (d1 to d5). Options are 'a) text' and the correct ones end with ' *'. Fill-in questions use ___ for each blank and one 'Answer: one | another' line per blank. Add 'Why:' for the explanation.",
@@ -407,6 +407,7 @@ export function checkBundles(bundles: Bundle[], depth: BundleDepth): Check {
 
 /** Passes run in this order. Each ends with a finished chunk the person pastes before saying "next". */
 export const PASSES = [
+  { id: "R", name: "Research", what: "Search the web and open sources yourself. Do not wait for me. Report a short research summary with every source you used, then continue to pass A." },
   { id: "A", name: "Objectives and roadmap", what: "Header, the objectives block (every domain with its weight, every objective with its code) and the roadmap block. No guides yet." },
   { id: "B", name: "One domain at a time", what: "For ONE exam domain: one guide per objective group, one deck, one quiz. Never more than one domain per reply." },
   { id: "C", name: "Gap fill", what: "Only the objectives Ultimyr reported as short. Same block titles as before so nothing duplicates." },
@@ -414,6 +415,19 @@ export const PASSES = [
 
 /** Content standards that make runs comparable. */
 export const STANDARDS = {
+  research: [
+    "Find and open: (1) the official exam guide or objectives page with domains, weights and numbering, (2) the exam facts (format, number and types of questions, time, passing score, price, retake policy, delivery, current version and retirement date), (3) the vendor's own training, free courses, docs, demos and sample questions, (4) the suggested study order, (5) the most recommended community guides, courses and videos, (6) what people who passed report about format, difficulty and which topics matter most.",
+    "Trust order: official vendor pages, then vendor docs, then established training sites and instructors, then forums and posts. A single anecdote is not a fact: only use a community claim when several sources agree, and say it is community reported.",
+    "Finish research with a short summary: exam facts with their sources, the source list (title, link, what it is for), the order you will teach in, and anything you could not confirm.",
+  ],
+  coursework: [
+    "The vendor guide is the skeleton, not the text. Teach the same objectives in your own words and add what a vendor guide lacks: worked examples, scenarios, comparisons, common mistakes and community-reported tips. Never copy vendor text or copyrighted course material.",
+    "If the vendor guide is broad, weave practice into the course: end each guide with its 'Check yourself' prompts, and place the matching flashcard deck and a short quiz right after it in the roadmap, so the learner reads, recalls, then tests.",
+    "Practice tests and flashcards come from the same objectives and the same research, so they align with the guides, but they are never copies of them or of real exam questions. Mirror the real exam's reported format (question types, scenario style, length, difficulty mix) and stress the topics people report as heavily tested.",
+  ],
+  videos: [
+    "Add real videos and playlists you opened (official demos and the best-regarded community courses) as roadmap links, '- [Title](https://youtu.be/...) 25m', placed at the step they support. YouTube and Vimeo links play inside Ultimyr. Only use a link you actually opened; never guess one.",
+  ],
   guide: [
     "One guide per objective group (2 to 5 related objectives), titled for what the learner can do, such as 'Configure and troubleshoot DNS'.",
     "Always this shape: '# Title', then '## Why it matters' (2 sentences), '## Key ideas' (bullets, each a fact), '## How it shows up on the exam' (what is tested and how, without quoting questions), '## Watch out' (3 or more common mix-ups), '## Check yourself' (3 recall prompts without answers).",
@@ -436,8 +450,8 @@ export const STANDARDS = {
     "Link guides, decks and quizzes with [[Exact Title]]. Add outside links only if the person gave them or you opened them.",
   ],
   truth: [
-    "Objectives, weights, passing score, price, question counts and dates come only from the official exam guide the person pasted or a page you opened. If you have none, ask and stop.",
-    "If you are unsure of a fact, leave it out and say so at the end of the chunk. Never invent a link.",
+    "Objectives, weights, passing score, price, question counts, time limit and dates come from sources you opened this session, with the official exam guide above all. Name the source for each in the research summary. If sources disagree, say so and prefer the official one. If a fact is unconfirmed, label it 'unconfirmed' or leave it out. Never invent a link.",
+    "Only if you cannot browse, or cannot find the official objectives after a real search, say so once and ask me to paste them. Never stop to ask for anything you can look up.",
   ],
 } as const;
 
@@ -452,6 +466,9 @@ export function standardsLines(): string[] {
   const block = (h: string, l: readonly string[]) => [`${h}:`, ...l.map((x) => `- ${x}`), ""];
   return [
     ...block("Truth", STANDARDS.truth),
+    ...block("Research", STANDARDS.research),
+    ...block("Coursework", STANDARDS.coursework),
+    ...block("Videos", STANDARDS.videos),
     ...block("Guides", STANDARDS.guide),
     ...block("Flashcards", STANDARDS.deck),
     ...block("Quiz questions", STANDARDS.quiz),
