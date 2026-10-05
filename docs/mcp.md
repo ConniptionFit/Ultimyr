@@ -35,7 +35,7 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `add_resources` | `content:write` | Save up to 50 links (YouTube, Anthropic training pages, docs). A link already saved is updated, not duplicated. Saved as drafts |
 | `import_outline` | `content:write` | Add a whole nested outline to the roadmap in one call: `## Stage` lines and bulleted steps with `[Title](https://link) 20m`, `[[Guide title]]` and `(optional)`. The easiest way to load a certification. Saved as a draft |
 | `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
-| `get_step_note`, `get_step_flashcards` | `notes:use` | Read the note for a roadmap step from your Obsidian vault, and the `Question :: Answer` lines in it (hand them to `create_deck`) |
+| `get_step_note`, `get_step_flashcards` | `notes:use` | Read your note for a roadmap step (kept in Ultimyr, mirrored to Obsidian if connected), and the `Question :: Answer` lines in it (hand them to `create_deck`). Pass `archiveId` the first time |
 | `append_step_note` | `notes:use` | Add text to the END of a step note. Never edits or removes what you wrote |
 | `get_objectives` | `content:read` | The exam objectives (domains and topics with weights) and what is linked to each |
 | `set_objectives` | `content:write` | Add or update objectives from an outline. Merges by code or title, never deletes |

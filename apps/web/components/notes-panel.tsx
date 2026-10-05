@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Choice } from "@/components/display-panel";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
-import { isRiskyFolder, notesMessage, type NotesConnection, type NotesPrefs } from "@/lib/notes";
+import { isRiskyFolder, notesMessage, type NotesConnection, type NotesPrefs, type SyncResult } from "@/lib/notes";
 
 const fail = (e: unknown) => (e instanceof ApiError ? notesMessage(e.code) : "Could not reach the server.");
 
@@ -26,7 +25,7 @@ function Step({ n, title, done, children }: { n: number; title: string; done?: b
   );
 }
 
-/** Settings: connect your Fast Note Sync vault, choose where notes live and how you want to work with them. */
+/** Settings: notes live in Ultimyr. Optionally mirror them to your Fast Note Sync vault (Obsidian), both ways. */
 export function NotesPanel() {
   const { api } = useAuth();
   const [conn, setConn] = useState<NotesConnection | null>(null);
@@ -98,6 +97,24 @@ export function NotesPanel() {
     }
   }
 
+  async function syncAll() {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const r = await api<SyncResult>("POST", "notes/sync");
+      setNote(
+        r.total === 0
+          ? "You have no notes yet. Write one under any lesson or video and it will appear in Obsidian."
+          : `Synced ${r.synced} of ${r.total} notes${r.pulled ? `, ${r.pulled} brought in from Obsidian` : ""}${r.conflicts ? `, ${r.conflicts} changed in both places (open them to choose)` : ""}${r.failed ? `, ${r.failed} could not be synced` : ""}.`,
+      );
+    } catch (err) {
+      setError(fail(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function savePrefs(patch: Partial<NotesPrefs>) {
     setError(null);
     try {
@@ -114,8 +131,8 @@ export function NotesPanel() {
   return (
     <section className="space-y-5 border-t border-line pt-8" aria-label="Notes">
       <div>
-        <h2 className="text-xl">Notes (Obsidian)</h2>
-        <p className="text-sm text-muted">Keep a note for every step of your courses in Obsidian through Fast Note Sync. The folders mirror the course layout, and you can write in Ultimyr or in Obsidian.</p>
+        <h2 className="text-xl">Notes</h2>
+        <p className="text-sm text-muted">Your notes are saved in Ultimyr. Under any lesson or video, press <strong>Add a note</strong> and write. Nothing to set up.</p>
       </div>
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -128,107 +145,101 @@ export function NotesPanel() {
         </p>
       )}
 
-      {conn && !conn.enabled && (
-        <div className="space-y-2 rounded-md border border-dashed border-line p-4 text-sm">
-          {conn.reason === "no_key" ? (
-            <p>The server&apos;s encryption key is missing, so notes cannot be switched on. An administrator needs to run <code>./scripts/init-secrets.sh</code> and restart.</p>
-          ) : (
-            <p>
-              Notes need a Fast Note Sync server first. {conn.admin ? <>You are an administrator: <Link href="/admin/notes" className="text-accent underline">add its address in Admin panel, Notes</Link>.</> : "Ask an administrator to add its address in the Admin panel."}
-            </p>
-          )}
-          <p className="text-muted">No server yet? An administrator can start one with <code>docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d</code>.</p>
+      <div className="space-y-4 rounded-md border border-line p-4">
+        <div>
+          <h3 className="text-lg">Also keep them in Obsidian (optional)</h3>
+          <p className="text-sm text-muted">Connect Fast Note Sync and every note is copied to your Obsidian vault and kept in step both ways, so Obsidian works as another way to read and edit them and as a backup. Ultimyr looks the same either way.</p>
         </div>
-      )}
 
-      {conn?.enabled && !conn.connected && (
-        <ol className="space-y-5">
-          <Step n={1} title={`Create your vault on ${conn.server}`} done>
-            <p className="text-sm text-muted">Open the Fast Note Sync web page, sign up, create a vault, and install its plugin in Obsidian so your devices stay in sync.</p>
-          </Step>
-          <Step n={2} title="Paste your API token and check it">
-            <form onSubmit={vaults ? connect : check} className="space-y-3">
-              <Field id="notes-token" name="token" label="API token (Copy API Config on the Fast Note Sync page)" type="password" required minLength={8} maxLength={2000} autoComplete="off" onChange={() => setVaults(null)} />
-              {vaults?.length ? (
-                <div className="space-y-1">
-                  <label htmlFor="notes-vault" className="text-sm text-muted">
-                    Which vault should hold your notes?
-                  </label>
-                  <select id="notes-vault" name="vault" required className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink">
-                    {vaults.map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              <Button type="submit" disabled={busy}>
-                {vaults?.length ? "Connect" : "Check token"}
-              </Button>
-            </form>
-          </Step>
-          <Step n={3} title="Choose a folder and how you work">
-            <p className="text-sm text-muted">Appears here once you are connected.</p>
-          </Step>
-        </ol>
-      )}
+        {!conn && !error && <p className="text-sm text-muted">Loading…</p>}
 
-      {conn?.enabled && conn.connected && prefs && (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line p-3 text-sm">
-            <p>
-              Connected to vault <strong>{conn.vault}</strong> on {conn.server}.
-            </p>
-            <Button variant="quiet" onClick={disconnect}>
-              Disconnect
-            </Button>
+        {conn && !conn.enabled && (
+          <div className="space-y-2 text-sm">
+            {conn.reason === "no_key" ? (
+              <p>The server&apos;s encryption key is missing, so Obsidian cannot be connected. An administrator needs to run <code>./scripts/init-secrets.sh</code> and restart. Your notes in Ultimyr are not affected.</p>
+            ) : (
+              <p>
+                Obsidian needs a Fast Note Sync server first. {conn.admin ? <>You are an administrator: <Link href="/admin/notes" className="text-accent underline">add its address in Admin panel, Notes</Link>.</> : "Ask an administrator to add its address in the Admin panel."} Your notes in Ultimyr are not affected.
+              </p>
+            )}
+            <p className="text-muted">No server yet? An administrator can start one with <code>docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d</code>.</p>
           </div>
+        )}
 
-          <form
-            className="space-y-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void savePrefs({ rootFolder: root });
-            }}
-          >
-            <label htmlFor="notes-root" className="text-sm">
-              Folder in your vault for Ultimyr notes
-            </label>
-            <p className="text-xs text-muted">
-              Inside it, each course gets its own folder, then a folder per stage and a note per step, the same order as the course in Ultimyr. Pick one that exists or type a new one (up to three levels, like Study/Certifications).
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <input id="notes-root" list="notes-folders" value={root} onChange={(e) => setRoot(e.target.value)} maxLength={200} className="min-w-[14rem] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-ink" />
-              <datalist id="notes-folders">
-                {folders.map((f) => (
-                  <option key={f} value={f} />
-                ))}
-              </datalist>
-              <Button type="submit" disabled={root.trim() === prefs.rootFolder || !root.trim()}>
-                Save folder
-              </Button>
+        {conn?.enabled && !conn.connected && (
+          <ol className="space-y-5">
+            <Step n={1} title={`Create your vault on ${conn.server}`} done>
+              <p className="text-sm text-muted">Open the Fast Note Sync web page, sign up, create a vault, and install its plugin in Obsidian so your devices stay in sync.</p>
+            </Step>
+            <Step n={2} title="Paste your API token and check it">
+              <form onSubmit={vaults ? connect : check} className="space-y-3">
+                <Field id="notes-token" name="token" label="API token (Copy API Config on the Fast Note Sync page)" type="password" required minLength={8} maxLength={2000} autoComplete="off" onChange={() => setVaults(null)} />
+                {vaults?.length ? (
+                  <div className="space-y-1">
+                    <label htmlFor="notes-vault" className="text-sm text-muted">
+                      Which vault should hold your notes?
+                    </label>
+                    <select id="notes-vault" name="vault" required className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink">
+                      {vaults.map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                <Button type="submit" disabled={busy}>
+                  {vaults?.length ? "Connect" : "Check token"}
+                </Button>
+              </form>
+            </Step>
+          </ol>
+        )}
+
+        {conn?.enabled && conn.connected && prefs && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <p>
+                Connected to vault <strong>{conn.vault}</strong> on {conn.server}. Notes sync as you write.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="quiet" onClick={() => void syncAll()} disabled={busy}>
+                  {busy ? "Syncing…" : "Sync all notes now"}
+                </Button>
+                <Button variant="quiet" onClick={disconnect}>
+                  Disconnect
+                </Button>
+              </div>
             </div>
-            {isRiskyFolder(root) && <p className="text-xs text-danger">Folders that start with a dot are Obsidian&apos;s own settings. Pick a normal folder.</p>}
-            <p className="text-xs text-muted">Changing it affects notes created from now on. Notes you already have stay where they are.</p>
-          </form>
 
-          <Choice<NotesPrefs["editor"]>
-            legend="Where do you write your notes?"
-            hint="In Ultimyr: edit beside each step. In Obsidian: the note icon opens the note in Obsidian or your Fast Note Sync dashboard instead."
-            value={prefs.editor}
-            onChange={(editor) => void savePrefs({ editor })}
-            options={[["ultimyr", "In Ultimyr"], ["obsidian", "In Obsidian"]]}
-          />
-          {prefs.editor === "ultimyr" && (
-            <Choice<NotesPrefs["pane"]>
-              legend="Notes pane in Ultimyr"
-              hint="Split screen puts the note beside the roadmap with a slider to resize. Full screen gives the note the whole page, with buttons back to the roadmap and the main menu."
-              value={prefs.pane}
-              onChange={(pane) => void savePrefs({ pane })}
-              options={[["split", "Split screen with slider"], ["full", "Full screen"], ["off", "Off"]]}
-            />
-          )}
-        </div>
-      )}
+            <form
+              className="space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void savePrefs({ rootFolder: root });
+              }}
+            >
+              <label htmlFor="notes-root" className="text-sm">
+                Folder in your vault for Ultimyr notes
+              </label>
+              <p className="text-xs text-muted">
+                Inside it, each course gets its own folder, then a folder per stage and a note per lesson, in the same order as the course in Ultimyr. Pick one that exists or type a new one (up to three levels, like Study/Certifications).
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <input id="notes-root" list="notes-folders" value={root} onChange={(e) => setRoot(e.target.value)} maxLength={200} className="min-w-[14rem] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-ink" />
+                <datalist id="notes-folders">
+                  {folders.map((f) => (
+                    <option key={f} value={f} />
+                  ))}
+                </datalist>
+                <Button type="submit" disabled={root.trim() === prefs.rootFolder || !root.trim()}>
+                  Save folder
+                </Button>
+              </div>
+              {isRiskyFolder(root) && <p className="text-xs text-danger">Folders that start with a dot are Obsidian&apos;s own settings. Pick a normal folder.</p>}
+              <p className="text-xs text-muted">Changing it affects notes written from now on. Copies already in your vault stay where they are.</p>
+            </form>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

@@ -28,19 +28,31 @@ export interface NotesPreview {
   truncated: boolean;
   notes: { path: string; title: string; kind: "index" | "step" }[];
 }
+export type MirrorState = "off" | "synced" | "pending" | "conflict" | "unreachable";
 export interface ArchiveNotes {
-  enabled: boolean;
+  /** Obsidian can be connected on this server. */
+  mirrorAvailable: boolean;
+  /** This person's Obsidian vault is connected. */
   connected: boolean;
-  scaffolded: boolean;
   prefs: NotesPrefs;
-  steps: Record<string, { path: string; obsidianUrl: string | null }>;
+  /** Steps that have a note with text in it. */
+  steps: Record<string, { path: string | null; obsidianUrl: string | null }>;
 }
 export interface StepNote {
-  path: string;
   exists: boolean;
   content: string;
   hash: string;
-  obsidianUrl: string;
+  mirror: MirrorState;
+  /** The vault's text, when it and this copy both changed. */
+  remote?: string;
+  obsidianUrl: string | null;
+}
+export interface SyncResult {
+  total: number;
+  synced: number;
+  pulled: number;
+  conflicts: number;
+  failed: number;
 }
 export interface ScaffoldResult {
   total: number;
@@ -68,7 +80,8 @@ export function notesMessage(code: string): string {
     fns_token_rejected: "Fast Note Sync rejected your token. Paste a fresh one in Settings.",
     vault_not_found: "That vault name was not found on your server.",
     conflict: "This note changed somewhere else (for example in Obsidian). Reload it before saving.",
-    no_note: "This step has no note yet. Create the notes first.",
+    no_note: "There is no note here yet.",
+    archive_required: "Open the note from its roadmap step.",
     too_many_notes: "This roadmap has too many steps to create notes in one go.",
   };
   return m[code] ?? code.replaceAll("_", " ");

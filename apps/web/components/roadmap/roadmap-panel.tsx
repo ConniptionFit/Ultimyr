@@ -1,21 +1,17 @@
 "use client";
 
 import { CatalogIcon } from "@/components/catalog-icon";
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FileQuestion, FileText, Flag, IndentDecrease, IndentIncrease, Layers, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
-import { useNarrow } from "@/lib/use-narrow";
-import { notesMessage, type ArchiveNotes, type ScaffoldResult } from "@/lib/notes";
+import type { ArchiveNotes } from "@/lib/notes";
 import { RESOURCE_KINDS, type ItemSummary, type Resource, type ResourceKind, type Roadmap, type RoadmapStep } from "@/lib/types";
 import { VideoPanel, VideoToggleButton, useVideo } from "@/components/video-player";
 import { ExternalLinkText, KIND_ICON, KIND_LABEL, ProgressBar, minutesText, totalsText } from "./bits";
-import { NoteFull } from "./note-full";
-import { NotePane } from "./note-pane";
-import { NotesSetup } from "./notes-setup";
-import { SplitView } from "./split-view";
+import { StepNotes } from "./step-notes";
 
 const ITEM_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
 
@@ -108,7 +104,6 @@ function move<T>(list: T[], i: number, by: -1 | 1): T[] {
 }
 
 export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archiveId: string; items: ItemSummary[]; canEdit: boolean; onChanged?: () => void }) {
-  const narrow = useNarrow();
   const { api } = useAuth();
   const { t, copy } = useNaming();
   const [road, setRoad] = useState<Roadmap | null>(null);
@@ -120,8 +115,6 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   const [pasting, setPasting] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [notes, setNotes] = useState<ArchiveNotes | null>(null);
-  const [openNote, setOpenNote] = useState<{ id: string; title: string } | null>(null);
-  const [settingUp, setSettingUp] = useState(false);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -143,24 +136,6 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
     void load();
     void loadNotes();
   }, [load, loadNotes]);
-
-  async function scaffold() {
-    setBusy(true);
-    setError(null);
-    try {
-      done(await api<ScaffoldResult>("POST", `notes/archives/${archiveId}/scaffold`));
-    } catch (e) {
-      setError(e instanceof ApiError ? notesMessage(e.code) : "Could not create the notes.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function done(r: ScaffoldResult) {
-    setSettingUp(false);
-    setWarnings([`Notes in ${r.root}: ${r.created} created, ${r.existing} already there${r.failed.length ? `, ${r.failed.length} failed` : ""}.`]);
-    void loadNotes();
-  }
 
   /** Keeps each note's `status` property in step with its tick. Best effort: a tick never fails because notes are down. */
   function syncStatus(step: RoadmapStep, done: boolean) {
@@ -261,16 +236,14 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
     setDraft(road.exists ? toDrafts(road) : [{ title: "Week 1", summary: "", steps: [] }]);
   };
 
-  const prefs = notes?.prefs;
-  const inObsidian = !!prefs && (prefs.editor === "obsidian" || prefs.pane === "off");
-  // On a phone there is no room for two panes, so a saved "split" choice opens the note full screen.
-  const split = !inObsidian && prefs?.pane === "split" && !narrow;
-  const full = !inObsidian && (prefs?.pane === "full" || (prefs?.pane === "split" && narrow));
-  const flat = (x: RoadmapStep): RoadmapStep[] => [x, ...x.children.flatMap(flat)];
-  const noteSteps = road.stages
-    .flatMap((st) => st.steps.flatMap(flat))
-    .filter((x) => notes?.steps[x.id])
-    .map((x) => ({ id: x.id, title: x.kind === "milestone" ? x.title! : x.kind === "item" ? x.item!.title : x.resource!.title }));
+  const noteSaved = (stepId: string, has: boolean) =>
+    setNotes((n) => {
+      if (!n || !!n.steps[stepId] === has) return n;
+      const steps = { ...n.steps };
+      if (has) steps[stepId] = { path: null, obsidianUrl: null };
+      else delete steps[stepId];
+      return { ...n, steps };
+    });
   const list = (
     <ol className="space-y-8">
       {road.stages.map((st, i) => (
@@ -298,7 +271,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
           <ul className="divide-y divide-line rounded-md border border-line">
             {st.steps.length === 0 && <li className="p-3 text-sm text-muted">Nothing in this stage yet.</li>}
             {st.steps.map((x) => (
-              <StepRow key={x.id} step={x} depth={0} onTick={tick} notes={notes?.connected ? notes.steps : undefined} inObsidian={inObsidian} openId={openNote?.id} onNote={setOpenNote} />
+              <StepRow key={x.id} step={x} depth={0} onTick={tick} archiveId={archiveId} notes={notes} onNoteSaved={noteSaved} />
             ))}
           </ul>
         </li>
@@ -398,30 +371,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
               road.totals.required > 0 && <p className="text-sm text-accent">{copy("roadmapDone")}</p>
             )}
           </div>
-          {notes?.enabled && !notes.connected && (
-            <p className="text-sm text-muted">
-              Keep a note for every step in Obsidian: <Link href="/settings#notes" className="text-accent underline">connect Fast Note Sync</Link>.
-            </p>
-          )}
-          {notes?.connected && !notes.scaffolded && !settingUp && (
-            <div className="flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
-              <span className="text-muted">Keep one note per step in your Obsidian vault (never overwrites anything).</span>
-              <Button type="button" onClick={() => setSettingUp(true)}>
-                <NotebookPen size={16} aria-hidden /> Set up notes
-              </Button>
-            </div>
-          )}
-          {notes?.connected && !notes.scaffolded && settingUp && <NotesSetup archiveId={archiveId} initialRoot={notes.prefs.rootFolder} onDone={done} onCancel={() => setSettingUp(false)} />}
-          {notes?.connected && notes.scaffolded && (
-            <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
-              {inObsidian ? "Notes are on: the note icon on a step opens it in Obsidian." : "Notes are on: use the note icon on a step to open it."}
-              <Button type="button" variant="quiet" onClick={scaffold} disabled={busy}>
-                Add notes for new steps
-              </Button>
-            </p>
-          )}
-          {split ? <SplitView left={list} right={openNote && <NotePane archiveId={archiveId} stepId={openNote.id} title={openNote.title} onClose={() => setOpenNote(null)} />} /> : list}
-          {full && openNote && <NoteFull archiveId={archiveId} current={openNote} steps={noteSteps} onOpen={setOpenNote} onClose={() => setOpenNote(null)} />}
+          {list}
         </>
       )}
     </div>
@@ -430,17 +380,16 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
 
 interface RowProps {
   onTick: (step: RoadmapStep, done: boolean) => void;
-  /** Steps that have a note, when notes are connected. */
-  notes?: ArchiveNotes["steps"];
-  inObsidian: boolean;
-  openId?: string;
-  onNote: (n: { id: string; title: string }) => void;
+  archiveId: string;
+  /** This person's notes for the archive; null while loading or if the notes service is unavailable. */
+  notes: ArchiveNotes | null;
+  onNoteSaved: (stepId: string, has: boolean) => void;
 }
 
 /** Stands in for a step that is not a link, so the video hook can always run. Never playable. */
 const NO_VIDEO: Pick<Resource, "url" | "kind" | "tags" | "title" | "provider"> = { url: "", kind: "other", tags: [], title: "", provider: "" };
 
-function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { step: RoadmapStep; depth: number } & RowProps) {
+function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved }: { step: RoadmapStep; depth: number } & RowProps) {
   const { t } = useNaming();
   const [open, setOpen] = useState(!step.done);
   const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
@@ -497,30 +446,17 @@ function StepRow({ step, depth, onTick, notes, inObsidian, openId, onNote }: { s
           {step.note && <p className="mt-1 text-sm text-ink/80">{step.note}</p>}
           {step.kind === "resource" && step.resource!.summary && <p className="mt-1 text-sm text-muted">{step.resource!.summary}</p>}
         </div>
-        {notes?.[step.id] &&
-          (inObsidian ? (
-            notes[step.id]!.obsidianUrl && (
-              <a href={notes[step.id]!.obsidianUrl!} aria-label={`Open the note for ${label} in Obsidian`} className="mt-0.5 shrink-0 rounded-md p-1 text-muted hover:text-ink">
-                <NotebookPen size={18} aria-hidden />
-              </a>
-            )
-          ) : (
-            <button
-              type="button"
-              aria-label={`Notes for ${label}`}
-              aria-pressed={openId === step.id}
-              onClick={() => onNote({ id: step.id, title: label })}
-              className={`mt-0.5 shrink-0 rounded-md p-1 ${openId === step.id ? "bg-surface text-accent" : "text-muted hover:text-ink"}`}
-            >
-              <NotebookPen size={18} aria-hidden />
-            </button>
-          ))}
         {step.resource && <VideoPanel video={video} resource={step.resource} />}
+        {!parent && step.kind !== "milestone" && notes && (
+          <div className="basis-full pl-8">
+            <StepNotes archiveId={archiveId} stepId={step.id} title={label} hasNote={!!notes.steps[step.id]} obsidian={notes.connected} onChange={(has) => onNoteSaved(step.id, has)} />
+          </div>
+        )}
       </div>
       {parent && open && (
         <ul>
           {step.children.map((c) => (
-            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} notes={notes} inObsidian={inObsidian} openId={openId} onNote={onNote} />
+            <StepRow key={c.id} step={c} depth={depth + 1} onTick={onTick} archiveId={archiveId} notes={notes} onNoteSaved={onNoteSaved} />
           ))}
         </ul>
       )}

@@ -244,29 +244,32 @@ Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
 See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
 
 ## Notes service
-Bridge to the person's Fast Note Sync vault (see [notes.md](notes.md#sync-with-obsidian)). Scope `notes:use`. Answers 503 `notes_disabled` (with `reason`: `no_key` or `no_server`) when the vault key or the server address is missing, and 503 `notes_not_migrated` if the notes tables are missing. The token is write-only.
+A person's step notes, kept in Ultimyr (schema `notes`) and optionally mirrored to their Fast Note Sync vault (see [notes.md](notes.md)). Scope `notes:use`. Note routes work without any vault. Vault routes answer 503 `notes_disabled` (with `reason`: `no_key` or `no_server`) when the vault key or the server address is missing, and 503 `notes_not_migrated` if the notes tables are missing. The vault token is write-only. Step routes take `archive` (query, or in the body) the first time a step is used; it is remembered afterwards. Notes belong to leaf steps.
+
+`mirror` in a response is `off` (no vault), `synced`, `pending`, `unreachable` or `conflict` (then `remote` holds the vault's text).
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/notes/admin` | Platform administrators. `{ url, source: env\|admin\|none }`. |
-| PUT | `/notes/admin` | Platform administrators. `{ url }` (empty or null removes). Probes the server first: 400 `invalid_address` or `server_unreachable`; 409 `set_by_environment` when `FNS_URL` is set. |
-| GET | `/notes/connection` | `{ enabled, reason, server, connected, vault, admin, prefs }` |
-| POST | `/notes/connection/check` | `{ token }` returns `{ vaults }` without saving. 401 `fns_token_rejected`. |
-| GET | `/notes/preferences` | `{ rootFolder, editor: ultimyr\|obsidian, pane: split\|full\|off }` |
-| PUT | `/notes/preferences` | Any of those fields. |
-| GET | `/notes/folders` | Existing vault folders (three levels) to suggest as the root. |
-| GET | `/notes/archives/:id/preview?root=` | The files a scaffold would write, and which already exist. Writes nothing. |
-| PUT | `/notes/connection` | `{ token, vault }`. Checks the token and that the vault exists (400 `vault_not_found` lists the vaults), then stores the token sealed. |
-| DELETE | `/notes/connection` | Removes the connection and the step to note mapping. Notes in the vault stay. |
-| GET | `/notes/archives/:id` | `{ enabled, connected, scaffolded, prefs, steps: { [stepId]: { path, obsidianUrl } } }` |
-| POST | `/notes/archives/:id/scaffold` | Creates the index and one note per step with create only. Uses the person's root folder. Returns `{ total, created, existing, failed, root, indexUrl }`. Safe to repeat. |
-| GET | `/notes/steps/:stepId` | `{ path, exists, content, hash, obsidianUrl }` |
-| PUT | `/notes/steps/:stepId` | `{ content, baseHash }`. 409 `conflict` if the note changed since `hash`. |
-| POST | `/notes/steps/:stepId/append` | `{ text }`. Adds text to the end of the note; never replaces anything. |
+| GET | `/notes/steps/:stepId?archive=` | `{ exists, content, hash, mirror, remote?, pulled?, obsidianUrl, path }`. With a vault it first brings the two copies in step (text changed only in the vault is taken in). 404 `not_found` if the step is not in an archive the caller can read, 400 `archive_required`. |
+| PUT | `/notes/steps/:stepId` | `{ archive?, content, baseHash }`. Saves in Ultimyr, then mirrors. 409 `conflict` if the saved note changed since `baseHash`. Returns the same shape as GET. |
+| POST | `/notes/steps/:stepId/append` | `{ archive?, text }`. Adds text to the end; never replaces anything. |
+| POST | `/notes/steps/:stepId/resolve` | `{ archive?, keep: mine\|obsidian }` after `mirror: conflict`. |
 | GET | `/notes/steps/:stepId/flashcards` | `{ cards: [{ front, back }], skipped }` from the `Question :: Answer` lines under `## Flashcards`. |
-| POST | `/notes/steps/:stepId/status` | `{ status: todo, reading or done }`. Patches only the `status` property. |
+| POST | `/notes/steps/:stepId/status` | `{ status: todo, reading or done }`. Patches only the `status` property of the vault copy, best effort. |
+| GET | `/notes/archives/:id` | `{ mirrorAvailable, connected, prefs, steps: { [stepId]: { path, obsidianUrl } } }` for steps that have note text. |
+| POST | `/notes/sync` | Brings every note in step with the vault. Returns `{ total, synced, pulled, conflicts, failed }`. |
+| GET | `/notes/admin` | Platform administrators. `{ fnsUrl, source: env\|admin\|null, keyPresent, canEdit }`. |
+| PUT | `/notes/admin` | Platform administrators. `{ fnsUrl }` (null removes). Probes the server first: 400 `invalid_address` or `server_unreachable`; 409 `set_by_environment` when `FNS_URL` is set. |
+| GET | `/notes/connection` | `{ enabled, reason, server, connected, vault, admin, prefs }` (`enabled` means the vault can be connected). |
+| POST | `/notes/connection/check` | `{ token }` returns `{ vaults }` without saving. |
+| PUT | `/notes/connection` | `{ token, vault }`. Checks the token and vault (400 `vault_not_found`), then stores the token sealed. |
+| DELETE | `/notes/connection` | Removes the connection. Notes stay in Ultimyr and in the vault. |
+| GET, PUT | `/notes/preferences` | `{ rootFolder }` (the vault folder, default `Ultimyr`). `editor` and `pane` are accepted for older clients and ignored. |
+| GET | `/notes/folders` | Existing vault folders (three levels) to suggest as the root. |
+| GET | `/notes/archives/:id/preview?root=` | The vault files a full sync would write. Writes nothing. |
+| POST | `/notes/archives/:id/scaffold` | Creates empty template notes for every step in the vault (create only). Not needed for normal use. |
 
-Errors: 409 `not_connected`, `fns_token_rejected`, `conflict`; 404 `no_note` (step has no note yet); 502 `fns_unreachable`.
+Errors: 409 `not_connected`, `fns_token_rejected`, `conflict`; 502 `fns_unreachable`.
 
 ## Daily review (content service)
 Scopes: reads `content:read`, reviews and settings `content:write`. Only published decks the caller can read are included.
