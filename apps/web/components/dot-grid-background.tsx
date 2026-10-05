@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { DOT_GRID, makeShapes, sample, shapeCount, sizeAt, step, type Shape } from "@/lib/dot-grid";
+import { DOT_GRID, angleAt, makeShapes, sample, shapeCount, sizeAt, step, type Shape } from "@/lib/dot-grid";
 
-/** The shapes that float through the grid: the Lucide icons that best say learning and study. */
-const ICONS = ["book-open", "graduation-cap", "brain", "lightbulb", "pencil-line", "library", "atom", "flask-conical", "calculator", "languages", "microscope", "target", "sigma"];
+/** The shapes that float through the grid: the Lucide icons John picked (code, book, brain, bot, sparkle, graduation cap, briefcase, list). */
+const ICONS = ["code", "book", "brain", "bot", "sparkle", "graduation-cap", "briefcase-business", "list"];
 
 const MASK = 48;
 
@@ -99,6 +99,9 @@ export function DotGridBackground() {
       const tone = dark ? G.dark : G.light;
       const restStyle = `rgba(${rest}, ${G.baseAlpha})`;
       const sizes = shapes.map((s) => sizeAt(s, t));
+      const angles = shapes.map((s) => angleAt(s, t));
+      const cos = angles.map(Math.cos);
+      const sin = angles.map(Math.sin);
       // Keep the middle, where the text and buttons sit, calm so words stay easy to read.
       const cx = canvas.clientWidth / 2;
       const cy = canvas.clientHeight / 2;
@@ -112,8 +115,11 @@ export function DotGridBackground() {
             for (let k = 0; k < shapes.length; k++) {
               const s = shapes[k]!;
               const size = sizes[k]!;
-              const u = (i - s.x) / size + 0.5;
-              const v = (j - s.y) / size + 0.5;
+              // Turn the dot's position back by the shape's angle, so the shape itself is what is tilted.
+              const dx = i - s.x;
+              const dy = j - s.y;
+              const u = (dx * cos[k]! + dy * sin[k]!) / size + 0.5;
+              const v = (dy * cos[k]! - dx * sin[k]!) / size + 0.5;
               if (u < 0 || v < 0 || u >= 1 || v >= 1) continue;
               const c = sample(masks[s.icon]!, MASK, u, v);
               if (c > cov) {
