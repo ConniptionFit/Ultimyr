@@ -27,7 +27,7 @@ export function AccountMenu() {
   if (state.status !== "authenticated") return null;
   const { user } = state;
   const isAdmin = user.roles.includes("platform_admin");
-  const canOpenPanel = isAdmin || user.roles.includes("access_delegate");
+  const canOpenPanel = isAdmin || user.roles.includes("curriculum_admin");
   const item = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-bg";
 
   return (

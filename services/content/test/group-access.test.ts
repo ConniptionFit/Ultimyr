@@ -9,12 +9,12 @@ describe.skipIf(!testDbUrl)("group access", () => {
   afterAll(() => h.close());
 
   const admin = uuid();
-  const delegate = uuid();
+  const curator = uuid();
   const alice = uuid();
   const member = uuid();
   const group = uuid();
   const other = uuid();
-  const roles = { admin: ["platform_admin", "author", "learner"], delegate: ["access_delegate", "learner"] };
+  const roles = { admin: ["platform_admin", "author", "learner"], curator: ["curriculum_admin", "learner"] };
   const call = async (userId: string, method: string, url: string, payload?: unknown, r?: string[]) =>
     h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId, ...(r ? { roles: r as any } : {}) }), ...(payload !== undefined ? { payload: payload as any } : {}) });
   const json = (r: { body: string }) => JSON.parse(r.body);
@@ -57,44 +57,43 @@ describe.skipIf(!testDbUrl)("group access", () => {
     expect((await call(member, "GET", `/v1/archives/${id}`)).statusCode).toBe(200);
   });
 
-  it("refuses everyone who is neither admin nor delegate", async () => {
+  it("refuses everyone who is neither admin nor curriculum admin", async () => {
     const id = await mk("Course C");
     expect((await call(alice, "GET", "/v1/group-access/archives")).statusCode).toBe(403);
     expect((await call(alice, "PUT", `/v1/group-access/archives/${id}/groups/${group}`, { level: "view" })).statusCode).toBe(403);
-    expect((await call(alice, "POST", `/v1/group-access/archives/${id}/delegates`, { userId: alice })).statusCode).toBe(403);
   });
 
-  it("delegates manage group access only for archives delegated to them", async () => {
-    const mine = await mk("Delegated");
-    const notMine = await mk("Not delegated");
-    expect((await call(admin, "POST", `/v1/group-access/archives/${mine}/delegates`, { userId: delegate }, roles.admin)).statusCode).toBe(201);
-    expect(json(await call(admin, "GET", `/v1/group-access/delegates/${delegate}`, undefined, roles.admin))).toEqual([{ archiveId: mine, title: "Delegated" }]);
+  it("lets a curriculum admin create, edit, share and remove any course, and manage its group access", async () => {
+    const mine = await mk("Alice's course");
+    const created = await call(curator, "POST", "/v1/archives", { title: "Curator course" }, roles.curator);
+    expect(created.statusCode).toBe(201);
 
-    const listed = json(await call(delegate, "GET", "/v1/group-access/archives", undefined, roles.delegate));
-    expect(listed.map((a: any) => a.id)).toEqual([mine]);
-    expect(json(await call(delegate, "GET", `/v1/group-access/groups/${group}`, undefined, roles.delegate)).map((a: any) => a.archiveId)).toEqual([mine]);
+    // Full access to a course someone else owns, including settings, items, sharing and removal.
+    const got = json(await call(curator, "GET", `/v1/archives/${mine}`, undefined, roles.curator));
+    expect(got.relation).toBe("owner");
+    expect((await call(curator, "PATCH", `/v1/archives/${mine}`, { title: "Renamed", visibility: "org" }, roles.curator)).statusCode).toBe(200);
+    expect((await call(curator, "PATCH", `/v1/archives/${mine}`, { visibility: "private" }, roles.curator)).statusCode).toBe(200);
+    expect((await call(curator, "POST", `/v1/archives/${mine}/grants`, { subjectType: "group", subjectId: group, relation: "viewer" }, roles.curator)).statusCode).toBe(201);
+    expect(json(await call(curator, "GET", "/v1/archives", undefined, roles.curator)).archives.map((a: any) => a.id)).toContain(mine);
 
-    expect((await call(delegate, "PUT", `/v1/group-access/archives/${mine}/groups/${group}`, { level: "view" }, roles.delegate)).statusCode).toBe(200);
-    h.groups.set(member, [group]);
-    expect((await call(member, "GET", `/v1/archives/${mine}`)).statusCode).toBe(200);
-    expect((await call(delegate, "PUT", `/v1/group-access/archives/${notMine}/groups/${group}`, { level: "view" }, roles.delegate)).statusCode).toBe(404);
+    // Group access management reaches every course.
+    const listed = json(await call(curator, "GET", "/v1/group-access/archives", undefined, roles.curator));
+    expect(listed.map((a: any) => a.id)).toContain(mine);
+    expect((await call(curator, "PUT", `/v1/group-access/archives/${mine}/groups/${group}`, { level: "manage" }, roles.curator)).statusCode).toBe(200);
+    expect((await call(curator, "PUT", `/v1/group-access/archives/${mine}/access`, { mode: "everyone" }, roles.curator)).statusCode).toBe(200);
 
-    // Not global settings: no visibility changes, no onward delegation, and no access to the content itself.
-    expect((await call(delegate, "PUT", `/v1/group-access/archives/${mine}/access`, { mode: "everyone" }, roles.delegate)).statusCode).toBe(403);
-    expect((await call(delegate, "POST", `/v1/group-access/archives/${mine}/delegates`, { userId: other }, roles.delegate)).statusCode).toBe(403);
-    expect((await call(delegate, "GET", `/v1/archives/${mine}`, undefined, roles.delegate)).statusCode).toBe(404);
-
-    // Removing the delegation removes the power.
-    expect((await call(admin, "DELETE", `/v1/group-access/archives/${mine}/delegates/${delegate}`, undefined, roles.admin)).statusCode).toBe(204);
-    expect((await call(delegate, "PUT", `/v1/group-access/archives/${mine}/groups/${group}`, { level: "none" }, roles.delegate)).statusCode).toBe(404);
+    // Trash and restore, then delete.
+    expect((await call(curator, "DELETE", `/v1/archives/${mine}`, undefined, roles.curator)).statusCode).toBe(204);
+    expect(json(await call(curator, "GET", "/v1/trash", undefined, roles.curator)).archives.map((a: any) => a.id)).toContain(mine);
+    expect((await call(curator, "POST", `/v1/archives/${mine}/restore`, undefined, roles.curator)).statusCode).toBe(200);
   });
 
-  it("does not let a delegate change an owner level group grant", async () => {
-    const id = await mk("Owner grant");
-    await h.pool.query("INSERT INTO content.grants (id, object_type, object_id, subject_type, subject_id, relation, created_by) VALUES ($1,'archive',$2,'group',$3,'owner',$4)", [uuid(), id, group, alice]);
-    await call(admin, "POST", `/v1/group-access/archives/${id}/delegates`, { userId: delegate }, roles.admin);
-    expect((await call(delegate, "PUT", `/v1/group-access/archives/${id}/groups/${group}`, { level: "none" }, roles.delegate)).statusCode).toBe(403);
-    expect((await call(admin, "PUT", `/v1/group-access/archives/${id}/groups/${group}`, { level: "view" }, roles.admin)).statusCode).toBe(200);
+  it("gives plain authors and learners none of that", async () => {
+    const id = await mk("Private to Alice");
+    expect((await call(other, "GET", `/v1/archives/${id}`)).statusCode).toBe(404);
+    expect((await call(other, "GET", `/v1/archives/${id}`, undefined, ["learner"])).statusCode).toBe(404);
+    expect(json(await call(other, "GET", "/v1/archives")).archives.map((a: any) => a.id)).not.toContain(id);
+    expect((await call(other, "GET", "/v1/trash")).statusCode).toBe(200);
   });
 
   it("honours token scopes and rejects bad input", async () => {

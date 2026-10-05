@@ -56,7 +56,7 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | GET, POST, DELETE | `/admin/scim-tokens`, `/admin/scim-tokens/:id` | Token shown once on create. |
 | GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions. |
 
-Roles: `platform_admin`, `org_admin`, `author`, `learner`, `access_delegate` (manages group access for the courses delegated to it, nothing else).
+Roles: `platform_admin`, `org_admin`, `author`, `learner`, `curriculum_admin` (full access to every course and its settings, and group access; no installation admin settings).
 
 ### Connected apps and OAuth (MCP)
 See [mcp.md](mcp.md#oauth-details-for-client-authors) for the flow. Routes marked interactive reject API key and connected-app tokens.
@@ -155,13 +155,10 @@ Archives, roadmap stages and steps now return `icon: { name, source }` (`source`
 |---|---|---|
 | GET, POST | `/archives/:id/grants`, `/items/:id/grants` | Owner only. `{ subjectType: user\|group, subjectId, relation: attempt\|viewer\|editor\|owner, expiresAt? }`. Needs `content:share` to change. |
 | DELETE | `/archives/:id/grants/:grantId`, `/items/:id/grants/:grantId` | |
-| GET | `/group-access/archives` | Archives you may manage group access for (all for `platform_admin`, delegated ones for `access_delegate`), with `access` (`everyone` or `restricted`) and `groupGrants`. Needs `content:read`. |
-| GET | `/group-access/groups/:groupId` | One group's `level` (`none`, `view`, `manage`, plus legacy `attempt`, `owner`) on each archive you manage. |
-| PUT | `/group-access/archives/:id/groups/:groupId` | `{ level: none\|view\|manage, expiresAt? }`. `view` is a `viewer` grant, `manage` is `editor`. Replaces the group's grant on that archive. Admin or delegate of that archive. Needs `content:share`. |
-| PUT | `/group-access/archives/:id/access` | `{ mode: everyone\|restricted }`. Admin only. |
-| GET, POST | `/group-access/archives/:id/delegates` | Admin only. `{ userId }` to add. |
-| DELETE | `/group-access/archives/:id/delegates/:userId` | Admin only. |
-| GET | `/group-access/delegates/:userId` | Archives delegated to one person. Admin only. |
+| GET | `/group-access/archives` | Every archive with `access` (`everyone` or `restricted`) and `groupGrants`. `platform_admin` or `curriculum_admin`. Needs `content:read`. |
+| GET | `/group-access/groups/:groupId` | One group's `level` (`none`, `view`, `manage`, plus legacy `attempt`, `owner`) on every archive. |
+| PUT | `/group-access/archives/:id/groups/:groupId` | `{ level: none\|view\|manage, expiresAt? }`. `view` is a `viewer` grant, `manage` is `editor`. Replaces the group's grant on that archive. Needs `content:share`. |
+| PUT | `/group-access/archives/:id/access` | `{ mode: everyone\|restricted }`. |
 | GET | `/access/archive/:id`, `/access/item/:id` | What can I do here? Any valid token. Used by other services. |
 
 ## Search and import

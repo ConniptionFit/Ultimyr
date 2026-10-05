@@ -10,7 +10,7 @@ import { RequireSession } from "@/lib/require-session";
 
 /**
  * Admin panel: administrators only, category list on the left, General first. People who only hold the
- * access_delegate role see just Group access; the server checks every call regardless.
+ * curriculum_admin role see just Group access; the server checks every call regardless.
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { t } = useNaming();
@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <RequireSession admin delegate wide>
       <Pane
         title={delegateOnly ? t("groupAccess") : "Admin panel"}
-        intro={delegateOnly ? "Choose which groups can use the courses delegated to you." : "Settings for the whole installation."}
+        intro={delegateOnly ? "Choose which groups can use each course." : "Settings for the whole installation."}
         nav={<SideNav label="Admin categories" items={items} current={path} />}
       >
         {allowed ? children : <p className="text-sm text-muted">This page is only open to administrators.</p>}

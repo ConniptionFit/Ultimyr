@@ -1,7 +1,7 @@
 import { HttpError, idParam, pageQuery, parse, uuidv7, type Pool } from "@ultimyr/service-kit";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { ARCHIVE_REL, ITEM_GRANT, RANK, RELATION_BY_RANK, loadArchive, need } from "../access.js";
+import { ARCHIVE_REL, ITEM_GRANT, RANK, RELATION_BY_RANK, isCurator, loadArchive, need } from "../access.js";
 import type { Ctx } from "../ctx.js";
 import { cleanIconPng } from "../png.js";
 import { refreshIcons } from "../tagging.js";
@@ -204,11 +204,11 @@ export function archiveRoutes(ctx: Ctx) {
 
     r.get("/v1/trash", async (req) => {
       const a = await ctx.actor(req, "content:read");
-      const { rows: archives } = await pool.query("SELECT * FROM content.master_items WHERE owner_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC", [a.userId]);
+      const { rows: archives } = await pool.query("SELECT * FROM content.master_items WHERE ($2::boolean OR owner_id = $1) AND deleted_at IS NOT NULL ORDER BY deleted_at DESC", [a.userId, isCurator(a)]);
       const { rows: items } = await pool.query(
         `SELECT s.* FROM content.sub_items s JOIN content.master_items m ON m.id = s.master_item_id AND m.deleted_at IS NULL
-          WHERE s.owner_id = $1 AND s.deleted_at IS NOT NULL ORDER BY s.deleted_at DESC`,
-        [a.userId],
+          WHERE ($2::boolean OR s.owner_id = $1) AND s.deleted_at IS NOT NULL ORDER BY s.deleted_at DESC`,
+        [a.userId, isCurator(a)],
       );
       return { archives: archives.map((x) => archiveOut(x, RANK.owner)), items: items.map((s) => ({ ...itemSummary(s, RANK.owner), deletedAt: s.deleted_at })) };
     });
