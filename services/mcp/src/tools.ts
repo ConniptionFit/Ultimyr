@@ -251,14 +251,15 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   });
 
   // ---- notes (the person's own Obsidian notes; only with the notes:use scope) ----
-  const stepId = z.uuid().describe("A step id from get_roadmap. The step must already have a note (the person presses Create notes on the roadmap).");
-  tool("get_step_note", "notes:use", "read", { title: "Read a step note", description: "The person's own Markdown note for a roadmap step, from their Obsidian vault. It follows the Ultimyr note standard: fixed headings Summary, Key points, Examples, Questions, Flashcards, Related.", input: { stepId } }, async (a) => {
-    const r = await get("notes", `/v1/notes/steps/${a.stepId}`);
-    return { path: r.path, exists: r.exists, content: r.content };
+  const stepId = z.uuid().describe("A step id from get_roadmap. Notes belong to leaf steps (steps with nothing inside them).");
+  const noteArchive = z.uuid().optional().describe("The archive id the step belongs to. Needed the first time a step's note is read or added to; after that it is remembered.");
+  tool("get_step_note", "notes:use", "read", { title: "Read a step note", description: "The person's own Markdown note for a roadmap step. It is kept in Ultimyr (and mirrored to their Obsidian vault when they connect one). A good layout is the Ultimyr note standard: headings Summary, Key points, Examples, Questions, Flashcards, Related.", input: { stepId, archiveId: noteArchive } }, async (a) => {
+    const r = await get("notes", `/v1/notes/steps/${a.stepId}`, { archive: a.archiveId });
+    return { exists: r.exists, content: r.content };
   });
-  tool("append_step_note", "notes:use", "write", { title: "Add to a step note", description: "Add text to the END of the person's note for a step. It never changes or removes what they wrote. Write Markdown in the standard headings, and put a flashcard on its own line as 'Question :: Answer' under '## Flashcards'. Only add what you are sure is right; the person edits their own notes.", input: { stepId, text: z.string().min(1).max(20_000).describe("Markdown to append.") } }, async (a) => {
-    const r = await send("notes", `/v1/notes/steps/${a.stepId}/append`, { text: a.text });
-    return { path: r.path, note: "Added to the end of the note." };
+  tool("append_step_note", "notes:use", "write", { title: "Add to a step note", description: "Add text to the END of the person's note for a step. It never changes or removes what they wrote. Write Markdown in the standard headings, and put a flashcard on its own line as 'Question :: Answer' under '## Flashcards'. Only add what you are sure is right; the person edits their own notes.", input: { stepId, archiveId: noteArchive, text: z.string().min(1).max(20_000).describe("Markdown to append.") } }, async (a) => {
+    await send("notes", `/v1/notes/steps/${a.stepId}/append`, { text: a.text, ...(a.archiveId ? { archive: a.archiveId } : {}) });
+    return { note: "Added to the end of the note." };
   });
   tool("get_step_flashcards", "notes:use", "read", { title: "Read a step's flashcards", description: "The 'Question :: Answer' lines under '## Flashcards' in a step note, as front and back. Pass them to create_deck to turn them into a deck.", input: { stepId } }, async (a) =>
     get("notes", `/v1/notes/steps/${a.stepId}/flashcards`),

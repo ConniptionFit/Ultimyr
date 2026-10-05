@@ -45,6 +45,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     public issues: string[] = [],
+    /** Request id of a server side failure, quoted in the service log. */
+    public ref?: string,
   ) {
     super(code);
   }
@@ -52,16 +54,16 @@ export class ApiError extends Error {
 
 async function session(res: Response): Promise<{ user: User; accessToken: string }> {
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[] };
-    throw new ApiError(res.status, data.error ?? "unknown_error", data.issues);
+    const data = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[]; ref?: string };
+    throw new ApiError(res.status, data.error ?? "unknown_error", data.issues, data.ref);
   }
   return res.json();
 }
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[] };
-    throw new ApiError(res.status, data.error ?? "unknown_error", data.issues);
+    const data = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[]; ref?: string };
+    throw new ApiError(res.status, data.error ?? "unknown_error", data.issues, data.ref);
   }
   return res.json();
 }

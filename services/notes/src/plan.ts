@@ -50,7 +50,7 @@ export const STEP_BODY = `## Summary
 - 
 `;
 
-function stepNote(input: PlanInput, stage: string, s: PlanStep): string {
+export function stepHeader(input: PlanInput, stage: string, s: PlanStep): string {
   const fm = [
     "---",
     "ultimyr: 1",
@@ -66,8 +66,10 @@ function stepNote(input: PlanInput, stage: string, s: PlanStep): string {
     `# ${s.title}`,
     "",
   ];
-  return fm.join("\n") + (s.url ? `Source: ${s.url}\n\n` : "") + STEP_BODY;
+  return fm.join("\n") + (s.url ? `Source: ${s.url}\n\n` : "");
 }
+
+const stepNote = (input: PlanInput, stage: string, s: PlanStep) => stepHeader(input, stage, s) + STEP_BODY;
 
 export const DEFAULT_ROOT = "Ultimyr";
 

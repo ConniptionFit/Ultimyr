@@ -40,6 +40,7 @@ Restore: put the same secrets back first, then run the restore script. Practise 
 | Disk filling | Check the `pgdata` volume and Docker logs (`docker system df`). Set log rotation in Docker's `daemon.json`. |
 
 ## Upgrading
+One step: `./scripts/update.sh` (saves local edits to a git stash so `git pull` is never blocked, pulls, adds new secrets, rebuilds, waits for health and prints the version). Or by hand:
 ```sh
 git pull
 ./scripts/init-secrets.sh        # adds any new secret files, keeps existing ones

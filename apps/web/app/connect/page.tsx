@@ -15,7 +15,7 @@ const SCOPE_TEXT: Record<string, string> = {
   "quiz:read": "Read your quizzes and your progress",
   "quiz:write": "Add quiz questions (saved as drafts)",
   "ai:use": "Use your saved AI keys",
-  "notes:use": "Read and write your study notes in Obsidian",
+  "notes:use": "Read and write your study notes",
 };
 
 function Consent() {

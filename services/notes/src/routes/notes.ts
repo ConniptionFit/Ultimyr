@@ -4,14 +4,19 @@ import { z } from "zod";
 import { DEFAULT_PREFS, type Ctx } from "../ctx.js";
 import { FnsError } from "../fns.js";
 import { parseFlashcards } from "../flashcards.js";
+import { splitFile } from "../files.js";
+import { resolve as resolveConflict, saveLocal, syncOne, type Conn, type NoteView, type Target } from "../mirror.js";
 import { cleanRoot, indexPath, obsidianUrl, planNotes } from "../plan.js";
 
 const tokenField = z.string().min(8).max(2000);
 const connectBody = z.strictObject({ token: tokenField, vault: z.string().min(1).max(200) });
 const checkBody = z.strictObject({ token: tokenField });
-const saveBody = z.strictObject({ content: z.string().max(200_000), baseHash: z.string().max(200) });
-const appendBody = z.strictObject({ text: z.string().min(1).max(20_000) });
-const statusBody = z.strictObject({ status: z.enum(["todo", "reading", "done"]) });
+const archiveField = z.uuid().optional();
+const stepQuery = z.object({ archive: archiveField });
+const saveBody = z.strictObject({ content: z.string().max(200_000), baseHash: z.string().max(200), archive: archiveField });
+const appendBody = z.strictObject({ text: z.string().min(1).max(20_000), archive: archiveField });
+const statusBody = z.strictObject({ status: z.enum(["todo", "reading", "done"]), archive: archiveField });
+const resolveBody = z.strictObject({ keep: z.enum(["mine", "obsidian"]), archive: archiveField });
 const prefsBody = z.strictObject({
   rootFolder: z.string().max(200).optional(),
   editor: z.enum(["ultimyr", "obsidian"]).optional(),
@@ -52,11 +57,42 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
     if (reason) throw new HttpError(503, "notes_disabled", { reason });
   }
 
-  async function stepRow(userId: string, stepId: string) {
-    const { rows } = await pool.query("SELECT path, archive_id FROM notes.step_notes WHERE user_id = $1 AND step_id = $2", [userId, stepId]);
-    if (!rows[0]) throw new HttpError(404, "no_note");
-    return rows[0] as { path: string; archive_id: string };
+  /** The vault connection when there is one that works. Notes themselves never need it. */
+  async function mirror(userId: string): Promise<Conn | null> {
+    const { rows } = await pool.query("SELECT 1 FROM notes.connections WHERE user_id = $1", [userId]);
+    if (!rows[0] || (await ctx.offReason())) return null;
+    try {
+      return await ctx.connection(userId);
+    } catch (e) {
+      if (e instanceof HttpError) return null;
+      throw e;
+    }
   }
+
+  /** Which archive a step belongs to (from the request, or from the note already saved) and where its file goes in the vault. */
+  async function locate(a: { userId: string; bearer: string }, stepId: string, archive: string | undefined): Promise<{ archiveId: string; target: Target; title: string }> {
+    let archiveId = archive;
+    if (!archiveId) {
+      const { rows } = await pool.query("SELECT archive_id FROM notes.step_text WHERE user_id = $1 AND step_id = $2", [a.userId, stepId]);
+      archiveId = rows[0]?.archive_id as string | undefined;
+    }
+    if (!archiveId) throw new HttpError(400, "archive_required");
+    const plan = await ctx.content.plan(a.bearer, archiveId);
+    if (!plan) throw new HttpError(404, "not_found");
+    const planned = planNotes(plan, (await ctx.prefs(a.userId)).rootFolder).find((n) => n.stepId === stepId);
+    if (!planned) throw new HttpError(404, "not_found");
+    return { archiveId, target: { path: planned.path, prefix: splitFile(planned.content).prefix }, title: planned.title };
+  }
+
+  const view = (v: NoteView, conn: Conn | null, path: string) => ({
+    exists: v.exists,
+    content: v.content,
+    hash: v.hash,
+    mirror: v.state,
+    ...(v.remote !== undefined ? { remote: v.remote } : {}),
+    ...(v.pulled ? { pulled: true } : {}),
+    obsidianUrl: conn ? obsidianUrl(conn.vault, path) : null,
+  });
 
   return async (r: FastifyInstance) => {
     // A missing table means the notes migration has not run. Say so plainly instead of a bare "internal error".
@@ -64,9 +100,10 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
       if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
       if (err.validation) return reply.code(400).send({ error: "invalid_request" });
       if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.message });
-      req.log.error(err);
-      if (err.code === "42P01" || err.code === "3F000") return reply.code(503).send({ error: "notes_not_migrated" });
-      return reply.code(500).send({ error: "internal_error" });
+      req.log.error({ err, ref: req.id }, "notes error");
+      if (err.code === "42P01" || err.code === "3F000") return reply.code(503).send({ error: "notes_not_migrated", ref: req.id });
+      if (err.code && /^(ECONNREFUSED|ENOTFOUND|ETIMEDOUT|57P0\d|08\w+|28\w+)$/.test(err.code)) return reply.code(503).send({ error: "notes_db_unavailable", ref: req.id });
+      return reply.code(500).send({ error: "internal_error", ref: req.id });
     });
 
     // ---- the administrator's one setting: where the Fast Note Sync server is ----
@@ -148,6 +185,8 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
       await pool.query("DELETE FROM notes.connections WHERE user_id = $1", [a.userId]);
       // The mapping goes too: it points into a vault we can no longer reach. Notes already in the vault stay untouched.
       await pool.query("DELETE FROM notes.step_notes WHERE user_id = $1", [a.userId]);
+      // Notes stay in Ultimyr; forget what was in step so a later connection starts from a clean comparison.
+      await pool.query("UPDATE notes.step_text SET pushed_hash = NULL, remote_hash = NULL WHERE user_id = $1", [a.userId]);
       reply.code(204);
     });
 
@@ -186,19 +225,24 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
     });
 
     // ---- an archive's notes: what would be made, and making it ----
+    /** Which steps of an archive have a note, for the little marker on each step. */
     r.get("/v1/notes/archives/:id", async (req) => {
       const a = await ctx.actor(req);
       const archiveId = idParam(req);
-      const { rows } = await pool.query("SELECT step_id, path FROM notes.step_notes WHERE user_id = $1 AND archive_id = $2", [a.userId, archiveId]);
+      const { rows } = await pool.query(
+        `SELECT t.step_id, (length(trim(t.content)) > 0) AS has_text, n.path FROM notes.step_text t
+         LEFT JOIN notes.step_notes n ON n.user_id = t.user_id AND n.step_id = t.step_id
+         WHERE t.user_id = $1 AND t.archive_id = $2`,
+        [a.userId, archiveId],
+      );
       const { rows: c } = await pool.query("SELECT vault FROM notes.connections WHERE user_id = $1", [a.userId]);
       const vault = c[0]?.vault as string | undefined;
       const reason = await ctx.offReason();
       return {
-        enabled: !reason,
-        connected: !!vault,
-        scaffolded: rows.length > 0,
+        mirrorAvailable: !reason,
+        connected: !!vault && !reason,
         prefs: await ctx.prefs(a.userId),
-        steps: Object.fromEntries(rows.map((x) => [x.step_id, { path: x.path, obsidianUrl: vault ? obsidianUrl(vault, x.path) : null }])),
+        steps: Object.fromEntries(rows.filter((x) => x.has_text).map((x) => [x.step_id, { path: x.path ?? null, obsidianUrl: vault && x.path ? obsidianUrl(vault, x.path) : null }])),
       };
     });
 
@@ -253,48 +297,54 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
       return { total: notes.length, created, existing, failed, root: prefs.rootFolder, indexUrl: obsidianUrl(conn.vault, indexPath(plan.slug, prefs.rootFolder)) };
     });
 
-    // ---- one step's note ----
+    // ---- one step's note: kept in Ultimyr, mirrored to the vault when it is connected ----
     r.get("/v1/notes/steps/:id", async (req) => {
       const a = await ctx.actor(req);
-      await on();
-      const row = await stepRow(a.userId, idParam(req));
-      const conn = await ctx.connection(a.userId);
-      let note;
-      try {
-        note = await conn.fns.getNote(conn.token, conn.vault, row.path);
-      } catch (e) {
-        mapFns(e);
-      }
-      return { path: row.path, exists: !!note, content: note?.content ?? "", hash: note?.hash ?? "", obsidianUrl: obsidianUrl(conn.vault, row.path) };
+      const stepId = idParam(req);
+      const q = parse(stepQuery, req.query);
+      const loc = await locate(a, stepId, q.archive);
+      const conn = await mirror(a.userId);
+      return { ...view(await syncOne(pool, a.userId, stepId, loc.archiveId, loc.target, conn), conn, loc.target.path), path: loc.target.path };
     });
 
     r.put("/v1/notes/steps/:id", async (req) => {
       const a = await ctx.actor(req);
-      await on();
-      const row = await stepRow(a.userId, idParam(req));
+      const stepId = idParam(req);
       const b = parse(saveBody, req.body);
-      const conn = await ctx.connection(a.userId);
-      try {
-        const hash = await conn.fns.saveNote(conn.token, conn.vault, row.path, b.content, b.baseHash);
-        return { path: row.path, hash };
-      } catch (e) {
-        mapFns(e);
-      }
+      const loc = await locate(a, stepId, b.archive);
+      const { rows } = await pool.query("SELECT hash FROM notes.step_text WHERE user_id = $1 AND step_id = $2", [a.userId, stepId]);
+      // Saved from an out of date screen (another tab, or a sync took in new text): refuse rather than overwrite.
+      if (rows[0] && rows[0].hash !== b.baseHash) throw new HttpError(409, "conflict");
+      await saveLocal(pool, a.userId, stepId, loc.archiveId, b.content);
+      const conn = await mirror(a.userId);
+      return view(await syncOne(pool, a.userId, stepId, loc.archiveId, loc.target, conn), conn, loc.target.path);
     });
 
     /** Adds text to the end of the note under the person's hand-written text; never replaces anything. */
     r.post("/v1/notes/steps/:id/append", async (req) => {
       const a = await ctx.actor(req);
-      await on();
-      const row = await stepRow(a.userId, idParam(req));
+      const stepId = idParam(req);
       const b = parse(appendBody, req.body);
-      const conn = await ctx.connection(a.userId);
+      const loc = await locate(a, stepId, b.archive);
+      const conn = await mirror(a.userId);
+      // Take in anything changed in the vault first, so the text is added to the latest version.
+      const cur = await syncOne(pool, a.userId, stepId, loc.archiveId, loc.target, conn);
+      if (cur.state === "conflict") throw new HttpError(409, "conflict");
+      const content = cur.content.trim() ? `${cur.content.replace(/\s+$/, "")}\n\n${b.text.trim()}\n` : `${b.text.trim()}\n`;
+      await saveLocal(pool, a.userId, stepId, loc.archiveId, content);
+      return view(await syncOne(pool, a.userId, stepId, loc.archiveId, loc.target, conn), conn, loc.target.path);
+    });
+
+    /** Choose which copy wins after both changed. */
+    r.post("/v1/notes/steps/:id/resolve", async (req) => {
+      const a = await ctx.actor(req);
+      const stepId = idParam(req);
+      const b = parse(resolveBody, req.body);
+      const loc = await locate(a, stepId, b.archive);
+      const conn = await mirror(a.userId);
+      if (!conn) throw new HttpError(409, "not_connected");
       try {
-        const cur = await conn.fns.getNote(conn.token, conn.vault, row.path);
-        if (!cur) throw new HttpError(404, "no_note");
-        const content = `${cur.content.replace(/\s+$/, "")}\n\n${b.text.trim()}\n`;
-        const hash = await conn.fns.saveNote(conn.token, conn.vault, row.path, content, cur.hash);
-        return { path: row.path, hash };
+        return view(await resolveConflict(pool, a.userId, stepId, loc.archiveId, loc.target, conn, b.keep), conn, loc.target.path);
       } catch (e) {
         mapFns(e);
       }
@@ -303,31 +353,57 @@ export function noteRoutes(ctx: Ctx, probe: (url: string) => Promise<boolean>) {
     /** The `Question :: Answer` lines under `## Flashcards`, ready to become a deck. */
     r.get("/v1/notes/steps/:id/flashcards", async (req) => {
       const a = await ctx.actor(req);
-      await on();
-      const row = await stepRow(a.userId, idParam(req));
-      const conn = await ctx.connection(a.userId);
-      try {
-        const note = await conn.fns.getNote(conn.token, conn.vault, row.path);
-        if (!note) throw new HttpError(404, "no_note");
-        return { path: row.path, ...parseFlashcards(note.content) };
-      } catch (e) {
-        mapFns(e);
-      }
+      const stepId = idParam(req);
+      const { rows } = await pool.query("SELECT content FROM notes.step_text WHERE user_id = $1 AND step_id = $2", [a.userId, stepId]);
+      if (!rows[0]) throw new HttpError(404, "no_note");
+      return parseFlashcards(rows[0].content as string);
     });
 
-    /** Only the `status` property changes: the body of the note is never touched by a tick. */
+    /** Only the `status` property of the vault copy changes: the text of the note is never touched by a tick. Best effort. */
     r.post("/v1/notes/steps/:id/status", async (req) => {
       const a = await ctx.actor(req);
-      await on();
-      const row = await stepRow(a.userId, idParam(req));
+      const stepId = idParam(req);
       const b = parse(statusBody, req.body);
+      const { rows } = await pool.query("SELECT path FROM notes.step_notes WHERE user_id = $1 AND step_id = $2", [a.userId, stepId]);
+      const conn = rows[0] ? await mirror(a.userId) : null;
+      if (conn) await conn.fns.patchFrontmatter(conn.token, conn.vault, rows[0].path as string, { status: b.status }).catch(() => {});
+      return { status: b.status };
+    });
+
+    /** Brings every note of this person in step with the vault: writes new text out, takes new vault text in. */
+    r.post("/v1/notes/sync", async (req) => {
+      const a = await ctx.actor(req);
+      await on();
       const conn = await ctx.connection(a.userId);
-      try {
-        await conn.fns.patchFrontmatter(conn.token, conn.vault, row.path, { status: b.status });
-      } catch (e) {
-        mapFns(e);
+      const { rows } = await pool.query("SELECT step_id, archive_id FROM notes.step_text WHERE user_id = $1 ORDER BY archive_id, updated_at LIMIT $2", [a.userId, MAX_NOTES]);
+      const rootFolder = (await ctx.prefs(a.userId)).rootFolder;
+      const byArchive = new Map<string, string[]>();
+      for (const x of rows) byArchive.set(x.archive_id, [...(byArchive.get(x.archive_id) ?? []), x.step_id]);
+      const out = { total: rows.length, synced: 0, pulled: 0, conflicts: 0, failed: 0 };
+      for (const [archiveId, steps] of byArchive) {
+        const plan = await ctx.content.plan(a.bearer, archiveId);
+        if (!plan) {
+          out.failed += steps.length;
+          continue;
+        }
+        const planned = planNotes(plan, rootFolder);
+        // The index note is only created if missing, so an index written or edited in Obsidian is left alone.
+        const index = planned.find((n) => n.kind === "index");
+        if (index) await conn.fns.createNote(conn.token, conn.vault, index.path, index.content).catch(() => {});
+        for (const stepId of steps) {
+          const n = planned.find((p) => p.stepId === stepId);
+          if (!n) {
+            out.failed++;
+            continue;
+          }
+          const v = await syncOne(pool, a.userId, stepId, archiveId, { path: n.path, prefix: splitFile(n.content).prefix }, conn);
+          if (v.state === "synced") out.synced++;
+          else if (v.state === "conflict") out.conflicts++;
+          else out.failed++;
+          if (v.pulled) out.pulled++;
+        }
       }
-      return { path: row.path, status: b.status };
+      return out;
     });
   };
 }
