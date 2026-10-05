@@ -119,3 +119,40 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     expect(json(await call(alice, "GET", `/v1/study/stats?archive=${archive}`))).toMatchObject({ review: 0 });
   });
 });
+
+describe.skipIf(!testDbUrl)("undo a review", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+  const alice = uuid();
+  const bob = uuid();
+  const call = async (u: string, method: string, url: string, payload?: unknown) => h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId: u }), ...(payload !== undefined ? { payload: payload as any } : {}) });
+  const json = (r: { body: string }) => JSON.parse(r.body);
+
+  it("restores the earlier schedule, or makes a first review new again, and refuses stale or foreign undos", async () => {
+    h.clock.now = new Date("2026-10-04T12:00:00Z");
+    const archive = json(await call(alice, "POST", "/v1/archives", { title: "Undo" })).id;
+    const deck = json(await call(alice, "POST", `/v1/archives/${archive}/items`, { kind: "deck", title: "D", cards: [{ front: "Q", back: "A" }] })).id;
+    const card = json(await call(alice, "GET", `/v1/items/${deck}`)).cards[0].id as string;
+
+    const first = json(await call(alice, "POST", "/v1/study/review", { cardId: card, rating: 3 }));
+    expect(first.reviewId).toBeTruthy();
+    expect((await call(bob, "POST", "/v1/study/review/undo", { reviewId: first.reviewId })).statusCode).toBe(404);
+    expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: first.reviewId })).statusCode).toBe(200);
+    const q = json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`));
+    expect(q.counts).toMatchObject({ due: 0, new: 1 });
+    expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: first.reviewId })).statusCode).toBe(404);
+
+    const one = json(await call(alice, "POST", "/v1/study/review", { cardId: card, rating: 3 }));
+    h.clock.now = new Date("2026-10-07T12:00:00Z");
+    const two = json(await call(alice, "POST", "/v1/study/review", { cardId: card, rating: 1 }));
+    expect(two.lapses).toBe(1);
+    expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: one.reviewId })).statusCode).toBe(409);
+    expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: two.reviewId })).statusCode).toBe(200);
+    const stats = json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`));
+    expect(stats.cards[0].state).toBe(2);
+    expect(stats.cards[0].due).toBe(one.due);
+  });
+});

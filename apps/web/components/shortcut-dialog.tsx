@@ -16,6 +16,7 @@ export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
     keys: [
       ["Space", "Show the answer"],
       ["1 to 4", "Rate how well you remembered"],
+      ["U", "Undo the last rating"],
     ],
   },
   {
