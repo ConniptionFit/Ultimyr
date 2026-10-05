@@ -14,6 +14,8 @@ Ultimyr aims to be comfortable to study with for a long time, including for peop
 
 Settings are stored in a small cookie (`ultimyr_display`, no personal data) and applied on the server, so the page never flashes the wrong theme or size. Calm mode also turns on automatically when the device asks for reduced motion.
 
+**Background.** The welcome and sign in pages (and only those, so it never distracts while you study) sit on a quiet grid of small dots in which study shapes (a book, graduation cap, brain, lightbulb and similar Lucide icons) slowly float; the dots under a shape grow and take its colour. It is decoration only, hidden from screen readers and never takes clicks. With Calm mode or reduced motion it is drawn once and stands still, and it pauses while the tab is hidden. If the icon shapes cannot load you see the plain dot grid. The look is set in one block, `DOT_GRID` in `apps/web/lib/dot-grid.ts` (spacing, dot sizes, opacity, speed, colours).
+
 ## Focus mode
 A **Focus** button on the study page and the exam page hides the header and everything that is not the card or question. Press it again (or Escape) to leave.
 
