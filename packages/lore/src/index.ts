@@ -84,6 +84,15 @@ export const copy = {
   emptySearch: { themed: "Nothing on the shelves matches that.", plain: "No results." },
   caughtUp: { themed: "That is everything for now.", plain: "You are all caught up." },
   nothingDue: { themed: "Nothing is due. The shelves are quiet.", plain: "Nothing is due." },
+  rateQuestion: { themed: "How firmly did the page come back to you?", plain: "How well did you remember?" },
+  rateExplain: {
+    themed: "Your answer sets when this card returns to the desk. The time under each choice is when you will see it next.",
+    plain: "Your answer sets when you see this card again. The time under each choice is when it comes back.",
+  },
+  rateAgain: { themed: "Slipped away. Returns shortly.", plain: "Forgot it. Comes back soon." },
+  rateHard: { themed: "Faint. Returns sooner than usual.", plain: "Barely remembered. Comes back sooner." },
+  rateGood: { themed: "Recalled. Returns on the usual schedule.", plain: "Remembered. Normal gap." },
+  rateEasy: { themed: "Effortless. Rests for longer.", plain: "Instant. Waits longer than usual." },
   attemptGap: { themed: "A gap, found. Better now than on exam day.", plain: "Here is what to review before the exam." },
   aiThinking: { themed: "The Archivist is consulting the shelves.", plain: "The assistant is thinking..." },
   vaultNote: {

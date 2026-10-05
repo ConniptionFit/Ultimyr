@@ -8,19 +8,21 @@ import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { Button, Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
 import { formatNext, type StudyCard, type StudyQueue } from "@/lib/progress";
 
 const RATINGS = [
-  { n: 1, label: "Again" },
-  { n: 2, label: "Hard" },
-  { n: 3, label: "Good" },
-  { n: 4, label: "Easy" },
+  { n: 1, label: "Again", hint: "rateAgain" },
+  { n: 2, label: "Hard", hint: "rateHard" },
+  { n: 3, label: "Good", hint: "rateGood" },
+  { n: 4, label: "Easy", hint: "rateEasy" },
 ] as const;
 
 function Study() {
   const { state, api } = useAuth();
   const { t, copy } = useNaming();
+  const { display } = useDisplay();
   const router = useRouter();
   const params = useSearchParams();
   const archive = params.get("archive");
@@ -128,7 +130,7 @@ function Study() {
           ) : (
             <section aria-label="Flashcard" className="space-y-4">
               <p className="text-xs text-muted">{card.deckTitle}{card.state === 0 ? " · new" : ""}</p>
-              <div className="min-h-40 space-y-4 rounded-md border border-line p-6">
+              <div key={`${card.id}:${shown}`} className={`min-h-40 space-y-4 rounded-md border border-line p-6${display.flip && shown ? " ulti-flip" : ""}`}>
                 <div className="text-xl">
                   <Markdown>{card.front}</Markdown>
                 </div>
@@ -142,15 +144,20 @@ function Study() {
               {!shown ? (
                 <Button onClick={() => setShown(true)}>Show answer (space)</Button>
               ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="How well did you remember?">
-                  {RATINGS.map((r) => (
-                    <Button key={r.n} variant={r.n === 3 ? "primary" : "quiet"} onClick={() => rate(r.n)} className="flex-col">
-                      <span>
-                        {r.label} <span className="text-xs opacity-70">({r.n})</span>
-                      </span>
-                      <span className="text-xs opacity-80">{formatNext(card.next[String(r.n) as "1" | "2" | "3" | "4"])}</span>
-                    </Button>
-                  ))}
+                <div className="space-y-2">
+                  <p className="text-sm">{copy("rateQuestion")}</p>
+                  <p className="text-xs text-muted">{copy("rateExplain")}</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={copy("rateQuestion")}>
+                    {RATINGS.map((r) => (
+                      <Button key={r.n} variant={r.n === 3 ? "primary" : "quiet"} onClick={() => rate(r.n)} className="h-auto flex-col gap-0.5 py-2">
+                        <span>
+                          {r.label} <span className="text-xs opacity-70">({r.n})</span>
+                        </span>
+                        <span className="text-xs font-normal opacity-80">{copy(r.hint)}</span>
+                        <span className="text-xs">Next: {formatNext(card.next[String(r.n) as "1" | "2" | "3" | "4"])}</span>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
             </section>

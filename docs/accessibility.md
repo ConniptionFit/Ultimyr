@@ -9,6 +9,7 @@ Ultimyr aims to be comfortable to study with for a long time, including for peop
 | Text size | Normal, large, extra large | Scales the whole interface |
 | Easy-read font | Off, on | A wider, more open letter shape with more line spacing |
 | Calm mode | Off, on | No animation or motion anywhere |
+| Flashcard flip | Off, on | A short, gentle tilt when a flashcard shows its answer. Off by default, and never plays with Calm mode or reduced motion |
 | Content width | 50 to 100 | Narrower lines are easier to track |
 
 Settings are stored in a small cookie (`ultimyr_display`, no personal data) and applied on the server, so the page never flashes the wrong theme or size. Calm mode also turns on automatically when the device asks for reduced motion.
