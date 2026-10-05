@@ -18,7 +18,7 @@ export function BarChart({ data, max, label, height = 96 }: { data: { label: str
 export function Meter({ value, label, tone = "accent" }: { value: number; label: string; tone?: "accent" | "danger" }) {
   const pct = Math.min(100, Math.max(0, value / 100));
   return (
-    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} className="h-2 w-full rounded bg-surface">
+    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-valuetext={`${Math.round(pct)}%`} className="h-2 w-full rounded bg-surface">
       <div className="h-2 rounded" style={{ width: `${pct}%`, background: tone === "danger" ? "var(--danger)" : "var(--accent)" }} />
     </div>
   );

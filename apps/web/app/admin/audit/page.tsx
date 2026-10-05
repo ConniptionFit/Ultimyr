@@ -98,11 +98,11 @@ export default function Audit() {
         <table className="w-full text-left text-xs">
           <thead className="text-muted">
             <tr>
-              <th className="p-2 font-normal">When</th>
-              <th className="p-2 font-normal">Action</th>
-              <th className="p-2 font-normal">Who</th>
-              <th className="p-2 font-normal">Target</th>
-              <th className="p-2 font-normal">Address</th>
+              <th scope="col" className="p-2 font-normal">When</th>
+              <th scope="col" className="p-2 font-normal">Action</th>
+              <th scope="col" className="p-2 font-normal">Who</th>
+              <th scope="col" className="p-2 font-normal">Target</th>
+              <th scope="col" className="p-2 font-normal">Address</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">

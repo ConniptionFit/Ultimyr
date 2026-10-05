@@ -260,8 +260,8 @@ export default function AttemptPage() {
                 <table className="w-full text-sm">
                   <thead className="text-left text-muted">
                     <tr>
-                      <th className="py-1 font-normal">Domain</th>
-                      <th className="py-1 font-normal">Score</th>
+                      <th scope="col" className="py-1 font-normal">Domain</th>
+                      <th scope="col" className="py-1 font-normal">Score</th>
                     </tr>
                   </thead>
                   <tbody>
