@@ -63,3 +63,6 @@ Question text 10,000 characters; 12 options; 20 blanks; 100 assertions per scena
 
 ## Keyboard
 During an attempt: **1 to 9** pick or untick that option (single and multiple choice), **N** next, **P** previous, **F** flag. Shortcuts are ignored while you type in a text box or hold Ctrl, Alt or Cmd.
+
+## After you finish
+The results card lists the questions you missed (wrong, partly right or blank) as numbers you can click to read the answer and explanation, and offers a weak-area drill for the course.
