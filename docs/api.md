@@ -36,7 +36,7 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 | POST | `/me/mfa/recovery-codes/regenerate` | Replaces all codes. |
 | GET, POST, DELETE | `/me/passkeys`, `/me/passkeys/register/options`, `/me/passkeys/register/verify`, `/me/passkeys/:id` | Cannot remove your last sign-in method. |
 | GET, POST, DELETE | `/me/api-keys`, `/me/api-keys/:id` | Create takes `{ name, scopes[], expiresInDays? }`. The full key is returned once. Max active keys per user is enforced (409 `too_many_keys`). |
-| GET, DELETE | `/me/sessions`, `/me/sessions/:id` | List and revoke devices. |
+| GET, DELETE | `/me/sessions`, `/me/sessions/:id` | List and revoke devices. `DELETE /me/sessions` signs out every device except the one asking and returns `{ revoked }`. |
 | GET | `/me/groups`, `/me/identities` | Group memberships, linked SSO identities. |
 
 Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:write`, `ai:use`, `notes:use`.
