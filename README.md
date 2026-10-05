@@ -105,7 +105,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 | Area | Paths |
 |---|---|
 | Sign in | `/auth/register`, `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`, `/auth/passkeys/login/*`, `/auth/sso/*`, `/auth/saml/*`, `/auth/token` |
-| Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study`, `/credentials`, `/group-access` |
+| Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study`, `/credentials`, `/group-access`, `/tags`, `/icons` |
 | MCP | `/mcp` (Streamable HTTP), `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/me/mcp-connections` |
 | AI | `/ai/status`, `/ai/credentials`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads` |
 | Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals`, `/drills`, `/plan` |
