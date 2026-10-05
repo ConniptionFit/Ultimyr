@@ -35,3 +35,6 @@ Set one **goal** per course: a target score and, optionally, an exam date (`PUT 
 
 ## Exam simulation
 Courses can include timed quizzes with a server-owned clock (see [quiz.md](quiz.md)). While an attempt is open the page listens to `GET /attempts/:id/events`, a server-sent event stream that sends the server's time and the time left every 10 seconds and a `closed` event the moment the attempt ends, so the display corrects itself and closes on time even if your device clock is wrong. Before submitting you get a review panel listing unanswered and flagged questions, each a link back to that question. Without the stream the page falls back to the clock it already has, and the server still enforces the deadline.
+
+## Transcript
+On Progress, **Print** (or save as PDF) gives a clean transcript of the current view: your name, course, range and date, then attempts, accuracy, minutes, streak, readiness, domains and review stats. Menus and forms are left out.
