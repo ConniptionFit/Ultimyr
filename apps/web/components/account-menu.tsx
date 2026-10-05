@@ -27,6 +27,7 @@ export function AccountMenu() {
   if (state.status !== "authenticated") return null;
   const { user } = state;
   const isAdmin = user.roles.includes("platform_admin");
+  const canOpenPanel = isAdmin || user.roles.includes("access_delegate");
   const item = "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-bg";
 
   return (
@@ -49,8 +50,8 @@ export function AccountMenu() {
           <Link role="menuitem" href="/settings" className={item} onClick={() => setOpen(false)}>
             <UIcon icon={Settings} size={16} /> Your settings
           </Link>
-          {isAdmin && (
-            <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
+          {canOpenPanel && (
+            <Link role="menuitem" href={isAdmin ? "/admin" : "/admin/group-access"} className={item} onClick={() => setOpen(false)}>
               <UIcon icon={ShieldCheck} size={16} /> Admin panel
             </Link>
           )}

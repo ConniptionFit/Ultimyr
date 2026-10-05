@@ -38,17 +38,22 @@ Admin only. `POST /api/v1/admin/idp-providers` with a bearer token.
 - IdP URLs must be https. For local testing only, set `ULTIMYR_ALLOW_INSECURE_IDP=true`.
 
 ## Admin panel
-Administrators (role `platform_admin`) see **Admin panel** in the account menu (the person icon in the menu bar). Everyone else does not, and `/admin` shows a plain "not available" screen. The screen is only a convenience: every admin API call is checked on the server, so a non-admin token gets 403 whatever the page shows. Categories are listed on the left and open on **General**:
+Administrators (role `platform_admin`) see **Admin panel** in the account menu (the person icon in the menu bar). Everyone else does not, and `/admin` shows a plain "not available" screen. The one exception is the **Access delegate** role (see Group access below), which opens only the Group access page. The screen is only a convenience: every admin API call is checked on the server, so a non-admin token gets 403 whatever the page shows. Categories are listed on the left and open on **General**:
 
 | Category | What it does |
 | --- | --- |
 | General | Counts, the registration switch, deployment details. |
 | Users | Add a person, search, suspend or reinstate, edit roles, issue a new sign-in link. The last active administrator is protected. |
 | Groups | Create local groups and manage members. SSO and SCIM groups are read only. |
+| Group access (Keys of Passage) | Choose which groups (including SCIM groups) can view or manage which courses, and who may delegate that. See below. |
 | Sign-in methods | A step by step setup guide for OpenID Connect and SAML (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and add, enable and remove OIDC, OAuth 2 and SAML providers, and the switch that disables local accounts. |
 | Provisioning | A step by step SCIM setup guide (authentik by default, plus Okta, Microsoft Entra ID, Keycloak and any other provider), and SCIM token management. |
 | Audit log | Latest sign-ins and admin actions, with a filter. |
 | About this app (Colophon) | Name, repository, license, running version and commit, whether an update is available, the latest changelog, and links to docs and issue or security reporting. Needs outbound HTTPS to GitHub for the update check, which you can turn off with `ULTIMYR_UPDATE_CHECK=false`. |
+
+**Group access.** Admin panel > Group access (themed: Keys of Passage) answers "which groups can use which courses?" in one place. Pick a group and set each course to **No access**, **Can view** (study the published material) or **Can manage** (also edit it). Each course also shows whether it is **Open to everyone** or **Restricted**. A course open to everyone stays visible to everyone, including after an upgrade, until an administrator clicks **Restrict**; restricted courses are visible only to their owner, direct grants and the groups you choose. Groups arrive from SCIM or SSO as usual and appear in the list as they sync, and membership changes apply within 30 seconds.
+
+**Access delegate role.** Give someone the **Access delegate** role under Users, then under Group access > Delegates open a course and add them. A delegate sees only the Group access page, only for the courses delegated to them, and can set a group's level on those courses and nothing more: they cannot change who the course is open to, delegate to others, read the material (unless they already could), touch admin settings, or change an owner level grant. Removing the delegation or the role takes the power away. Delegates are stored per course, so the role alone grants nothing.
 
 Everything that only affects your own session (display, security, AI keys, connected apps, themed names) is under **Your settings** in the same menu.
 
