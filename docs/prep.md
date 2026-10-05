@@ -2,14 +2,14 @@
 
 Four tools that help you get to the exam date and stay certified. All are under the **Exam prep** menu.
 
-**Names:** with themed names on (Your settings), the menu and pages say Preparations, Sigils (credentials), Whetstone (drills), Atlas (coverage) and The Eve (countdown). Plain names are the default. APIs, MCP and exports always use the plain names.
+**Names:** with themed names on (Your settings), the menu and pages say Strategy Time, Aegis (credentials), Dust of Appearance (drills), Observer Wards (coverage) and Roshan Timer (countdown). Plain names are the default. APIs, MCP and exports always use the plain names.
 
 ## Credential tracker
 **Where:** Exam prep > Credentials.
 
 - One record per credential: status (planned, scheduled, earned, retired), exam date, voucher code and expiry, earned and expiry dates, renewal alert window, CEU hours needed.
 - **CEU log:** add each activity with units and date. The total counts the current renewal cycle.
-- **Alerts** show on the Reading Room and the Credentials page: exam today or soon, exam date passed, voucher expiring or expired, renewal due, expired, CEU hours short.
+- **Alerts** show on the dashboard and the Credentials page: exam today or soon, exam date passed, voucher expiring or expired, renewal due, expired, CEU hours short.
 - Link a credential to an archive to jump to its drills and countdown.
 - **Private:** only you see your credentials. Voucher codes are stored as plain text. MCP never returns them.
 

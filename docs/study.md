@@ -1,6 +1,6 @@
 # Daily review, progress and goals
 
-Three things help you study over weeks rather than in one sitting: a **daily review** of flashcards scheduled by a spaced repetition algorithm (themed name: Vigil), a **progress** page built from your quiz attempts and reviews, and a **goal** with a readiness estimate. All of it is private to you. Nobody else, not even the owner of a deck you study, can see your schedule or scores.
+Three things help you study over weeks rather than in one sitting: a **daily review** of flashcards scheduled by a spaced repetition algorithm (themed name: Refresher), a **progress** page built from your quiz attempts and reviews, and a **goal** with a readiness estimate. All of it is private to you. Nobody else, not even the owner of a deck you study, can see your schedule or scores.
 
 ## Daily review (spaced repetition)
 Open **Daily review** (`/study`), optionally narrowed to one course or deck. You see cards that are **due** (oldest first), then **new** cards up to your daily allowance. Press space (or tap) to show the answer, then say how it went:

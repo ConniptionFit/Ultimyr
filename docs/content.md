@@ -1,6 +1,6 @@
 # Content: archives, guides, decks and sharing
 
-The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Codex and Folio, which you can switch to plain names in Your settings. The API always uses the plain names.
+The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Tome (study guide) and Grimoire (flashcard deck), which you can switch to plain names in Your settings. The API always uses the plain names.
 
 ## Model
 | Thing | What it is |
@@ -12,7 +12,7 @@ The content service owns everything a person studies. All routes are under `/api
 | **Card** | A deck entry: front, back, optional hint and tags. Up to 5,000 per deck. |
 
 ## Roadmaps and external resources
-An archive can carry a **roadmap** (themed name: Path) and a library of **resources** (themed name: References). Open them from the tabs on the archive page.
+An archive can carry a **roadmap** (themed name: Labyrinth) and a library of **resources** (themed name: Secret Shop). Open them from the tabs on the archive page.
 
 | Thing | What it is |
 |---|---|
