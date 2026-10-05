@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: filter search results by kind.** When a search finds more than one kind of thing (courses, material, guide sections, flashcards, links), chips with counts above the list narrow it without searching again.
 - **New: press ? for the keyboard shortcuts.** A small list of every shortcut (learning path, daily review, quizzes). Esc or the close button dismisses it; it does not open while you type in a text box.
 - **New: a one-line "today" strip on the Reading Room.** It shows how many flashcards are due (a link to your daily review) and your streak, and hides itself when there is nothing to say. Follows the themed or plain names setting.
 - **New: keyboard shortcuts in quizzes and practice exams.** Press 1 to 9 to pick (or untick) an option, **N** for next, **P** for previous and **F** to flag a question. They pause while you type in an answer box. A hint line shows on wide screens.
