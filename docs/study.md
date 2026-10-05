@@ -12,7 +12,9 @@ Open **Daily review** (`/study`), optionally narrowed to one course or deck. You
 | Good | 3 | You remembered. |
 | Easy | 4 | No effort at all. |
 
-The page asks "How well did you remember?" and each button carries a one-line meaning (worded to match your themed or plain names setting). Each button shows when the card will come back ("1 min", "10 min", "3 days"). The schedule comes from **FSRS-5**, the open Free Spaced Repetition Scheduler. It tracks, per card, how stable the memory is and how difficult the card is for you, and schedules the next review for when your chance of remembering has dropped to your **desired retention** (default 90%).
+The page asks "How well did you remember?" and each button carries a one-line meaning (worded to match your themed or plain names setting). Each button shows when the card will come back ("1 min", "10 min", "3 days"). In **Your settings > Display** you can switch on **Flashcard flip**, a short, gentle tilt when an answer appears. It is off by default and never plays with Calm mode or reduced motion.
+
+The schedule comes from **FSRS-5**, the open Free Spaced Repetition Scheduler. It tracks, per card, how stable the memory is and how difficult the card is for you, and schedules the next review for when your chance of remembering has dropped to your **desired retention** (default 90%).
 
 You can change two settings (`GET` and `PUT /study/settings`): **desired retention** (70% to 99%; higher means more reviews and fewer forgotten cards) and **new cards per day** (0 to 500, default 20). Only published decks you can read are offered, and your schedule lives in the content service next to the cards, so a card you can no longer read simply stops appearing. Deleting a card deletes its schedule.
 
