@@ -58,6 +58,8 @@
 - **New: a Services card in Admin panel > General (themed: Towers).** Shows whether the content, quiz, AI gateway, MCP and notes services answer their health check, how long they took, and what to look at when one does not (`docker compose logs <name>`). **Check again** re-runs it. New admin only `GET /admin/services`; the auth service gets the internal service addresses from `docker-compose.yml` (`CONTENT_URL` and friends), so `git pull && docker compose up -d --build` is enough. No migrations.
 - **New: Sign out all other devices.** Settings > Security > Signed-in devices has a button that ends every session except the one you are using (new `DELETE /me/sessions`, logged as `session.revoked_others`). No migrations.
 - **New: export people as CSV.** Admin panel > Users > **Export people as CSV** downloads email, name, status, how the account was created, roles and creation date (use the search box first to export a subset). No passwords, tokens or invite links. `GET /admin/users` gains `format=csv`. No migrations.
+- **Improved: every page has its own title.** Browser tabs, history and screen readers now say "Progress | Ultimyr", "Daily review | Ultimyr" and so on instead of just "Ultimyr". No migrations.
+- **Improved: every page has its own title.** Browser tabs, history and screen readers now say "Progress | Ultimyr", "Daily review | Ultimyr" and so on instead of just "Ultimyr". No migrations.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

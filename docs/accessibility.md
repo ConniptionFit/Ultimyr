@@ -24,6 +24,7 @@ When starting a timed or exam-style quiz, a learner can **declare** extra time: 
 
 ## Keyboard and screen readers
 - A "Skip to content" link is the first stop on every page. The main region is `#main`.
+- Every page has its own title in the tab and history (for example "Progress | Ultimyr"), which screen readers also announce when you move between pages.
 - Every control works with a keyboard. Flashcards: Space shows the answer, 1 to 4 rate it. Matching questions use drop-down lists instead of dragging.
 - Dialogs (the phone menu, the shortcuts list) trap Tab, close with Escape and return focus to the button that opened them. The current page is exposed with `aria-current="page"`. In forced-colours (Windows high contrast) mode focus rings and form borders use system colours.
 - Status changes (saved, checked, time warnings) use live regions.
