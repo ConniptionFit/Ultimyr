@@ -27,6 +27,16 @@ export function TodayStrip() {
     };
   }, [api]);
 
+  // Show the count in the tab title too, so due cards are visible from another tab.
+  useEffect(() => {
+    if (!due) return;
+    const base = document.title.replace(/^\(\d+\) /, "");
+    document.title = `(${due}) ${base}`;
+    return () => {
+      document.title = base;
+    };
+  }, [due]);
+
   if (!due && !streak && !reviewed) return null;
   return (
     <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted" aria-label="Today">
