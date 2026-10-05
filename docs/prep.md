@@ -47,3 +47,5 @@ No connector (Gemini, ChatGPT, Claude without one)? The same page has a copy and
 
 ## API and MCP
 See [api.md](api.md) and [mcp.md](mcp.md).
+
+The voucher code and credential ID on a credential each have a copy button.
