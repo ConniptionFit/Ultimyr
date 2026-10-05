@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: a friendly error page.** If a page fails while loading, you now see "Something went wrong" with **Try again** and a link back to the reading room (plus a reference code for your admin) instead of the browser's bare "This page couldn't load".
 - **New: filter search results by kind.** When a search finds more than one kind of thing (courses, material, guide sections, flashcards, links), chips with counts above the list narrow it without searching again.
 - **New: press ? for the keyboard shortcuts.** A small list of every shortcut (learning path, daily review, quizzes). Esc or the close button dismisses it; it does not open while you type in a text box.
 - **New: a one-line "today" strip on the Reading Room.** It shows how many flashcards are due (a link to your daily review) and your streak, and hides itself when there is nothing to say. Follows the themed or plain names setting.
