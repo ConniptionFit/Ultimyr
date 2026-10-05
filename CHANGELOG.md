@@ -46,6 +46,7 @@
 - **Settings rework:** your own settings now live behind the account icon in the menu bar (Your settings: display, security, AI keys, connected apps, themed names, which stays at the bottom and is off by default). Administrators also get an **Admin panel** there, with a category list on the left that opens on General, then Users, Groups, Sign-in methods, Provisioning and the Audit log. Non-admins never see it, and the server rejects admin calls from anyone without the administrator role.
 - **New:** admins can open or close registration from General (`GET/PATCH /api/v1/admin/settings`, `GET /api/v1/admin/overview`). It overrides `AUTH_REGISTRATION` until reset. Adds migration `0004_instance_settings`.
 - **Fix:** clicking the Ultimyr logo no longer looks like a sign out. The splash page ignored your session and its button led to the sign in form. Signed in people now go straight to the reading room from the logo and the splash, and the sign in and register pages send them on instead of showing the form.
+- **Improved: keyboard and high-contrast use.** The menu sheet on phones and the keyboard shortcuts list now keep Tab inside them, close with Escape and hand focus back to the button that opened them. The current page is marked in the top bar and the phone menu (`aria-current`, with an underline), and Windows high contrast mode gets system-colour focus rings and borders. No migrations or API changes.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

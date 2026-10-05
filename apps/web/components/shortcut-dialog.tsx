@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useDialog } from "@/lib/focus-trap";
 
 export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
   { area: "Anywhere", keys: [["?", "Show this list"]] },
@@ -30,16 +31,16 @@ export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
 ];
 
 export default function ShortcutDialog({ onClose }: { onClose: () => void }) {
-  const close = useRef<HTMLButtonElement>(null);
-  useEffect(() => close.current?.focus(), []);
+  const box = useRef<HTMLDivElement>(null);
+  useDialog(box, true, onClose);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="keys-h" onClick={(e) => e.stopPropagation()} className="max-h-full w-full max-w-md overflow-y-auto rounded-lg border border-line bg-bg p-5">
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby="keys-h" onClick={(e) => e.stopPropagation()} className="max-h-full w-full max-w-md overflow-y-auto rounded-lg border border-line bg-bg p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="keys-h" className="text-xl">
             Keyboard shortcuts
           </h2>
-          <button ref={close} aria-label="Close" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-md border border-line">
+          <button aria-label="Close" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-md border border-line">
             <span aria-hidden>×</span>
           </button>
         </div>
