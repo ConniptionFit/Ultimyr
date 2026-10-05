@@ -28,6 +28,12 @@ When starting a timed or exam-style quiz, a learner can **declare** extra time: 
 
 This is not a full audit by a person using assistive technology. Please report anything that gets in your way.
 
+## Phones and small screens
+- Below 768px the top bar collapses to a search button and a menu button; the menu is a full-screen sheet (Escape or the close button dismisses it).
+- Settings and Admin categories become a sideways-scrolling tab row. Archive tabs scroll rather than overflow.
+- Touch screens get buttons and inputs at least 40px tall, and inputs use 16px text so iOS does not zoom when one is focused.
+- Step notes open full screen below 1024px instead of beside the roadmap.
+
 ## Install as an app (PWA)
 Browsers offer "Install" because Ultimyr ships a manifest, icons and a service worker.
 - **What it does:** opens in its own window, and shows a friendly **offline page** when there is no connection.

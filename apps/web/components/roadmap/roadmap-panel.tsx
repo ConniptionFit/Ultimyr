@@ -399,7 +399,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
             })}
           </ol>
           {openNote && (
-            <div className="lg:sticky lg:top-4">
+            <div className="max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:overflow-y-auto max-lg:bg-bg max-lg:p-3 lg:sticky lg:top-4">
               <NotePane archiveId={archiveId} stepId={openNote.id} title={openNote.title} onClose={() => setOpenNote(null)} />
             </div>
           )}

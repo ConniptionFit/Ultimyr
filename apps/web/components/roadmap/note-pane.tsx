@@ -76,7 +76,7 @@ export function NotePane({ archiveId, stepId, title, onClose }: { archiveId: str
   }
 
   return (
-    <aside aria-label={`Notes for ${title}`} className="flex min-h-[24rem] flex-col gap-3 rounded-md border border-line p-3">
+    <aside aria-label={`Notes for ${title}`} className="flex min-h-[24rem] flex-col gap-3 rounded-md border border-line bg-bg p-3 max-lg:min-h-[calc(100dvh-1.5rem)] max-lg:border-0 max-lg:p-0">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-medium">{title}</p>

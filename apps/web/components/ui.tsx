@@ -21,7 +21,7 @@ export function Field({ label, id, ...rest }: InputHTMLAttributes<HTMLInputEleme
 }
 
 export function Shell({ children, narrow = false, wide = false }: { children: ReactNode; narrow?: boolean; wide?: boolean }) {
-  return <main id="main" tabIndex={-1} className={`mx-auto px-4 py-16 ${narrow ? "max-w-sm" : wide ? "max-w-5xl" : "max-w-3xl"}`}>{children}</main>;
+  return <main id="main" tabIndex={-1} className={`mx-auto px-4 py-8 md:py-16 ${narrow ? "max-w-sm" : wide ? "max-w-5xl" : "max-w-3xl"}`}>{children}</main>;
 }
 
 export function Toggle({ label, hint, on, onChange, disabled }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
