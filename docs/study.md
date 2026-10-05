@@ -41,3 +41,6 @@ On Progress, **Print** (or save as PDF) gives a clean transcript of the current 
 
 ## Today strip
 The Reading Room shows one line under the alerts: cards due now (links to the daily review) and your streak. It is hidden when you have neither.
+
+## Printing a guide
+The printer button on a study guide prints or saves it as PDF with the navigation hidden.
