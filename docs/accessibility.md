@@ -56,3 +56,6 @@ The reading room has an **Add a small example** button. It imports a tiny CompTI
 
 ## Gentler wording
 Empty states, saved messages and streaks use encouraging copy ("Nothing due, enjoy the break"). Missing a day never shows a broken-streak warning.
+
+## Keyboard shortcuts
+Press **?** anywhere (outside a text box) for the full list.
