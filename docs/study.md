@@ -38,3 +38,6 @@ Courses can include timed quizzes with a server-owned clock (see [quiz.md](quiz.
 
 ## Transcript
 On Progress, **Print** (or save as PDF) gives a clean transcript of the current view: your name, course, range and date, then attempts, accuracy, minutes, streak, readiness, domains and review stats. Menus and forms are left out.
+
+## Today strip
+The Reading Room shows one line under the alerts: cards due now (links to the daily review) and your streak. It is hidden when you have neither.

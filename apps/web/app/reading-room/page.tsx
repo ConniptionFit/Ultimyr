@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AlertsBanner } from "@/components/credentials/alerts-banner";
 import { Loading } from "@/components/loading";
+import { TodayStrip } from "@/components/today-strip";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -122,6 +123,7 @@ export default function ReadingRoom() {
               </p>
             )}
             <AlertsBanner />
+            <TodayStrip />
             {(() => {
               const go = paths.find((p) => p.started && p.next) ?? paths.find((p) => p.next);
               return go?.next ? (
