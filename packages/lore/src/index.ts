@@ -32,6 +32,7 @@ export const terms = {
   build: { themed: "Commission the Curator", plain: "Build with an AI assistant" },
   groupAccess: { themed: "Party Access", plain: "Group access" },
   about: { themed: "Lore", plain: "About this app" },
+  services: { themed: "Towers", plain: "Services" },
   countdown: { themed: "Roshan Timer", plain: "Exam countdown" },
 } as const;
 export type TermKey = keyof typeof terms;
@@ -65,6 +66,7 @@ export const termLore: Record<TermKey, { source: string; function: string }> = {
   build: { source: "Demnok Lannik, Head of Acquisitions for the Arcane Archives", function: "Have an AI assistant build a course for you." },
   groupAccess: { source: "Party, the group you play with", function: "Which groups can view or manage which courses." },
   about: { source: "Lore, the history tab on a hero's page", function: "App name, version, license and links." },
+  services: { source: "Towers, the buildings that guard each lane; each one either stands or has fallen", function: "Whether each part of Ultimyr is running." },
   countdown: { source: "Roshan's respawn timer, the clock toward the big fight", function: "Days until your real exam." },
 };
 

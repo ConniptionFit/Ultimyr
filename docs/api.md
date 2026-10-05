@@ -45,6 +45,7 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/admin/overview` | Counts, deployment details and the settings below. |
+| GET | `/admin/services` | Admin only. Whether each service answers `/readyz` (auth is always listed): `[{ name, ok, ms, problem? }]`. The addresses come from the auth service's `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL` and `NOTES_URL`, never from the request; unset ones are skipped. Two second timeout each. |
 | GET | `/admin/about` | Running version and commit, latest GitHub release, commits behind main, and the matching changelog section. `?refresh=1` re-checks (at most every 30 seconds). Returns `status: "unknown"` when GitHub is unreachable and `"disabled"` when `ULTIMYR_UPDATE_CHECK=false`. |
 | GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen?: boolean or null, localUsersDisabled?: boolean }`. `registrationOpen: null` removes the override and uses `AUTH_REGISTRATION`. `localUsersDisabled: true` returns 409 `no_identity_provider` unless a provider is enabled. |
 | POST | `/admin/users` | Create a local account: `{ email, displayName, roles?, method: "invite" or "password", password? }`. `invite` (default) returns a one-time `inviteUrl` valid 7 days. `password` returns a `temporaryPassword` (generated unless you pass one, 12 or more characters) that must be changed at first sign-in. Both are shown once. 409 `email_taken`, or `local_users_disabled`. |
