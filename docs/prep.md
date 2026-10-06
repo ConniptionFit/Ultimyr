@@ -51,3 +51,5 @@ See [api.md](api.md) and [mcp.md](mcp.md).
 The voucher code and credential ID on a credential each have a copy button.
 
 On the Credentials page, Working toward is ordered by exam date and Earned by expiry date, soonest first.
+
+The countdown plan has a **Print** button for a paper or PDF copy.

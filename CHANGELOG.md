@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: print the exam countdown plan.** A Print button on the countdown page prints or saves the day-by-day plan as a clean black-on-white page without the menus and the course picker.
 - **Changed: credentials are listed by what is coming up.** Under Working toward the nearest exam date comes first, and under Earned the one that expires soonest, with undated ones last.
 - **New: press / to search.** From any page (outside a text box) the slash key puts the cursor in the search box, or opens the search page on a phone. It is listed under the ? shortcuts.
 - **New: copy buttons for voucher codes and credential IDs** on each credential, with a tick to show it copied.
