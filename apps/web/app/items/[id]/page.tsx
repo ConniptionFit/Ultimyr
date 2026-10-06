@@ -328,6 +328,14 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
   }, [api, it.id]);
   const [editId, setEditId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  // Big decks render a page of cards at a time. Printing shows them all.
+  const PAGE = 100;
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => {
+    const all = () => setLimit(Infinity);
+    window.addEventListener("beforeprint", all);
+    return () => window.removeEventListener("beforeprint", all);
+  }, []);
 
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -392,13 +400,13 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
           <label className="sr-only" htmlFor="card-filter">
             Filter {t("card").toLowerCase()}s
           </label>
-          <input id="card-filter" type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={`Filter ${cards.length} ${t("card").toLowerCase()}s`} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" />
+          <input id="card-filter" type="search" value={filter} onChange={(e) => (setFilter(e.target.value), setLimit(PAGE))} placeholder={`Filter ${cards.length} ${t("card").toLowerCase()}s`} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" />
         </div>
       )}
       <ul className="divide-y divide-line rounded-md border border-line">
         {cards.length === 0 && <li className="p-4 text-muted">No cards yet.</li>}
         {cards.length > 0 && shownCards.length === 0 && <li className="p-4 text-muted">No card matches “{filter}”.</li>}
-        {shownCards.map((c) => (
+        {shownCards.slice(0, limit).map((c) => (
           <li key={c.id} className="break-inside-avoid p-3">
             {editId === c.id ? (
               <form onSubmit={(e) => saveCard(c, e)} className="space-y-2">
@@ -444,6 +452,13 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
           </li>
         ))}
       </ul>
+      {shownCards.length > limit && (
+        <p className="no-print">
+          <Button variant="quiet" onClick={() => setLimit(limit + PAGE)}>
+            Show {Math.min(PAGE, shownCards.length - limit)} more ({shownCards.length - limit} not shown)
+          </Button>
+        </p>
+      )}
       {editor && (
         <div className="no-print space-y-4">
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
