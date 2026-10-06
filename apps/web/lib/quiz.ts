@@ -149,3 +149,18 @@ export function formatClock(ms: number): string {
   const m = Math.floor((s % 3600) / 60);
   return `${h ? `${h}:` : ""}${String(m).padStart(h ? 2 : 1, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/** "42 s" or "1 min 20 s" for a time spent on one question. */
+export function formatSpent(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ""}`;
+}
+
+/** A line about pace for the results page, or null when no time was recorded. Question numbers are 1-based. */
+export function paceSummary(times: number[]): string | null {
+  const total = times.reduce((a, b) => a + b, 0);
+  if (times.length === 0 || total <= 0) return null;
+  const slowest = times.indexOf(Math.max(...times));
+  const avg = `About ${formatSpent(total / times.length)} per question.`;
+  return times.length > 1 ? `${avg} Slowest was question ${slowest + 1} (${formatSpent(times[slowest]!)}).` : avg;
+}

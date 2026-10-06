@@ -13,7 +13,7 @@ import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { REASON_LABEL } from "@/lib/certs";
-import { FIDELITY_LABEL, MODE_LABEL, formatClock, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
+import { FIDELITY_LABEL, MODE_LABEL, formatClock, paceSummary, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
 
 const answered = (q: PlayQuestion) => q.response !== null && q.response !== undefined && JSON.stringify(q.response) !== "{}";
 
@@ -279,6 +279,7 @@ export default function AttemptPage() {
                 {pct(summary.rawBp)} of marks ({summary.earned / 1000} of {summary.max / 1000}). {summary.counts.correct} correct, {summary.counts.partial} partly, {summary.counts.incorrect} incorrect, {summary.counts.unanswered} unanswered.
                 {at.status === "expired" ? " Time ran out, so this was graded as it stood at the deadline." : ""}
               </p>
+              {paceSummary(qs.map((x) => x.timeMs)) && <p className="text-sm text-muted">{paceSummary(qs.map((x) => x.timeMs))}</p>}
               {summary.counts.incorrect + summary.counts.partial > 0 && <p className="text-sm">{copy("attemptGap")}</p>}
               {drill ? (
                 <p className="text-xs text-muted">A drill is built from the questions you miss most, so it is meant to feel harder than the real thing. It does not change your readiness estimate.</p>
