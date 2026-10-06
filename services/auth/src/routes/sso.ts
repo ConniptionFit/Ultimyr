@@ -265,6 +265,28 @@ export function ssoRoutes(ctx: Ctx) {
       return (await db.select().from(idpProviders).orderBy(idpProviders.name)).map(view);
     });
 
+    /** Looks an OpenID Connect issuer up the way a sign-in would, so a typo shows before anything is saved. Nothing is stored. */
+    r.post("/v1/admin/idp-providers/check", { config: ctx.limit }, async (req) => {
+      await ctx.requireAdmin(req);
+      const { issuer } = parse(z.object({ issuer: z.string().trim().min(1).max(500) }), req.body);
+      try {
+        assertIdpUrl(issuer, insecure);
+        const doc = await fetchJson(`${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`);
+        const found = typeof doc.issuer === "string" ? doc.issuer : null;
+        if (found !== issuer && found !== issuer.replace(/\/$/, "")) return { ok: false, reason: "issuer_mismatch", issuer: found };
+        for (const k of ["authorization_endpoint", "token_endpoint", "jwks_uri"]) assertIdpUrl(String(doc[k] ?? ""), insecure);
+        return {
+          ok: true,
+          issuer: found,
+          pkce: Array.isArray(doc.code_challenge_methods_supported) ? doc.code_challenge_methods_supported.includes("S256") : null,
+          scopes: Array.isArray(doc.scopes_supported) ? doc.scopes_supported.filter((x) => typeof x === "string") : null,
+        };
+      } catch (e) {
+        if (e instanceof HttpError) return { ok: false, reason: e.code };
+        return { ok: false, reason: "unreachable" };
+      }
+    });
+
     r.post("/v1/admin/idp-providers", async (req, reply) => {
       const { user } = await ctx.requireAdmin(req);
       const body = parse(createProviderBody, req.body);

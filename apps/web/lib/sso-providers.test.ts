@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keycloakRealm, oktaAdmin, SSO_PROVIDERS, ssoUrls, validSlug } from "./sso-providers";
+import { deriveSso, keycloakRealm, oktaAdmin, SSO_PROVIDERS, ssoUrls, validSlug } from "./sso-providers";
 
 describe("ssoUrls", () => {
   it("matches the addresses the auth service builds", () => {
@@ -57,5 +57,37 @@ describe("providers", () => {
       expect(s.link.href(base)).toMatch(/^https:\/\//);
     }
     expect(SSO_PROVIDERS[0]!.steps.oidc[0]!.link!.href(null)).toBeNull();
+  });
+});
+
+describe("deriveSso", () => {
+  const none = { issuer: null, entryPoint: null };
+  it("builds authentik addresses from the base address and application slug", () => {
+    expect(deriveSso("authentik", { base: "auth.example.com/", app: "ultimyr" })).toEqual({
+      issuer: "https://auth.example.com/application/o/ultimyr/",
+      entryPoint: "https://auth.example.com/application/saml/ultimyr/sso/binding/redirect/",
+    });
+    expect(deriveSso("authentik", { base: "https://auth.example.com" })).toEqual(none);
+    expect(deriveSso("authentik", { base: "https://auth.example.com", app: "a/b" })).toEqual(none);
+  });
+  it("uses the org address for Okta and no SAML sign-in URL", () => {
+    expect(deriveSso("okta", { base: "https://acme-admin.okta.com" })).toEqual({ issuer: "https://acme.okta.com", entryPoint: null });
+    expect(deriveSso("okta", { base: "" })).toEqual(none);
+  });
+  it("builds Entra addresses from a tenant ID or domain only", () => {
+    const t = "11111111-2222-3333-4444-555555555555";
+    expect(deriveSso("entra", { app: t })).toEqual({ issuer: `https://login.microsoftonline.com/${t}/v2.0`, entryPoint: `https://login.microsoftonline.com/${t}/saml2` });
+    expect(deriveSso("entra", { app: "contoso.onmicrosoft.com" }).issuer).toContain("contoso.onmicrosoft.com");
+    expect(deriveSso("entra", { app: "../evil" })).toEqual(none);
+  });
+  it("builds Keycloak addresses from the realm address", () => {
+    expect(deriveSso("keycloak", { base: "https://kc.test/realms/main/" })).toEqual({ issuer: "https://kc.test/realms/main", entryPoint: "https://kc.test/realms/main/protocol/saml" });
+    expect(deriveSso("keycloak", { base: "https://kc.test" })).toEqual(none);
+  });
+  it("takes a generic address as typed and refuses non web values", () => {
+    expect(deriveSso("generic", { base: "https://login.example.com" }).issuer).toBe("https://login.example.com");
+    expect(deriveSso("generic", { base: "https://login.example.com/oauth2/default" }).issuer).toBe("https://login.example.com/oauth2/default");
+    expect(deriveSso("generic", { base: "javascript:alert(1)" })).toEqual(none);
+    expect(deriveSso("generic", {})).toEqual(none);
   });
 });

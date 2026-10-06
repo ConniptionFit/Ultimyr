@@ -67,6 +67,7 @@
 - **Improved: weak passwords are turned away.** Choosing a password (sign up, invite link, first sign-in after a temporary password) now also rejects the most common 12-character choices (such as `password12345`), repeated characters or short patterns, runs like `123456789012`, and a password that contains your email name, with a message that says why. The 12-character minimum is unchanged, existing passwords keep working, and passphrases are fine. No migrations.
 - **Improved: Admin panel pages have their own titles** ("Users | Admin panel | Ultimyr"), so the tab, history and screen readers say which category you are in. No migrations.
 - **New: a documented revert point for the overnight run.** `docs/ROLLBACK.md` gives the exact commands to return to `main` as it was at `3e8e093`, and lists any migrations added since.
+- **New:** the SSO setup guide now works out the details for you. Choose authentik (default), Okta, Entra ID, Keycloak or Other provider, type your tenant address (plus the application slug for authentik, or the tenant ID for Entra), and the issuer or SAML sign-in URL is derived and filled into the Add a provider form. OpenID Connect issuers are checked live before saving, with a one click fix when the provider reports a different issuer. Adds `POST /api/v1/admin/idp-providers/check` (admin only, stores nothing).
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
