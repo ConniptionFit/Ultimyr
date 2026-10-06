@@ -218,7 +218,7 @@ export default function AttemptPage() {
   // A quiz opened from the path comes back to the path (same-site addresses only).
   const back = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("back");
   const fromPath = back && back.startsWith("/") && !back.startsWith("//") && !back.includes("\\") ? back : null;
-  const missedCount = qs.filter((x) => x.feedback && x.feedback.outcome !== "correct" && x.feedback.outcome !== "excluded").length;
+  const missedCount = qs.filter((x) => x.feedback && (x.feedback.outcome === "incorrect" || x.feedback.outcome === "partial")).length;
   async function redoMissed() {
     if (!at) return;
     try {
