@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { fallbackError } from "@/lib/auth-errors";
 
 /** Landing page for an invite or password reset link from an administrator. The token is read from the address and sent once. */
 export function SetPasswordForm() {
@@ -42,7 +43,7 @@ export function SetPasswordForm() {
       if (err instanceof ApiError && err.code === "invalid_token") setError("This link has expired or was already used. Ask an administrator for a new one.");
       else if (err instanceof ApiError && err.code === "invalid_request") setError(err.issues[0] ?? "Please check the password and try again.");
       else if (err instanceof ApiError && err.code === "local_users_disabled") setError("Password sign-in is turned off here. Use single sign-on.");
-      else setError("Something went wrong. Please try again.");
+      else setError(fallbackError(err));
     }
   }
 
