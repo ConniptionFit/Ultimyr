@@ -293,7 +293,7 @@ function GuideEditor({ it, onSubmit, onCancel }: { it: ItemDetail; onSubmit: (e:
           <input
             type="file"
             accept=".md,.markdown,.txt,text/markdown,text/plain"
-            className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg"
+            className="max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg"
             onChange={async (e) => {
               const f = e.target.files?.[0];
               if (!f) return;
@@ -469,7 +469,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
           </form>
           <label className="block text-sm text-muted">
             Import cards from CSV (front, back, tags). Creates a new deck.
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" className="mt-1 block max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
           </label>
         </div>
       )}

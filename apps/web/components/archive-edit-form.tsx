@@ -95,7 +95,7 @@ export function ArchiveEditForm({ archive: a, onSaved, onCancel, onError, onChan
           <IconPicker archiveId={id} icon={a.icon} />
           <label className="block text-sm text-muted">
             Or upload a PNG with a transparent background (16 to 1024 px, up to 512 KB)
-            <input type="file" accept="image/png" className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && uploadIcon(e.target.files[0])} />
+            <input type="file" accept="image/png" className="mt-1 block max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && uploadIcon(e.target.files[0])} />
           </label>
         </fieldset>
         <div className="flex gap-2">

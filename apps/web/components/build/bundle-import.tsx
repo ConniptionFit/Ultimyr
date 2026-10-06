@@ -65,7 +65,7 @@ export function BundleImport({ depth = "standard" }: { depth?: Depth }) {
         <input
           type="file"
           accept=".txt,.md,text/plain,text/markdown"
-          className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg"
+          className="max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg"
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (f) {
