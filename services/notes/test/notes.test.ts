@@ -94,49 +94,102 @@ describe.skipIf(!testDbUrl)("notes service", () => {
     expect(h.fake.notes.get(path)!.content).toContain("my own words");
 
     const list = json(await call(alice, "GET", `/v1/notes/archives/${archive}`));
-    expect(list.scaffolded).toBe(true);
-    expect(list.steps[stepId].obsidianUrl).toContain("obsidian://open?vault=Study");
+    expect(list.connected).toBe(true);
+    expect(list.steps).toEqual({}); // nothing written by the person yet
+  });
+
+  it("returns only the caller's own note text for an archive", async () => {
+    const mine = json(await call(alice, "GET", `/v1/notes/archives/${archive}/text`));
+    expect(Array.isArray(mine.notes)).toBe(true);
+    const theirs = json(await call(bob, "GET", `/v1/notes/archives/${archive}/text`));
+    for (const n of theirs.notes) expect(mine.notes.map((x: { stepId: string }) => x.stepId)).not.toContain(n.stepId);
   });
 
   it("hides archives the caller cannot read", async () => {
     expect((await call(bob, "POST", `/v1/notes/archives/${archive}/scaffold`)).statusCode).toBe(409); // not connected
     await call(bob, "PUT", "/v1/notes/connection", { token: h.fake.state.token, vault: "Study" });
     expect((await call(bob, "POST", `/v1/notes/archives/${archive}/scaffold`)).statusCode).toBe(404);
+    expect((await call(bob, "GET", `/v1/notes/steps/${stepId}?archive=${archive}`)).statusCode).toBe(404);
   });
 
-  it("reads and saves a step note with conflict protection", async () => {
-    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}`));
-    expect(got).toMatchObject({ exists: true });
-    expect(got.content).toContain("my own words");
-    const saved = await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { content: "# new", baseHash: got.hash });
+  const path = "Ultimyr/claude-architect/01 Foundations/01 Prep hub.md";
+  const at = `?archive=${archive}`;
+  const edit = (content: string) => {
+    const e = h.fake.notes.get(path)!;
+    e.content = content;
+    e.n++;
+  };
+
+  it("takes in a note that already exists in the vault, without its properties", async () => {
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(got).toMatchObject({ exists: true, mirror: "synced", pulled: true });
+    expect(got.content.startsWith("## Summary")).toBe(true);
+    expect(got.content).not.toContain("ultimyr_step");
+    expect(got.obsidianUrl).toContain("obsidian://open?vault=Study");
+  });
+
+  it("saves in Ultimyr and writes to the vault, keeping its properties", async () => {
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    const saved = await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "My words.\n", baseHash: got.hash });
     expect(saved.statusCode).toBe(200);
-    const stale = await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { content: "# lost", baseHash: got.hash });
-    expect(stale.statusCode).toBe(409);
-    expect(h.fake.notes.get("Ultimyr/claude-architect/01 Foundations/01 Prep hub.md")!.content).toBe("# new");
+    expect(json(saved).mirror).toBe("synced");
+    const file = h.fake.notes.get(path)!.content;
+    expect(file).toContain(`ultimyr_step: ${stepId}`);
+    expect(file.endsWith("My words.\n")).toBe(true);
+    // A save from a stale screen is refused, not merged.
+    expect((await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "lost", baseHash: got.hash })).statusCode).toBe(409);
+    const list = json(await call(alice, "GET", `/v1/notes/archives/${archive}`));
+    expect(list.steps[stepId].obsidianUrl).toContain("obsidian://");
+  });
+
+  it("takes in changes made in Obsidian", async () => {
+    edit(h.fake.notes.get(path)!.content.replace("My words.", "Edited in Obsidian."));
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(got).toMatchObject({ mirror: "synced", pulled: true });
+    expect(got.content).toBe("Edited in Obsidian.\n");
+  });
+
+  it("never overwrites when both sides changed, and lets the person choose", async () => {
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    // Make the vault copy differ, then save here without the sync seeing it first.
+    edit(h.fake.notes.get(path)!.content.replace("Edited in Obsidian.", "Obsidian side."));
+    const put = json(await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "Ultimyr side.\n", baseHash: got.hash }));
+    expect(put.mirror).toBe("conflict");
+    expect(put.remote).toBe("Obsidian side.\n");
+    expect(h.fake.notes.get(path)!.content).toContain("Obsidian side.");
+    const kept = json(await call(alice, "POST", `/v1/notes/steps/${stepId}/resolve`, { archive, keep: "mine" }));
+    expect(kept.mirror).toBe("synced");
+    expect(h.fake.notes.get(path)!.content).toContain("Ultimyr side.");
+
+    const cur = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    edit(h.fake.notes.get(path)!.content.replace("Ultimyr side.", "Obsidian again."));
+    await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "Local again.\n", baseHash: cur.hash });
+    const theirs = json(await call(alice, "POST", `/v1/notes/steps/${stepId}/resolve`, { archive, keep: "obsidian" }));
+    expect(theirs).toMatchObject({ mirror: "synced", content: "Obsidian again.\n" });
   });
 
   it("appends without replacing and lists flashcards", async () => {
-    const path = "Ultimyr/claude-architect/01 Foundations/01 Prep hub.md";
-    const cur = json(await call(alice, "GET", `/v1/notes/steps/${stepId}`));
-    const base = "---\nstatus: todo\n---\n## Summary\nMine.\n\n## Flashcards\nWhat is a token? :: A chunk of text\n- Window size? :: Context limit\n";
-    expect((await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { content: base, baseHash: cur.hash })).statusCode).toBe(200);
-    const r = await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { text: "## From Claude\nA suggestion." });
+    const cur = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    const base = "## Summary\nMine.\n\n## Flashcards\nWhat is a token? :: A chunk of text\n- Window size? :: Context limit\n";
+    expect((await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: base, baseHash: cur.hash })).statusCode).toBe(200);
+    const r = await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { archive, text: "## From Claude\nA suggestion." });
     expect(r.statusCode).toBe(200);
-    const text = h.fake.notes.get(path)!.content;
+    const text = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`)).content as string;
     expect(text.startsWith(base.trimEnd())).toBe(true);
     expect(text).toContain("## From Claude\nA suggestion.");
+    expect(h.fake.notes.get(path)!.content).toContain("## From Claude");
     const cards = json(await call(alice, "GET", `/v1/notes/steps/${stepId}/flashcards`));
     expect(cards.cards).toEqual([
       { front: "What is a token?", back: "A chunk of text" },
       { front: "Window size?", back: "Context limit" },
     ]);
-    expect((await call(bob, "POST", `/v1/notes/steps/${stepId}/append`, { text: "x" })).statusCode).toBe(404);
-    expect((await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { text: "" })).statusCode).toBe(400);
+    expect((await call(bob, "POST", `/v1/notes/steps/${stepId}/append`, { archive, text: "x" })).statusCode).toBe(404);
+    expect((await call(alice, "POST", `/v1/notes/steps/${stepId}/append`, { archive, text: "" })).statusCode).toBe(400);
   });
 
   it("keeps notes private to their owner", async () => {
-    expect((await call(bob, "GET", `/v1/notes/steps/${stepId}`)).statusCode).toBe(404);
-    expect((await call(bob, "PUT", `/v1/notes/steps/${stepId}`, { content: "x", baseHash: "h1" })).statusCode).toBe(404);
+    expect((await call(bob, "GET", `/v1/notes/steps/${stepId}/flashcards`)).statusCode).toBe(404);
+    expect((await call(bob, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "x", baseHash: "" })).statusCode).toBe(404);
   });
 
   it("patches only the status property", async () => {
@@ -146,23 +199,49 @@ describe.skipIf(!testDbUrl)("notes service", () => {
     expect((await call(alice, "POST", `/v1/notes/steps/${stepId}/status`, { status: "bogus" })).statusCode).toBe(400);
   });
 
-  it("reports an unreachable or rejecting server plainly", async () => {
+  it("keeps saving here when the vault is down or rejects the token", async () => {
     h.fake.state.down = true;
-    expect((await call(alice, "GET", `/v1/notes/steps/${stepId}`)).statusCode).toBe(502);
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(got.mirror).toBe("unreachable");
+    const saved = json(await call(alice, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "Saved while offline.\n", baseHash: got.hash }));
+    expect(saved.mirror).toBe("unreachable");
     h.fake.state.down = false;
+    const back = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(back).toMatchObject({ mirror: "synced", content: "Saved while offline.\n" });
+    expect(h.fake.notes.get(path)!.content).toContain("Saved while offline.");
     const old = h.fake.state.token;
     h.fake.state.token = "rotated-token-9";
-    const r = await call(alice, "GET", `/v1/notes/steps/${stepId}`);
-    expect(r.statusCode).toBe(409);
-    expect(json(r).error).toBe("fns_token_rejected");
+    expect(json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`)).mirror).toBe("unreachable");
     h.fake.state.token = old;
   });
 
-  it("disconnecting removes the connection and mapping but not notes", async () => {
+  it("syncs every note at once", async () => {
+    const r = json(await call(alice, "POST", "/v1/notes/sync"));
+    expect(r).toMatchObject({ total: 1, synced: 1, conflicts: 0, failed: 0 });
+  });
+
+  it("works for someone who never connects Obsidian", async () => {
+    const carol = uuid();
+    h.plans.set(`${carol}:${archive}`, plan);
+    const empty = json(await call(carol, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(empty).toMatchObject({ exists: false, content: "", mirror: "off", obsidianUrl: null });
+    expect((await call(carol, "GET", `/v1/notes/steps/${stepId}`)).statusCode).toBe(400); // needs the archive the first time
+    const saved = await call(carol, "PUT", `/v1/notes/steps/${stepId}`, { archive, content: "## Flashcards\nQ :: A\n", baseHash: "" });
+    expect(json(saved)).toMatchObject({ exists: true, mirror: "off" });
+    expect((await call(carol, "GET", `/v1/notes/steps/${stepId}`)).statusCode).toBe(200); // archive remembered
+    expect(json(await call(carol, "GET", `/v1/notes/steps/${stepId}/flashcards`)).cards).toHaveLength(1);
+    expect(json(await call(carol, "GET", `/v1/notes/archives/${archive}`)).steps[stepId]).toBeTruthy();
+    const info = json(await call(carol, "GET", "/v1/notes/connection"));
+    expect(info.connected).toBe(false);
+    expect((await call(carol, "POST", "/v1/notes/sync")).statusCode).toBe(409);
+  });
+
+  it("disconnecting removes the connection but keeps every note in Ultimyr", async () => {
     expect((await call(alice, "DELETE", "/v1/notes/connection")).statusCode).toBe(204);
     expect(json(await call(alice, "GET", "/v1/notes/connection")).connected).toBe(false);
     expect(h.fake.notes.size).toBe(3);
-    expect(json(await call(alice, "GET", `/v1/notes/archives/${archive}`)).scaffolded).toBe(false);
+    const got = json(await call(alice, "GET", `/v1/notes/steps/${stepId}${at}`));
+    expect(got).toMatchObject({ exists: true, mirror: "off", content: "Saved while offline.\n" });
   });
 });
 

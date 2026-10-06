@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BundleImport, BundlePrompt } from "@/components/build/bundle-import";
+import { SkillDownload } from "@/components/build/skill-download";
 import { PromptBox } from "@/components/build/prompt-box";
 import { DEPTH_WORDS, bundlePrompt, startPrompt } from "@/lib/build-prompt";
 import { useNaming } from "@/lib/naming";
@@ -13,8 +14,8 @@ import { RequireSession } from "@/lib/require-session";
 const input = "w-full rounded-md border border-line bg-surface px-3 py-2 text-ink";
 const STEPS = [
   "Connect your assistant once (the address is under the prompt).",
-  "Paste the prompt. The assistant asks you for the official exam objectives, so have the vendor's exam guide handy.",
-  "It saves the objectives, a roadmap, guides, flashcards and questions, in small batches, as drafts.",
+  "Paste the prompt. The assistant researches the certification itself (official guide, exam facts, training, community guides and videos) and only asks you if it cannot find the objectives.",
+  "It saves the objectives, sources and videos (which play inside Ultimyr), a roadmap, guides, flashcards and questions, in small batches, as drafts.",
   "Open the archive, check the Coverage tab, then review and publish the drafts.",
 ];
 
@@ -59,10 +60,11 @@ function Build() {
         </h2>
         <p className="text-sm text-muted">Works with any chat (Gemini, ChatGPT, Claude without a connector) and needs no API key. The chat writes everything as text in a strict format, in chunks if it is long. You paste it here, Ultimyr checks it line by line, and saves it as drafts.</p>
         <BundlePrompt prompt={bundlePrompt(name, depth)} />
-        <BundleImport />
+        <BundleImport depth={depth} />
+        <SkillDownload />
       </section>
       <p className="text-sm text-muted">
-        Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are in the <Link href="/reading-room" className="underline">Reading Room</Link>.
+        Already have an archive? Open its <strong>Coverage</strong> tab for a prompt that continues it. Your archives are on the <Link href="/reading-room" className="underline">{t("dashboard")}</Link>.
       </p>
     </div>
   );

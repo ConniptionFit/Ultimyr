@@ -1,6 +1,6 @@
 # Content: archives, guides, decks and sharing
 
-The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Codex and Folio, which you can switch to plain names in Your settings. The API always uses the plain names.
+The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Tome (study guide) and Grimoire (flashcard deck), which you can switch to plain names in Your settings. The API always uses the plain names.
 
 ## Model
 | Thing | What it is |
@@ -12,7 +12,7 @@ The content service owns everything a person studies. All routes are under `/api
 | **Card** | A deck entry: front, back, optional hint and tags. Up to 5,000 per deck. |
 
 ## Roadmaps and external resources
-An archive can carry a **roadmap** (themed name: Path) and a library of **resources** (themed name: References). Open them from the tabs on the archive page.
+An archive can carry a **roadmap** (themed name: Labyrinth) and a library of **resources** (themed name: Secret Shop). Open them from the tabs on the archive page.
 
 | Thing | What it is |
 |---|---|
@@ -21,7 +21,37 @@ An archive can carry a **roadmap** (themed name: Path) and a library of **resour
 | **Step** | One of: a guide, deck or quiz from the same archive; a resource; or a **milestone** (a checkpoint with no link, such as "Take a practice exam"). Each step can be required or optional, carry a note and its own time estimate. A step can hold **steps of its own**, up to three levels: a course holds lessons, a lesson holds pages or videos. |
 | **Progress** | Each person ticks steps off for themselves. Only the innermost steps (leaves) carry a tick. A parent shows how many of its steps are done and counts as done when everything it requires is done; ticking a parent ticks everything under it, and a parent that is optional makes everything inside it optional. A course's own minutes are used only when its lessons have none. Nobody sees anyone else's ticks. The roadmap shows percent of required steps done, minutes left, and the next step. The dashboard shows where you are on every roadmap you can read. |
 
-Ultimyr **never opens the links you save**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host, and nothing is embedded from other sites. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
+Ultimyr **never opens the links you save on the server**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
+
+### Watching videos in the app
+
+### Following the roadmap (guided path)
+An archive that has a roadmap opens on it. In **Guided** view (the default) the step you are on, the first required step not yet done, is marked **You are here** and opens in place: a video plays under the row, a guide is read inline, a deck is studied inline (**Study here**), a quiz starts from the step (**Take it here**) and returns you to the roadmap afterwards, and your note opens beneath. **Done, next step** ticks it and scrolls to the next one, which opens in turn. Other steps open with the same buttons whenever you like. **Compact** shows the plain checklist; the choice is stored in your browser (`ultimyr_path_view`). Articles and other sites still open in a new tab because they cannot be shown inside Ultimyr.
+
+**More on the path**
+- **Continue** (Reading Room) jumps straight to your current step.
+- **Keys:** `J` next step, `K` previous step, `D` mark done and move on (not while typing).
+- **Finished that?** After you open an article or other site from a step and come back to the tab, the step asks whether to tick it.
+- **Ticks itself:** a video ticks its step when it ends (YouTube, Vimeo and direct video files report this; Loom and other embeds cannot), a deck when its queue is caught up, a quiz once you have passed it. Videos remember where you stopped (kept in this browser).
+- **Today's session** (Off, 20, 45 or 90 minutes) marks the next required steps that fit with a **Today** badge. Steps with no minutes count as 10.
+- **Stage bar** along the top jumps between stages and shows progress for each.
+- **Deck steps** use the real spaced-repetition queue with the four ratings, so path study and the Study page feed the same schedule.
+- **Streak and readiness** (your quiz days in a row, readiness estimate, weakest area with a Drill link) show above the steps; the streak is hidden in Calm mode.
+- **Notes:** search your notes for the archive, and **My notes** on a stage shows all of that stage's notes in order.
+- **Offline copies:** **Keep for offline reading** under a guide or deck saves a copy in this browser only (removed when you sign out). If the server cannot be reached the copy is shown. Course and item pages keep a copy of their empty page shell for the same reason; no account data is cached.
+- **Copy from another course** (editors, in the roadmap toolbar) pulls another course's roadmap into this one as an unsaved draft. Links come across; guides, decks and quizzes become checkpoints with the same title because they belong to the other course. To share a path read-only, use Share on the course.
+
+A link that is a video (kind `video` or `playlist`, or tagged `content-type:video`) gets a play button in place of its icon, on the Resources tab and on roadmap steps. Press it and a player drops down under the row; press it again, or **Close**, to fold it away. **Nothing loads from another site until you press play.**
+
+| Link | Played as |
+|---|---|
+| YouTube watch, `youtu.be`, shorts, embed, playlist links | YouTube's privacy-enhanced player (`youtube-nocookie.com`). A `t=` start time and a playlist are kept. |
+| Vimeo, including unlisted links with a hash | Vimeo's player with do-not-track on. |
+| Loom shares | Loom's embed player. |
+| A direct `.mp4`, `.m4v`, `.webm`, `.ogv` or `.mov` link | The browser's own video player. |
+| Anything else | Stays a normal link that opens in a new tab. |
+
+Only these known providers are embedded, never an address typed into the page, and the iframe is sandboxed. Every player has an **Open the original** link for videos the owner has set to not allow embedding. If you put Ultimyr behind a proxy that adds a `Content-Security-Policy`, allow `frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com` and, for direct files, `media-src https:`. Ultimyr itself sets no page-wide policy that would block them.
 
 ### Example: Claude's training pages and YouTube videos
 The prep hub for Claude Certified Architect Foundations (`https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification#ccarf-prep`) is a good first resource: add it as a `course`, then place it in an early stage of the roadmap, followed by your guides and decks, optional YouTube videos, and a milestone for each practice test.
@@ -103,3 +133,6 @@ Deleting archives and items is a soft delete. They appear in `GET /api/v1/trash`
 
 ## Limits
 Markdown 500,000 characters, 5,000 cards per deck, 200 items per import, 500 grants per object, 20 tags per archive.
+
+## Search filters
+When results span several kinds, filter chips with counts appear above the list (All, courses, material, guide sections, flashcards, links). Filtering happens in the page, so it is instant.

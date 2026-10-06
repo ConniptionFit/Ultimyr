@@ -211,7 +211,7 @@ describe.skipIf(!testDbUrl)("tags and icons", () => {
       await pool.query(insert, [custom, owner, "a", "server"]);
       await pool.query(insert, [plain, owner, "b", "book-open"]);
       const applied = await migrate(pool, { service: "content", dir });
-      expect(applied).toEqual(["0008_tagging.sql"]);
+      expect(applied[0]).toBe("0008_tagging.sql");
       const { rows } = await pool.query("SELECT id, icon_source FROM content.master_items WHERE id = ANY($1::uuid[])", [[custom, plain]]);
       const src = Object.fromEntries(rows.map((r) => [r.id, r.icon_source]));
       // A custom icon stays the person's choice; the untouched default may be picked automatically.

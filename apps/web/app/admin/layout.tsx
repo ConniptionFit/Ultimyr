@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Pane, SideNav } from "@/components/side-nav";
 import { ADMIN_SECTIONS } from "@/lib/admin";
 import { useNaming } from "@/lib/naming";
@@ -18,6 +18,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const delegateOnly = state.status === "authenticated" && !state.user.roles.includes("platform_admin");
   const items = ADMIN_SECTIONS.filter((s) => !delegateOnly || s.delegate).map((s) => ({ href: s.href, label: s.term ? t(s.term) : s.label }));
   const path = usePathname().replace(/\/$/, "") || "/admin";
+  const here = items.find((i) => i.href === path)?.label;
+  useEffect(() => {
+    document.title = `${here ? `${here} | ` : ""}Admin panel | Ultimyr`;
+  }, [here]);
   const allowed = !delegateOnly || ADMIN_SECTIONS.some((s) => s.delegate && s.href === path);
   return (
     <RequireSession admin delegate wide>

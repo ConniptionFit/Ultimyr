@@ -12,9 +12,21 @@ const cfg = loadNotesConfig();
 const pool = createPool();
 
 // Apply this service's own migrations at start (they are idempotent and tracked), so notes never depend on the one-shot migrate job being up to date.
+// An unreachable database is retried for a while and then logged, never a crash: the service stays up, answers "notes_db_unavailable" and migrates when asked again after a restart.
 if (process.env.NOTES_AUTO_MIGRATE !== "false") {
   const dir = process.env.NOTES_MIGRATIONS_DIR ?? resolve(import.meta.dirname, "../migrations");
-  await migrate(pool, { service: "notes", dir, log: (m) => console.log(m) });
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await migrate(pool, { service: "notes", dir, log: (m) => console.log(m) });
+      break;
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      const hint = code === "ENOTFOUND" || code === "ECONNREFUSED" ? ` The database host is not reachable from this container. Check PG_HOST / DATABASE_URL in .env, and if you use the bundled database, run: docker compose --profile bundled-db up -d` : "";
+      console.error(`Notes migration attempt ${attempt} failed: ${e instanceof Error ? e.message : String(e)}.${hint}`);
+      if (attempt >= 10) break;
+      await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 10000)));
+    }
+  }
 }
 
 let sealer: Sealer | null = null;

@@ -6,11 +6,13 @@ export interface Display {
   readable: boolean;
   /** Stop animation and transitions regardless of the system setting. */
   calm: boolean;
+  /** A short, gentle turn when a flashcard shows its answer. Off by default. */
+  flip: boolean;
   /** Extra time on timed exams, in percent. Self declared and recorded on the attempt. */
   extraTime: 0 | 25 | 50 | 100;
 }
 export const DISPLAY_COOKIE = "ultimyr_display";
-export const DEFAULT_DISPLAY: Display = { theme: "system", size: "default", readable: false, calm: false, extraTime: 0 };
+export const DEFAULT_DISPLAY: Display = { theme: "system", size: "default", readable: false, calm: false, flip: false, extraTime: 0 };
 
 export function parseDisplay(raw: string | undefined | null): Display {
   const d = { ...DEFAULT_DISPLAY };
@@ -20,6 +22,7 @@ export function parseDisplay(raw: string | undefined | null): Display {
     if (k === "s" && (v === "large" || v === "xlarge")) d.size = v;
     if (k === "f" && v === "1") d.readable = true;
     if (k === "m" && v === "1") d.calm = true;
+    if (k === "a" && v === "1") d.flip = true;
     if (k === "x" && (v === "25" || v === "50" || v === "100")) d.extraTime = Number(v) as Display["extraTime"];
   }
   return d;
@@ -31,6 +34,7 @@ export function serializeDisplay(d: Display): string {
   if (d.size !== "default") parts.push(`s:${d.size}`);
   if (d.readable) parts.push("f:1");
   if (d.calm) parts.push("m:1");
+  if (d.flip) parts.push("a:1");
   if (d.extraTime) parts.push(`x:${d.extraTime}`);
   return parts.join("|");
 }

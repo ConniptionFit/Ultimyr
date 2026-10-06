@@ -6,14 +6,28 @@ import { z } from "zod";
 import { ACCESS_TTL_SECONDS, HttpError, REFRESH_COOKIE, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
 import { passwordTokens, roleAssignments, sessions, totpFactors, users } from "../schema.js";
+import { passwordIssue } from "../password-policy.js";
 import { randomToken, safeEqual, sha256Hex } from "../secrets.js";
 
-const registerBody = z.object({
-  email: z.email().max(254),
-  password: z.string().min(12, "Password must be at least 12 characters").max(128),
-  displayName: z.string().trim().min(1).max(80),
-});
-const newPassword = z.string().min(12, "Password must be at least 12 characters").max(128);
+const strong = (password: string, ctx: z.RefinementCtx, path: string, email?: string) => {
+  const issue = passwordIssue(password, email);
+  if (issue) ctx.addIssue({ code: "custom", message: issue, path: [path] });
+};
+const registerBody = z
+  .object({
+    email: z.email().max(254),
+    password: z.string().min(12, "Password must be at least 12 characters").max(128),
+    displayName: z.string().trim().min(1).max(80),
+  })
+  .superRefine((b, ctx) => strong(b.password, ctx, "password", b.email));
+const newPassword = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .max(128)
+  .superRefine((p, ctx) => {
+    const issue = passwordIssue(p);
+    if (issue) ctx.addIssue({ code: "custom", message: issue });
+  });
 const setPasswordBody = z.object({ token: z.string().min(10).max(200), password: newPassword });
 const changePasswordBody = z.object({ changeToken: z.string().min(10).max(2000), currentPassword: z.string().min(1).max(128), newPassword });
 const loginBody = z.object({ email: z.email().max(254), password: z.string().min(1).max(128) });

@@ -1,3 +1,4 @@
+import { ShortcutHelp } from "@/components/shortcut-help";
 import { NAMING_COOKIE, parseNamingMode } from "@ultimyr/lore";
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
@@ -32,6 +33,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <AuthProvider>
               {children}
               <TabIcon />
+              <ShortcutHelp />
             </AuthProvider>
             <ServiceWorker />
           </DisplayProvider>
