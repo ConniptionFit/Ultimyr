@@ -95,6 +95,9 @@
 - **New: press C to check your answer in practice mode,** so a whole practice quiz can be done from the keyboard (1 to 9 to pick, C to check, N for next).
 - **New: due flashcards show on the course page.** When cards from a course are due, a line above its tabs says how many and links to a review of just that course.
 - **New: pace on quiz results.** The results page says about how long each question took you and which one was slowest.
+- **Security: pages send a basic Content-Security-Policy** (`base-uri 'self'; object-src 'none'; frame-ancestors 'self'`). It blocks an injected base tag, plugins and framing from other sites without restricting scripts, so nothing about how the app loads changes.
+- **Improved: the exam countdown fills itself in.** With one course it is chosen for you, and a course whose goal on Progress has an exam date opens with that date already entered.
+- **Fixed: a NUL character in a title, note or search no longer ends in "internal error".** Text the database cannot store (a NUL character, a malformed value, text that is too long) now gets a normal 400 `invalid_request` from every service instead of a 500.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

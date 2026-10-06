@@ -127,6 +127,14 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
               {!embedded && <FocusButton />}
             </div>
           </div>
+          {!embedded && (archive || deck) && (
+            <p className="text-sm text-muted">
+              Showing {deck ? "one deck" : "one course"} only.{" "}
+              <button onClick={() => router.push("/study")} className="text-accent underline">
+                Review everything that is due
+              </button>
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}

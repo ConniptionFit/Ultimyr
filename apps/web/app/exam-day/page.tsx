@@ -51,6 +51,8 @@ function ExamDay() {
     (async () => {
       const list = await api<{ archives: Archive[] }>("GET", "archives").catch(() => ({ archives: [] as Archive[] }));
       setArchives(list.archives);
+      // With a single course there is nothing to choose.
+      if (!credentialId && list.archives.length === 1) setArchiveId((cur) => cur || list.archives[0]!.id);
       if (credentialId) {
         try {
           const c = await api<Credential>("GET", `credentials/${credentialId}`);
@@ -64,6 +66,18 @@ function ExamDay() {
       setReady(true);
     })();
   }, [api, credentialId]);
+
+  // No date yet: use the exam date saved with this course's goal on Progress, if there is one.
+  useEffect(() => {
+    if (!ready || !archiveId || date) return;
+    let live = true;
+    api<{ goal: { targetDate: string | null } | null }>("GET", `analytics?archive=${archiveId}&days=1`)
+      .then((a) => live && a.goal?.targetDate && setDate(a.goal.targetDate))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, ready, archiveId, date]);
 
   const load = useCallback(async () => {
     if (!archiveId) return;
@@ -85,6 +99,7 @@ function ExamDay() {
 
   const picker = (
     <form
+      key={`${archiveId}|${date}`}
       onSubmit={(e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
