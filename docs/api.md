@@ -18,7 +18,7 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 | POST | `/auth/change-password` | `{ changeToken, currentPassword, newPassword }`. Second step when login returns `{ passwordChangeRequired, changeToken }` (an admin-created account with a temporary password). Signs in on success. The token lasts 10 minutes. |
 | POST | `/auth/set-password` | `{ token, password }`. Redeems a one-time invite or reset link from an admin and signs in. Used, expired and replaced links return 400 `invalid_token`. |
 | POST | `/auth/mfa/verify` | `{ mfaToken, code }` or `{ mfaToken, recoveryCode }`. |
-| POST | `/auth/refresh` | Rotates the refresh cookie. Replaying an old cookie revokes the session. |
+| POST | `/auth/refresh` | Rotates the refresh cookie. Replaying an old cookie revokes the session, except within 10 seconds of the rotation (two tabs racing), when it gets an access token and no new cookie. |
 | POST | `/auth/logout` | Revokes the session. |
 | POST | `/auth/passkeys/login/options`, `/auth/passkeys/login/verify` | WebAuthn sign in. Verify takes `{ challengeId, response }`. |
 | GET | `/auth/sso/providers` | Enabled providers and their `startUrl`. |
@@ -54,6 +54,7 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | GET, POST, DELETE | `/admin/groups`, `/admin/groups/:id` | |
 | GET, POST, DELETE | `/admin/groups/:id/members`, `/admin/groups/:id/members/:userId` | |
 | GET, POST, PATCH, DELETE | `/admin/idp-providers`, `/admin/idp-providers/:id` | See [identity.md](identity.md). `clientSecret` is write-only. |
+| POST | `/admin/idp-providers/check` | Admin only. Body `{ issuer }`. Looks up an OpenID Connect issuer and reports `{ ok, issuer, pkce, scopes }` or `{ ok: false, reason }`. Stores nothing. |
 | GET, POST, DELETE | `/admin/scim-tokens`, `/admin/scim-tokens/:id` | Token shown once on create. |
 | GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions, newest first. `?limit=` (1 to 500, up to 5000 with `format=csv`), `?action=`, `?before=<id>` for the next page, `?format=csv` for a spreadsheet download (cells that start with `=`, `+`, `-` or `@` are prefixed so they are never run as formulas). |
 | GET | `/admin/audit/actions` | Every action name in the log, for filters. |
