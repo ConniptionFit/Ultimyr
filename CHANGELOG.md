@@ -110,6 +110,7 @@
 - **Improved: the tab title names the course or item you are on.** Open pages used to read "Course | Ultimyr" or "Study item | Ultimyr" whatever you were viewing, so several tabs looked the same and a screen reader announced nothing new. Now the title is the page's own name.
 - **Improved: the daily review shows how far through the session you are.** A thin progress bar sits under the counter, and the deck name above a card links to that deck, handy for fixing a card as you meet it.
 - **Fixed: the Credentials header was crushed on a phone.** "Add to calendar" and "Add" were squeezed into tall, one-letter-wide columns beside the title once a credential had dates. They now sit under the title, and a long credential name wraps over two lines instead of being cut off.
+- **Improved: Progress no longer shows an empty chart.** With no cards due in the next week, the daily review card says so in a line instead of leaving a blank block.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
