@@ -33,6 +33,48 @@ export function keycloakRealm(input: string): { origin: string; realm: string } 
   return origin && m ? { origin, realm: decodeURIComponent(m[1]!) } : null;
 }
 
+export interface Derived { issuer: string | null; entryPoint: string | null }
+
+const TENANT = /^(?:[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}|(?:[a-z0-9-]+\.)+[a-z]{2,})$/i;
+const APP_SLUG = /^[a-z0-9][a-z0-9_-]{0,99}$/i;
+
+/** Works out the OpenID Connect issuer and SAML sign-in URL from what the admin typed. Null where it cannot be known. */
+export function deriveSso(providerId: string, f: { base?: string; app?: string }): Derived {
+  const none: Derived = { issuer: null, entryPoint: null };
+  const base = cleanBase(f.base ?? "");
+  const app = (f.app ?? "").trim();
+  switch (providerId) {
+    case "authentik":
+      return base && APP_SLUG.test(app)
+        ? { issuer: `${base}/application/o/${app}/`, entryPoint: `${base}/application/saml/${app}/sso/binding/redirect/` }
+        : none;
+    case "okta": {
+      const org = base && base.replace(/^(https?:\/\/[^./]+)-admin\./i, "$1.");
+      return org ? { issuer: org, entryPoint: null } : none;
+    }
+    case "entra":
+      return TENANT.test(app)
+        ? { issuer: `https://login.microsoftonline.com/${app}/v2.0`, entryPoint: `https://login.microsoftonline.com/${app}/saml2` }
+        : none;
+    case "keycloak": {
+      const k = keycloakRealm(f.base ?? "");
+      if (!k) return none;
+      const realm = `${k.origin}/realms/${encodeURIComponent(k.realm)}`;
+      return { issuer: realm, entryPoint: `${realm}/protocol/saml` };
+    }
+    default: {
+      const raw = (f.base ?? "").trim();
+      if (!raw) return none;
+      try {
+        const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+        return u.protocol === "https:" || u.protocol === "http:" ? { issuer: u.pathname === "/" ? u.origin : u.href, entryPoint: u.href } : none;
+      } catch {
+        return none;
+      }
+    }
+  }
+}
+
 export interface SsoStep {
   title: string;
   body: string;
@@ -43,12 +85,15 @@ export interface SsoStep {
   action?: "prefill" | "test";
 }
 
+export interface SsoField { key: "base" | "app"; label: string; placeholder: string; hint?: string }
+
 export interface SsoProvider {
   id: string;
   name: string;
   slug: string;
   intro: string;
-  base?: { label: string; placeholder: string };
+  /** What the admin types so Ultimyr can work out the provider's addresses and links. */
+  fields: SsoField[];
   warning?: Partial<Record<Protocol, string>>;
   steps: Record<Protocol, SsoStep[]>;
 }
@@ -60,7 +105,7 @@ const emailNote = "Ultimyr identifies people by email, so make sure an email add
 
 const prefill: SsoStep = {
   title: "Add the provider in Ultimyr",
-  body: "Use the button to open the Add a provider form with the type and short name already filled in, then paste the values you collected. Keep the short name the same, because the addresses you gave your provider contain it. For OpenID Connect, the secret is stored encrypted and never shown again.",
+  body: "Use the button to open the Add a provider form. The issuer or sign-in URL is already filled in from what you typed, and an OpenID Connect issuer is checked live. Paste the remaining values you collected. Keep the short name the same, because the addresses you gave your provider contain it. For OpenID Connect, the secret is stored encrypted and never shown again.",
   action: "prefill",
 };
 const test: SsoStep = {
@@ -75,7 +120,10 @@ export const SSO_PROVIDERS: SsoProvider[] = [
     name: "authentik",
     slug: "authentik",
     intro: "authentik acts as an application with either an OAuth2/OpenID or a SAML provider attached.",
-    base: { label: "Your authentik address", placeholder: "https://auth.example.com" },
+    fields: [
+      { key: "base", label: "Your authentik address", placeholder: "https://auth.example.com" },
+      { key: "app", label: "Application slug", placeholder: "ultimyr", hint: "The slug you gave the application (shown as Slug on its details). It appears in the issuer address." },
+    ],
     steps: {
       oidc: [
         {
@@ -124,7 +172,7 @@ export const SSO_PROVIDERS: SsoProvider[] = [
     name: "Okta",
     slug: "okta",
     intro: "Okta uses an app integration, either OIDC (Web Application) or SAML 2.0.",
-    base: { label: "Your Okta address", placeholder: "https://example.okta.com" },
+    fields: [{ key: "base", label: "Your Okta address", placeholder: "https://example.okta.com" }],
     steps: {
       oidc: [
         {
@@ -175,6 +223,7 @@ export const SSO_PROVIDERS: SsoProvider[] = [
     name: "Microsoft Entra ID",
     slug: "entra",
     intro: "Entra uses an app registration for OpenID Connect, or an enterprise application for SAML.",
+    fields: [{ key: "app", label: "Directory (tenant) ID", placeholder: "00000000-0000-0000-0000-000000000000", hint: "Shown on the Overview page of your Entra tenant or app registration. A domain such as contoso.onmicrosoft.com also works." }],
     steps: {
       oidc: [
         {
@@ -243,7 +292,7 @@ export const SSO_PROVIDERS: SsoProvider[] = [
     name: "Keycloak",
     slug: "keycloak",
     intro: "Keycloak uses a client in your realm, either OpenID Connect or SAML.",
-    base: { label: "Your Keycloak realm address", placeholder: "https://kc.example.com/realms/main" },
+    fields: [{ key: "base", label: "Your Keycloak realm address", placeholder: "https://kc.example.com/realms/main" }],
     steps: {
       oidc: [
         {
@@ -308,6 +357,7 @@ export const SSO_PROVIDERS: SsoProvider[] = [
     name: "Other provider",
     slug: "sso",
     intro: "Any provider that supports OpenID Connect or SAML 2.0 can connect.",
+    fields: [{ key: "base", label: "Issuer address (OpenID Connect) or sign-in URL (SAML)", placeholder: "https://login.example.com" }],
     steps: {
       oidc: [
         {

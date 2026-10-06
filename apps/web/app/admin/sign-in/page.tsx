@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Badge, ErrorLine, selectCls } from "@/components/admin/bits";
-import { SsoGuide, type Prefill } from "@/components/admin/sso-guide";
+import { SsoGuide } from "@/components/admin/sso-guide";
 import { Button, Field, Toggle } from "@/components/ui";
 import { message } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { deriveSso, SSO_PROVIDERS } from "@/lib/sso-providers";
+import { useSsoSetup } from "@/lib/sso-setup";
 
 interface Provider {
   id: string;
@@ -40,7 +42,12 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<Kind>("oidc");
-  const [prefill, setPrefill] = useState<(Prefill & { n: number }) | null>(null);
+  const [opened, setOpened] = useState(0);
+  const [setup, update] = useSsoSetup();
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [check, setCheck] = useState<{ tone: "busy" | "ok" | "bad"; text: string; use?: string } | null>(null);
+  const provider = SSO_PROVIDERS.find((p) => p.id === setup.provider) ?? SSO_PROVIDERS[0]!;
+  const derived = deriveSso(provider.id, setup.fields[provider.id] ?? {});
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const [localOff, setLocalOff] = useState(false);
 
@@ -56,8 +63,45 @@ export default function SignIn() {
     void load();
   }, [load]);
   useEffect(() => {
-    if (prefill) document.getElementById("new-provider")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [prefill]);
+    if (opened) document.getElementById("new-provider")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [opened]);
+  // The guide's protocol decides the type here. OAuth 2 stays a manual choice for providers without OpenID Connect.
+  useEffect(() => {
+    setKind((k) => (k === "oauth2" ? k : setup.protocol));
+  }, [setup.protocol]);
+  // Choosing another provider starts the values afresh, then whatever can be worked out is filled in.
+  useEffect(() => {
+    setVals({});
+  }, [setup.provider]);
+  useEffect(() => {
+    setVals((v) => ({ ...v, ...(derived.issuer ? { issuer: derived.issuer } : {}), ...(derived.entryPoint ? { entryPoint: derived.entryPoint } : {}) }));
+  }, [setup.provider, derived.issuer, derived.entryPoint, opened]);
+
+  const issuer = vals.issuer ?? "";
+  const runCheck = useCallback(
+    async (value: string) => {
+      setCheck({ tone: "busy", text: "Checking the provider..." });
+      try {
+        const r = await api<{ ok: boolean; reason?: string; issuer?: string | null; pkce?: boolean | null }>("POST", "admin/idp-providers/check", { issuer: value });
+        if (r.ok) setCheck({ tone: "ok", text: r.pkce === false ? "Found, but this provider does not advertise PKCE (S256). Sign-in may fail." : "Found. The provider answered and its issuer matches." });
+        else if (r.reason === "issuer_mismatch") setCheck({ tone: "bad", text: r.issuer ? `The provider says its issuer is ${r.issuer}.` : "That address did not describe an OpenID Connect issuer.", ...(r.issuer ? { use: r.issuer } : {}) });
+        else if (r.reason === "insecure_idp_url") setCheck({ tone: "bad", text: "Use an https address." });
+        else if (r.reason === "invalid_url") setCheck({ tone: "bad", text: "That is not a valid address." });
+        else setCheck({ tone: "bad", text: "Ultimyr could not reach that address. Check the address, and the application slug if there is one." });
+      } catch (e) {
+        setCheck({ tone: "bad", text: message(e) });
+      }
+    },
+    [api],
+  );
+  useEffect(() => {
+    if (!adding || kind !== "oidc" || !/^https?:\/\/\S+\.\S+|^https?:\/\/localhost/i.test(issuer)) {
+      setCheck(null);
+      return;
+    }
+    const t = setTimeout(() => void runCheck(issuer), 700);
+    return () => clearTimeout(t);
+  }, [adding, kind, issuer, runCheck]);
 
   async function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -75,7 +119,7 @@ export default function SignIn() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const config: Record<string, string> = {};
-    for (const [key] of FIELDS[kind]) config[key] = String(f.get(key) ?? "").trim();
+    for (const [key] of FIELDS[kind]) config[key] = (vals[key] ?? "").trim();
     const secret = String(f.get("clientSecret") ?? "").trim();
     const ok = await run(() =>
       api("POST", "admin/idp-providers", {
@@ -99,10 +143,11 @@ export default function SignIn() {
       <SsoGuide
         origin={origin}
         existing={list}
-        onPrefill={(p) => {
-          setKind(p.kind);
-          setPrefill({ ...p, n: Date.now() });
+        setup={setup}
+        update={update}
+        onPrefill={() => {
           setAdding(true);
+          setOpened((n) => n + 1);
         }}
       />
       <section className="space-y-2 rounded-md border border-line p-5">
@@ -144,11 +189,18 @@ export default function SignIn() {
       {!adding ? (
         <Button onClick={() => setAdding(true)}>Add a provider</Button>
       ) : (
-        <form id="new-provider" key={prefill?.n ?? 0} onSubmit={create} className="space-y-3 rounded-md border border-line p-5">
-          <h3 className="text-lg">New provider</h3>
+        <form id="new-provider" key={`${setup.provider}-${opened}`} onSubmit={create} className="space-y-3 rounded-md border border-line p-5">
+          <h3 className="text-lg">New provider: {provider.name}</h3>
+          <p className="text-xs text-muted">Provider and address come from the setup guide above. Fields it could work out are filled in for you.</p>
           <label className="block space-y-1 text-sm text-muted">
             Type
-            <select className={`${selectCls} block`} value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+            <select className={`${selectCls} block`} value={kind}
+              onChange={(e) => {
+                const k = e.target.value as Kind;
+                setKind(k);
+                if (k !== "oauth2") update({ protocol: k });
+              }}
+            >
               {(Object.keys(KIND_LABEL) as Kind[]).map((k) => (
                 <option key={k} value={k}>
                   {KIND_LABEL[k]}
@@ -156,11 +208,21 @@ export default function SignIn() {
               ))}
             </select>
           </label>
-          <Field id="p-name" name="name" label="Button label" required maxLength={60} defaultValue={prefill?.name ?? ""} />
-          <Field id="p-slug" name="slug" label="Short name (lowercase, used in the address)" required pattern="[a-z0-9][a-z0-9\-]{0,38}[a-z0-9]" defaultValue={prefill?.slug ?? ""} />
+          <Field id="p-name" name="name" label="Button label" required maxLength={60} defaultValue={provider.id === "generic" ? "Single sign-on" : provider.name} />
+          <Field id="p-slug" name="slug" label="Short name (lowercase, used in the address)" required pattern="[a-z0-9][a-z0-9\-]{0,38}[a-z0-9]" defaultValue={setup.slugs[provider.id] ?? provider.slug} />
           {FIELDS[kind].map(([key, label, type, required]) => (
-            <Field key={`${kind}-${key}`} id={`p-${key}`} name={key} label={label} type={type} required={required} />
+            <Field key={`${kind}-${key}`} id={`p-${key}`} name={key} label={label} type={type} required={required} value={vals[key] ?? ""} onChange={(e) => setVals({ ...vals, [key]: e.target.value })} />
           ))}
+          {kind === "oidc" && check && (
+            <p role={check.tone === "bad" ? "alert" : "status"} className={`text-sm ${check.tone === "bad" ? "text-danger" : check.tone === "ok" ? "text-accent" : "text-muted"}`}>
+              {check.text}{" "}
+              {check.use && (
+                <button type="button" className="underline" onClick={() => setVals({ ...vals, issuer: check.use! })}>
+                  Use that address
+                </button>
+              )}
+            </p>
+          )}
           {kind !== "saml" && <Field id="p-secret" name="clientSecret" label="Client secret (stored encrypted, never shown again)" type="password" autoComplete="off" />}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="jit" defaultChecked /> Create accounts on first sign-in
