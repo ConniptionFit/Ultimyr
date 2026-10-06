@@ -218,6 +218,16 @@ export default function AttemptPage() {
   // A quiz opened from the path comes back to the path (same-site addresses only).
   const back = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("back");
   const fromPath = back && back.startsWith("/") && !back.startsWith("//") && !back.includes("\\") ? back : null;
+  const missedCount = qs.filter((x) => x.feedback && x.feedback.outcome !== "correct" && x.feedback.outcome !== "excluded").length;
+  async function redoMissed() {
+    if (!at) return;
+    try {
+      const d = await api<{ id: string }>("POST", "drills", { archiveId: at.archiveId, focus: "missed", count: Math.min(50, Math.max(3, missedCount)), restart: true });
+      router.push(`/attempts/${d.id}`);
+    } catch {
+      setError("Could not start a drill of your missed questions.");
+    }
+  }
   const home = fromPath ?? (drill ? `/archives/${at.archiveId}` : `/items/${at.itemId}`);
 
   return (
@@ -307,6 +317,11 @@ export default function AttemptPage() {
                 <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
                   {drill ? "Another drill" : "Drill my weak areas"}
                 </Button>
+                {missedCount > 0 && (
+                  <Button variant="quiet" onClick={redoMissed}>
+                    Redo what I missed
+                  </Button>
+                )}
               </div>
             </section>
           )}
