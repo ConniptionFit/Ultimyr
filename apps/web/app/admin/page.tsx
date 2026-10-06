@@ -5,6 +5,7 @@ import { Badge, Card, ErrorLine, Stat } from "@/components/admin/bits";
 import { Button, Toggle } from "@/components/ui";
 import { message } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 
 interface Overview {
   users: { total: number; active: number; suspended: number };
@@ -15,8 +16,26 @@ interface Overview {
   settings: { registrationOpen: boolean; registrationOverridden: boolean; registrationDefault: boolean };
 }
 
+interface ServiceRow { name: string; ok: boolean; ms: number; problem?: string }
+
 export default function General() {
   const { api } = useAuth();
+  const { t } = useNaming();
+  const [services, setServices] = useState<ServiceRow[] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const checkServices = useCallback(async () => {
+    setChecking(true);
+    try {
+      setServices(await api<ServiceRow[]>("GET", "admin/services"));
+    } catch {
+      setServices(null);
+    } finally {
+      setChecking(false);
+    }
+  }, [api]);
+  useEffect(() => {
+    void checkServices();
+  }, [checkServices]);
   const [o, setO] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,6 +89,26 @@ export default function General() {
             </Button>
           )}
         </p>
+      </Card>
+
+      <Card title={t("services")} hint="Whether each part of Ultimyr answers its health check. Anything red usually means its container is stopped or its database is unreachable: run docker compose logs <name>.">
+        {services ? (
+          <ul className="space-y-1 text-sm">
+            {services.map((x) => (
+              <li key={x.name} className="flex flex-wrap items-center gap-2">
+                <Badge tone={x.ok ? "accent" : undefined}>{x.ok ? "Running" : "Not ready"}</Badge>
+                <span>{x.name}</span>
+                {x.ok && x.ms > 0 && <span className="text-xs text-muted">{x.ms} ms</span>}
+                {x.problem && <span className="text-xs text-muted">{x.problem}</span>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">{checking ? "Checking." : "Could not check."}</p>
+        )}
+        <Button variant="quiet" className="px-2 py-0.5 text-xs" disabled={checking} onClick={() => void checkServices()}>
+          Check again
+        </Button>
       </Card>
 
       <Card title="This installation" hint="Set in the environment when Ultimyr is deployed. See docs/configuration.md.">

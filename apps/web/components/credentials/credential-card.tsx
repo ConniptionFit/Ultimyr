@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, ChevronDown, Pencil, Ticket, Trash2 } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Copy, Pencil, Ticket, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CeuLog } from "@/components/credentials/ceu-log";
@@ -12,6 +12,13 @@ import type { Archive } from "@/lib/types";
 
 export function CredentialCard({ c, archives, reload }: { c: Credential; archives: Archive[]; reload: () => void }) {
   const { api } = useAuth();
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (key: string, text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    }).catch(() => undefined);
+  };
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const archive = archives.find((a) => a.id === c.archiveId);
@@ -70,13 +77,23 @@ export function CredentialCard({ c, archives, reload }: { c: Credential; archive
             <span className="inline-flex items-center gap-1">
               <Ticket size={14} aria-hidden />
               <code>{c.voucherCode}</code>
+              <button onClick={() => copy("voucher", c.voucherCode)} aria-label="Copy voucher code" title="Copy voucher code" className="rounded p-1 text-muted hover:text-ink">
+                {copied === "voucher" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+              </button>
             </span>
             {c.voucherExpires ? ` (expires ${formatDay(c.voucherExpires)})` : ""}
           </Row>
         )}
         {c.status === "earned" && c.earnedOn && <Row k="Earned">{formatDay(c.earnedOn)}</Row>}
         {c.status === "earned" && c.expiresOn && <Row k="Expires">{formatDay(c.expiresOn)}</Row>}
-        {c.credentialNumber && <Row k="ID">{c.credentialNumber}</Row>}
+        {c.credentialNumber && (
+          <Row k="ID">
+            {c.credentialNumber}
+            <button onClick={() => copy("id", c.credentialNumber)} aria-label="Copy credential ID" title="Copy credential ID" className="ml-1 rounded p-1 align-middle text-muted hover:text-ink">
+              {copied === "id" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+            </button>
+          </Row>
+        )}
       </dl>
       {c.notes && <p className="whitespace-pre-line text-sm text-muted">{c.notes}</p>}
 

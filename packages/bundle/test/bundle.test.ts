@@ -66,3 +66,23 @@ describe("bundle parser", () => {
     expect(parseBundle("x".repeat(3_000_001)).errors[0]).toMatch(/longer than/);
   });
 });
+
+describe("coverage check", () => {
+  it("finds what is short per objective", async () => {
+    const { checkBundles, objectiveCodes } = await import("../src/index.js");
+    const b = parseBundle(FORMAT_EXAMPLE);
+    expect(objectiveCodes(b.objectives)).toEqual(["1.1", "1.2", "2.1"]);
+    const c = checkBundles([b], "quick");
+    expect(c.objectives).toBe(3);
+    expect(c.gaps.find((g) => g.code === "2.1")).toEqual({ code: "2.1", guide: true, cardsMissing: 5, questionsMissing: 3 });
+    expect(c.gaps.find((g) => g.code === "1.1")).toMatchObject({ guide: false, questionsMissing: 1 });
+    expect(c.unknownCodes).toEqual([]);
+  });
+  it("flags unknown and missing codes", async () => {
+    const { checkBundles } = await import("../src/index.js");
+    const b = parseBundle("=== objectives ===\n- 1.1 A\n=== end ===\n=== quiz: Q ===\nQ mcq 9.9\nx?\na) y *\nb) z\n\nQ mcq\nx2?\na) y *\nb) z\n=== end ===");
+    const c = checkBundles([b], "quick");
+    expect(c.unknownCodes).toEqual(["9.9"]);
+    expect(c.untaggedQuestions).toBe(1);
+  });
+});

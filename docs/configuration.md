@@ -35,6 +35,7 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `PORT`, `HOST` | `4001`, `0.0.0.0` | Listen address. |
 | `AUTH_REGISTRATION` | `open` | `closed` allows only the very first account (the admin). Later users come from SSO, SCIM or an admin (Admin panel > Users > Add a person). An admin can override this in the panel. |
 | `ULTIMYR_UPDATE_CHECK` | `true` | Lets Admin panel > About ask GitHub (releases, main branch, CHANGELOG) whether a newer version exists. Cached for an hour, fails quietly offline. Set `false` for air-gapped installs. Only the admin panel makes the request, from the auth service. |
+| `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL`, `NOTES_URL` (auth service) | set by `docker-compose.yml` | Internal addresses the auth service checks (`/readyz`) for the Services card in Admin panel > General. Leave one unset to skip it. |
 | `ULTIMYR_REPO` | `ConniptionFit/Ultimyr` | GitHub `owner/name` that About links to and checks. Set it if you run a fork. |
 | `COOKIE_SECURE` | true in production | Set `true` once you serve over HTTPS. |
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Exact origin users browse to. Sets the passkey relying party, SSO callback URLs and the OAuth issuer for MCP apps. Changing it later orphans passkeys. |
@@ -77,9 +78,9 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 |---|---|---|
 | `PORT`, `HOST` | `4006`, `0.0.0.0` | Listen address. |
 | `AUTH_URL`, `CONTENT_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`. |
-| `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Operator only: people cannot change it. Empty means notes are off. See [notes.md](notes.md#sync-with-obsidian). |
+| `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Optional: an administrator can instead set it in Admin panel > Notes (Obsidian). The environment value wins. People cannot change it. See [notes.md](notes.md#sync-with-obsidian). |
 | `ULTIMYR_VAULT_KEK`, `_VERSION`, `_PREVIOUS` | as the AI gateway | The same master key. It seals each person's sync token. Without it notes are off. |
-| `NOTES_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
+| `NOTES_AUTO_MIGRATE` | true | The notes service runs its own migrations at start. Set `false` to rely on the `migrate` job only. |
 
 ## MCP server
 | Variable | Default | Purpose |

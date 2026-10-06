@@ -1,8 +1,10 @@
 import { hash } from "@node-rs/argon2";
 import { ROLES, type Role } from "@ultimyr/authz";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { auditCsv, usersCsv } from "../audit-csv.js";
+import { checkServices } from "../services-status.js";
 import { createAbout } from "../about.js";
 import { HttpError, type Ctx } from "../ctx.js";
 import { uuidv7 } from "../ids.js";
@@ -81,6 +83,13 @@ export function adminRoutes(ctx: Ctx) {
       };
     });
 
+    // Is each service up? Checks the internal /readyz of every sibling service set in the environment.
+    r.get("/v1/admin/services", async (req) => {
+      await ctx.requireAdmin(req);
+      const checked = await checkServices(ctx.config.services);
+      return [{ name: "Auth", ok: true, ms: 0 }, ...checked];
+    });
+
     // Running build, latest GitHub release and changelog. Cached for an hour; `?refresh=1` re-checks (at most every 30 seconds).
     r.get("/v1/admin/about", async (req) => {
       await ctx.requireAdmin(req);
@@ -121,15 +130,22 @@ export function adminRoutes(ctx: Ctx) {
     });
 
     // ---- users ------------------------------------------------------------
-    r.get("/v1/admin/users", async (req) => {
+    r.get("/v1/admin/users", async (req, reply) => {
       await ctx.requireAdmin(req);
       const q = z
-        .object({ q: z.string().max(100).optional(), limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0) })
+        .object({
+          q: z.string().max(100).optional(),
+          limit: z.coerce.number().int().min(1).max(10000).optional(),
+          offset: z.coerce.number().int().min(0).default(0),
+          format: z.enum(["json", "csv"]).default("json"),
+        })
         .parse(req.query);
+      if (q.format === "json" && (q.limit ?? 50) > 200) throw new HttpError(400, "limit_too_large");
+      const limit = q.limit ?? (q.format === "csv" ? 10000 : 50);
       const where = q.q ? or(ilike(users.email, `%${q.q}%`), ilike(users.displayName, `%${q.q}%`)) : undefined;
-      const rows = await db.select().from(users).where(where).orderBy(users.createdAt, users.id).limit(q.limit).offset(q.offset);
+      const rows = await db.select().from(users).where(where).orderBy(users.createdAt, users.id).limit(limit).offset(q.offset);
       const roleRows = rows.length ? await db.select().from(roleAssignments).where(inArray(roleAssignments.userId, rows.map((u) => u.id))) : [];
-      return rows.map((u) => ({
+      const out = rows.map((u) => ({
         id: u.id,
         email: u.email,
         displayName: u.displayName,
@@ -139,6 +155,13 @@ export function adminRoutes(ctx: Ctx) {
         createdAt: u.createdAt,
         roles: roleRows.filter((x) => x.userId === u.id).map((x) => x.role),
       }));
+      if (q.format === "csv") {
+        return reply
+          .type("text/csv; charset=utf-8")
+          .header("content-disposition", 'attachment; filename="ultimyr-users.csv"')
+          .send(usersCsv(out));
+      }
+      return out;
     });
 
     // Manual account creation. The person gets a temporary password (forced change at first sign-in) or a one-time invite link.
@@ -328,10 +351,37 @@ export function adminRoutes(ctx: Ctx) {
     });
 
     // ---- audit log --------------------------------------------------------
-    r.get("/v1/admin/audit", async (req) => {
+    r.get("/v1/admin/audit", async (req, reply) => {
       await ctx.requireAdmin(req);
-      const q = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), action: z.string().max(80).optional() }).parse(req.query);
-      return db.select().from(auditLog).where(q.action ? eq(auditLog.action, q.action) : undefined).orderBy(desc(auditLog.id)).limit(q.limit);
+      const q = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(5000).default(100),
+          action: z.string().max(80).optional(),
+          before: z.coerce.number().int().positive().optional(),
+          format: z.enum(["json", "csv"]).default("json"),
+        })
+        .parse(req.query);
+      if (q.format === "json" && q.limit > 500) throw new HttpError(400, "limit_too_large");
+      const rows = await db
+        .select()
+        .from(auditLog)
+        .where(and(q.action ? eq(auditLog.action, q.action) : undefined, q.before ? lt(auditLog.id, q.before) : undefined))
+        .orderBy(desc(auditLog.id))
+        .limit(q.limit);
+      if (q.format === "csv") {
+        return reply
+          .type("text/csv; charset=utf-8")
+          .header("content-disposition", 'attachment; filename="ultimyr-audit-log.csv"')
+          .send(auditCsv(rows));
+      }
+      return rows;
+    });
+
+    // Every action name that has been logged, so the audit page can offer them all as filters.
+    r.get("/v1/admin/audit/actions", async (req) => {
+      await ctx.requireAdmin(req);
+      const rows = await db.selectDistinct({ action: auditLog.action }).from(auditLog).orderBy(auditLog.action);
+      return rows.map((r) => r.action);
     });
   };
 }

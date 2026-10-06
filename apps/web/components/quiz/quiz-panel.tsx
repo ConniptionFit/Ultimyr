@@ -12,7 +12,7 @@ import { FIDELITY_LABEL, MODE_LABEL, TYPE_LABEL, formatClock, pct, type Attempt,
 import { QuestionEditor } from "./question-editor";
 
 /** Everything a quiz item needs: start an attempt, see history, and (for editors) manage questions and settings. */
-export function QuizPanel({ itemId, archiveId, editor, published }: { itemId: string; archiveId: string; editor: boolean; published: boolean }) {
+export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { itemId: string; archiveId: string; editor: boolean; published: boolean; returnTo?: string }) {
   const { api } = useAuth();
   const { t } = useNaming();
   const { display } = useDisplay();
@@ -50,7 +50,7 @@ export function QuizPanel({ itemId, archiveId, editor, published }: { itemId: st
     setError(null);
     try {
       const a = await api<Attempt>("POST", `quizzes/${itemId}/attempts`, { ...(practice ? { mode: "practice" } : {}), restart, includeDrafts: editor && !published, ...(display.extraTime ? { extraTimePct: display.extraTime } : {}) });
-      router.push(`/attempts/${a.id}`);
+      router.push(`/attempts/${a.id}${returnTo ? `?back=${encodeURIComponent(returnTo)}` : ""}`);
     } catch (e) {
       fail(e instanceof ApiError && e.code === "no_questions" ? new ApiError(409, "no_questions", ["There are no published questions yet."]) : e);
     }
@@ -98,7 +98,7 @@ export function QuizPanel({ itemId, archiveId, editor, published }: { itemId: st
         <div className="flex flex-wrap gap-2">
           {open ? (
             <>
-              <Button onClick={() => router.push(`/attempts/${open.id}`)}>Resume attempt</Button>
+              <Button onClick={() => router.push(`/attempts/${open.id}${returnTo ? `?back=${encodeURIComponent(returnTo)}` : ""}`)}>Resume attempt</Button>
               <Button variant="quiet" onClick={() => confirm("Abandon the open attempt and start again?") && start(false, true)}>
                 Start over
               </Button>

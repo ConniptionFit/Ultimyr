@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, Field } from "@/components/ui";
+import { VideoPanel, VideoToggleButton, useVideo } from "@/components/video-player";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { RESOURCE_KINDS, type Resource } from "@/lib/types";
@@ -107,36 +108,44 @@ export function ResourcesPanel({ archiveId, canEdit }: { archiveId: string; canE
         <p className="rounded-md border border-dashed border-line p-6 text-center text-muted">{copy("emptyResources")}</p>
       ) : (
         <ul className="divide-y divide-line rounded-md border border-line">
-          {list.map((r) => {
-            const Icon = KIND_ICON[r.kind];
-            return (
-              <li key={r.id} className="flex items-start gap-3 p-3">
-                <Icon size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <p>
-                    <ExternalLinkText resource={r} />
-                    {r.status === "draft" && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted">draft</span>}
-                  </p>
-                  <p className="text-xs text-muted">{[KIND_LABEL[r.kind], r.provider, minutesText(r.minutes)].filter(Boolean).join(" · ")}</p>
-                  {r.summary && <p className="mt-1 text-sm text-muted">{r.summary}</p>}
-                </div>
-                {canEdit && (
-                  <div className="flex gap-1">
-                    {r.status === "draft" && (
-                      <Button variant="quiet" onClick={() => publish(r)}>
-                        Publish
-                      </Button>
-                    )}
-                    <Button variant="quiet" className="text-danger" aria-label={`Remove ${r.title}`} onClick={() => remove(r)}>
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
+          {list.map((r) => (
+            <ResourceRow key={r.id} r={r} canEdit={canEdit} onPublish={publish} onRemove={remove} />
+          ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function ResourceRow({ r, canEdit, onPublish, onRemove }: { r: Resource; canEdit: boolean; onPublish: (r: Resource) => void; onRemove: (r: Resource) => void }) {
+  const Icon = KIND_ICON[r.kind];
+  const video = useVideo(r);
+  return (
+    <li className="flex flex-wrap items-start gap-3 p-3">
+      <VideoToggleButton video={video} title={r.title}>
+        <Icon size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+      </VideoToggleButton>
+      <div className="min-w-0 flex-1">
+        <p>
+          <ExternalLinkText resource={r} />
+          {r.status === "draft" && <span className="ml-2 rounded-full border border-line px-2 text-xs text-muted">draft</span>}
+        </p>
+        <p className="text-xs text-muted">{[KIND_LABEL[r.kind], r.provider, minutesText(r.minutes), video.playable ? "plays here" : null].filter(Boolean).join(" · ")}</p>
+        {r.summary && <p className="mt-1 text-sm text-muted">{r.summary}</p>}
+      </div>
+      {canEdit && (
+        <div className="flex gap-1">
+          {r.status === "draft" && (
+            <Button variant="quiet" onClick={() => onPublish(r)}>
+              Publish
+            </Button>
+          )}
+          <Button variant="quiet" className="text-danger" aria-label={`Remove ${r.title}`} onClick={() => onRemove(r)}>
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      )}
+      <VideoPanel video={video} resource={r} />
+    </li>
   );
 }

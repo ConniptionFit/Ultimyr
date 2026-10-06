@@ -251,14 +251,15 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   });
 
   // ---- notes (the person's own Obsidian notes; only with the notes:use scope) ----
-  const stepId = z.uuid().describe("A step id from get_roadmap. The step must already have a note (the person presses Create notes on the roadmap).");
-  tool("get_step_note", "notes:use", "read", { title: "Read a step note", description: "The person's own Markdown note for a roadmap step, from their Obsidian vault. It follows the Ultimyr note standard: fixed headings Summary, Key points, Examples, Questions, Flashcards, Related.", input: { stepId } }, async (a) => {
-    const r = await get("notes", `/v1/notes/steps/${a.stepId}`);
-    return { path: r.path, exists: r.exists, content: r.content };
+  const stepId = z.uuid().describe("A step id from get_roadmap. Notes belong to leaf steps (steps with nothing inside them).");
+  const noteArchive = z.uuid().optional().describe("The archive id the step belongs to. Needed the first time a step's note is read or added to; after that it is remembered.");
+  tool("get_step_note", "notes:use", "read", { title: "Read a step note", description: "The person's own Markdown note for a roadmap step. It is kept in Ultimyr (and mirrored to their Obsidian vault when they connect one). A good layout is the Ultimyr note standard: headings Summary, Key points, Examples, Questions, Flashcards, Related.", input: { stepId, archiveId: noteArchive } }, async (a) => {
+    const r = await get("notes", `/v1/notes/steps/${a.stepId}`, { archive: a.archiveId });
+    return { exists: r.exists, content: r.content };
   });
-  tool("append_step_note", "notes:use", "write", { title: "Add to a step note", description: "Add text to the END of the person's note for a step. It never changes or removes what they wrote. Write Markdown in the standard headings, and put a flashcard on its own line as 'Question :: Answer' under '## Flashcards'. Only add what you are sure is right; the person edits their own notes.", input: { stepId, text: z.string().min(1).max(20_000).describe("Markdown to append.") } }, async (a) => {
-    const r = await send("notes", `/v1/notes/steps/${a.stepId}/append`, { text: a.text });
-    return { path: r.path, note: "Added to the end of the note." };
+  tool("append_step_note", "notes:use", "write", { title: "Add to a step note", description: "Add text to the END of the person's note for a step. It never changes or removes what they wrote. Write Markdown in the standard headings, and put a flashcard on its own line as 'Question :: Answer' under '## Flashcards'. Only add what you are sure is right; the person edits their own notes.", input: { stepId, archiveId: noteArchive, text: z.string().min(1).max(20_000).describe("Markdown to append.") } }, async (a) => {
+    await send("notes", `/v1/notes/steps/${a.stepId}/append`, { text: a.text, ...(a.archiveId ? { archive: a.archiveId } : {}) });
+    return { note: "Added to the end of the note." };
   });
   tool("get_step_flashcards", "notes:use", "read", { title: "Read a step's flashcards", description: "The 'Question :: Answer' lines under '## Flashcards' in a step note, as front and back. Pass them to create_deck to turn them into a deck.", input: { stepId } }, async (a) =>
     get("notes", `/v1/notes/steps/${a.stepId}/flashcards`),
@@ -315,7 +316,7 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     return {
       ...q,
       existing: (arch.items ?? []).map((i: any) => ({ id: i.id, kind: i.kind, title: i.title, status: i.status })),
-      howTo: "guide: create_guide with objectiveIds set to the task's objectives. cards: create_deck titled '<code> Flashcards' with objectiveIds set to that one objective (or upsert_cards into a deck you made for it). questions: add to one quiz per domain (create_quiz once, reuse it) with create_quiz_questions, setting each question's objectiveId. Then call get_build_queue again.",
+      howTo: "guide: create_guide (only learning material for the objectives: no FAQs, introductions or other filler) with objectiveIds set to the task's objectives. cards: create_deck titled '<code> Flashcards' with objectiveIds set to that one objective (or upsert_cards into a deck you made for it). questions: add to one quiz per domain (create_quiz once, reuse it) with create_quiz_questions, setting each question's objectiveId. Then call get_build_queue again.",
       note: stats ? undefined : "Question counts are missing because this connection cannot read quizzes, so question tasks may repeat.",
     };
   });
@@ -395,11 +396,11 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
   );
   prompt("build_certification", "Build a whole certification: objectives, roadmap, guides, flashcards and quizzes, all as drafts.", { certification: z.string().min(1).max(200), depth: z.enum(["quick", "standard", "deep"]).optional(), archiveId: z.string().optional() }, (a) =>
     `Build a complete study archive for "${a.certification}" in Ultimyr (depth: ${a.depth ?? "standard"}). Work in these phases and tell me when each is done.\n` +
-    `1. Facts first. ${a.archiveId ? `Use archive ${a.archiveId}. ` : "Call list_archives to check for an existing archive, otherwise create one with create_archive. "}Ask me for the vendor's official exam objectives (pasted text or a link you can open). If I have none, say so and stop. Never guess objectives, exam weights, passing scores or prices.\n` +
+    `1. Facts first. ${a.archiveId ? `Use archive ${a.archiveId}. ` : "Call list_archives to check for an existing archive, otherwise create one with create_archive. "}Research it yourself with web search and by opening pages, and do not wait for me: the official exam guide and objectives, exam facts (format, questions, time, pass score, price, version), vendor training and demos, the suggested study order, the best community guides and videos, and what people who passed report about format and heavily tested topics. Official sources first; use a community claim only when several sources agree, and label it community reported. Summarise the exam facts with sources and say what you could not confirm. Never guess objectives, weights, scores or prices. Only if you cannot browse or find the official objectives, tell me once and ask me to paste them.\n` +
     `2. Objectives. Save them with set_objectives (## domain with its percentage, then one line per objective) and check the result with get_objectives.\n` +
-    `3. Resources. Add only links I gave you or you have opened, with add_resources.\n` +
-    `4. Roadmap. Draft it with import_outline or set_roadmap: stages by week, required steps first, a milestone after each stage.\n` +
-    `5. Build. Call get_build_queue, do every task it returns (guides, flashcards, questions, each linked to its objectives), then call it again. Repeat until done is true. Write in your own words, never copy exam questions or vendor text, and keep facts you are unsure about out. If a write is rate limited, wait a minute and continue.\n` +
+    `3. Resources. Add the sources you opened, with add_resources, including videos and playlists (YouTube and Vimeo play inside Ultimyr). Never add a link you did not open.\n` +
+    `4. Roadmap. Draft it with import_outline or set_roadmap: stages by week, required steps first, each guide followed by its flashcards and a short quiz, videos where they help, a milestone after each stage.\n` +
+    `5. Build. Call get_build_queue, do every task it returns (guides, flashcards, questions, each linked to its objectives), then call it again. Repeat until done is true. Keep to learning material for the exam objectives: leave out FAQs, welcome and introduction pages and other non-learning content, in guides and in saved links. Guides go beyond the vendor guide in your own words. Flashcards and questions align with the guides and research but are never copies of them or of real exam questions, and follow the real exam's reported format and emphasis. Keep unconfirmed facts out. If a write is rate limited, wait a minute and continue.\n` +
     `6. Report. Call get_coverage and tell me the coverage, anything thin, and what needs my review. Everything is a draft: remind me to review and publish it in Ultimyr.`,
   );
   prompt("continue_build", "Pick up building an archive where an earlier chat stopped.", { archiveId: z.string(), depth: z.enum(["quick", "standard", "deep"]).optional() }, (a) =>

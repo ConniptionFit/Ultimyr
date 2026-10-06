@@ -152,7 +152,7 @@ describe("MCP server", () => {
     respond = (c) => (c.method === "POST" ? { path: "A/B.md", hash: "h" } : c.path.endsWith("/flashcards") ? { cards: [{ front: "q", back: "a" }], skipped: 0 } : { path: "A/B.md", exists: true, content: "# Note", hash: "h", obsidianUrl: "obsidian://x" });
     const c = await connect(await issuer.token({ scopes: ["notes:use"] }));
     const got = await c.callTool({ name: "get_step_note", arguments: { stepId: ID } });
-    expect(JSON.parse(text(got))).toEqual({ path: "A/B.md", exists: true, content: "# Note" });
+    expect(JSON.parse(text(got))).toEqual({ exists: true, content: "# Note" });
     expect(calls[0]).toMatchObject({ service: "notes", path: `/v1/notes/steps/${ID}` });
     const add = await c.callTool({ name: "append_step_note", arguments: { stepId: ID, text: "## From Claude\nHi" } });
     expect(add.isError).toBeFalsy();

@@ -50,7 +50,7 @@ Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
 | `@ultimyr/ui-icons` | Lucide helpers and animations |
 
 ## Themed names
-Every Archive-flavored label has a plain equivalent. The user's choice is stored in the `ultimyr_naming` cookie (default plain; users opt in to themed) and only changes UI text. APIs, MCP tools and exports always use plain names. See [ADR 0002](adr/0002-themed-names-toggle.md).
+Every Archive-flavored label has a plain equivalent. The user's choice is stored in the `ultimyr_naming` cookie (default plain; users opt in to themed) and only changes UI text. APIs, MCP tools and exports always use plain names. Themed names follow Dota 2 lore ([naming.md](naming.md)). See [ADR 0002](adr/0002-themed-names-toggle.md).
 
 ## Images
 One Dockerfile with targets `auth`, `content`, `quiz`, `ai-gateway`, `mcp`, `migrate` and `web`. CI builds all of them on every pull request.

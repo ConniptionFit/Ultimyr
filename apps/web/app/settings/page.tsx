@@ -1,8 +1,9 @@
 "use client";
 
-import { terms, type TermKey } from "@ultimyr/lore";
+import { terms, termLore, type TermKey } from "@ultimyr/lore";
 import { AiPanel } from "@/components/ai-panel";
 import { DisplayPanel } from "@/components/display-panel";
+import { MyDataPanel } from "@/components/my-data-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { NotesPanel } from "@/components/notes-panel";
 import { SecurityPanel } from "@/components/security-panel";
@@ -17,6 +18,7 @@ const SECTIONS = [
   { id: "ai", label: "AI keys" },
   { id: "notes", label: "Notes" },
   { id: "apps", label: "Connected apps" },
+  { id: "data", label: "Your data" },
   { id: "names", label: "Themed names" },
 ];
 
@@ -58,6 +60,9 @@ export default function Settings() {
         <div id="apps" className="scroll-mt-6 [&>section]:pt-0">
           <McpPanel />
         </div>
+        <div id="data" className="scroll-mt-6 border-t border-line pt-8">
+          <MyDataPanel />
+        </div>
         <section id="names" className="scroll-mt-6 space-y-4 border-t border-line pt-8">
           <div>
             <h2 className="text-xl">Themed names</h2>
@@ -70,7 +75,10 @@ export default function Settings() {
               {(Object.keys(terms) as TermKey[]).map((k) => (
                 <div key={k} className="contents">
                   <dt className="text-muted">{terms[k].plain}</dt>
-                  <dd>{terms[k].themed}</dd>
+                  <dd>
+                    {terms[k].themed}
+                    <span className="block text-xs text-muted">{termLore[k].function}</span>
+                  </dd>
                 </div>
               ))}
             </dl>

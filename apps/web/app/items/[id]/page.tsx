@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, History, Pencil, Trash2 } from "lucide-react";
+import { Download, History, Pencil, Printer, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -10,6 +10,7 @@ import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { ObjectivePicker } from "@/components/coverage/objective-picker";
 import { QuizPanel } from "@/components/quiz/quiz-panel";
+import { GuideReader, Study } from "@/components/item-views";
 import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -105,7 +106,7 @@ export default function ItemPage() {
       <Header />
       <Shell>
         <div className="ulti-fade space-y-6">
-          <Link href={`/archives/${it.archive.id}`} className="text-sm text-muted hover:text-ink">
+          <Link href={`/archives/${it.archive.id}`} className="no-print text-sm text-muted hover:text-ink">
             ← {it.archive.title}
           </Link>
           <div className="flex items-start justify-between gap-4">
@@ -118,7 +119,12 @@ export default function ItemPage() {
                 {it.version ? ` · version ${it.version.number}` : ""}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="no-print flex gap-2">
+              {it.kind === "guide" && (
+                <Button variant="quiet" aria-label="Print or save as PDF" title="Print or save as PDF" onClick={() => window.print()}>
+                  <Printer size={16} />
+                </Button>
+              )}
               {it.kind !== "quiz" && (
                 <Button variant="quiet" aria-label="Export" onClick={() => (it.kind === "guide" ? download("markdown", "guide.md") : download("anki-csv", "deck.csv"))}>
                   <Download size={16} />
@@ -228,37 +234,6 @@ function ShareToggle({ id }: { id: string }) {
         <div className="mt-3">
           <SharePanel base={`items/${id}`} />
         </div>
-      )}
-    </div>
-  );
-}
-
-function GuideReader({ it }: { it: ItemDetail }) {
-  const sections = it.sections ?? [];
-  return (
-    <div className="grid gap-8 md:grid-cols-[1fr_12rem]">
-      <article className="min-w-0 max-w-prose">
-        {it.summary && <p className="mb-4 text-lg text-muted">{it.summary}</p>}
-        {sections.map((s) => (
-          <section key={s.anchor} id={s.anchor} className="scroll-mt-20">
-            {s.heading !== "Introduction" && <h2 className="mt-8 text-2xl">{s.heading}</h2>}
-            <Markdown>{s.body}</Markdown>
-          </section>
-        ))}
-        {sections.length === 0 && <p className="text-muted">Nothing here yet.</p>}
-      </article>
-      {sections.length > 1 && (
-        <nav aria-label="Sections" className="hidden text-sm md:block">
-          <ul className="sticky top-6 space-y-1 border-l border-line pl-3">
-            {sections.map((s) => (
-              <li key={s.anchor}>
-                <a href={`#${s.anchor}`} className="text-muted hover:text-ink">
-                  {s.heading}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
       )}
     </div>
   );
@@ -399,52 +374,5 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         </>
       )}
     </section>
-  );
-}
-
-/** Simple flip-through of a deck. Spaced repetition (the daily queue) arrives with the study queue. */
-function Study({ cards, onDone }: { cards: Card[]; onDone: () => void }) {
-  const { copy } = useNaming();
-  const [order] = useState(() => [...cards].sort(() => Math.random() - 0.5));
-  const [i, setI] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const c = order[i];
-  if (!c) {
-    return (
-      <div className="space-y-3 text-center">
-        <p className="font-serif text-2xl">{copy("deckDone")}</p>
-        <Button onClick={onDone}>Back to the deck</Button>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted">
-        {i + 1} of {order.length}
-      </p>
-      <button
-        onClick={() => setFlipped(!flipped)}
-        className="flex min-h-48 w-full items-center justify-center rounded-lg border border-line bg-surface p-8 text-center font-serif text-2xl"
-        aria-live="polite"
-      >
-        <span className="whitespace-pre-line">{flipped ? c.back : c.front}</span>
-      </button>
-      <div className="flex justify-between">
-        <Button variant="quiet" onClick={onDone}>
-          Stop
-        </Button>
-        <Button
-          onClick={() => {
-            if (!flipped) setFlipped(true);
-            else {
-              setFlipped(false);
-              setI(i + 1);
-            }
-          }}
-        >
-          {flipped ? "Next" : "Show answer"}
-        </Button>
-      </div>
-    </div>
   );
 }

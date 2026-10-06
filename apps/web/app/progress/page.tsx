@@ -1,6 +1,7 @@
 "use client";
 
 import { streakText } from "@ultimyr/lore";
+import { Download, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
@@ -44,6 +45,18 @@ function Progress() {
   }, [api, archive, days, state.status]);
   useEffect(() => void load(), [load]);
 
+  async function downloadHistory() {
+    if (state.status !== "authenticated") return;
+    const res = await fetch("/api/v1/study/export", { headers: { authorization: `Bearer ${state.accessToken}` } });
+    if (!res.ok) return setError("Could not download your review history.");
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ultimyr-review-history.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function saveGoal(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -73,8 +86,13 @@ function Progress() {
       <Shell>
         <div className="ulti-fade space-y-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <h1 className="text-3xl">Progress</h1>
-            <div className="flex gap-2">
+            <div>
+              <h1 className="text-3xl">Progress</h1>
+              <p className="hidden text-sm text-muted print:block">
+                {state.status === "authenticated" ? state.user.displayName : ""} · {archive ? archives.find((a) => a.id === archive)?.title : "All courses"} · last {days} days · {new Date().toLocaleDateString()}
+              </p>
+            </div>
+            <div className="no-print flex gap-2">
               <label className="sr-only" htmlFor="pg-archive">
                 {t("archive")}
               </label>
@@ -96,6 +114,12 @@ function Progress() {
                   </option>
                 ))}
               </select>
+              <Button variant="quiet" onClick={() => window.print()} title="Print or save as PDF, a transcript of this view">
+                <Printer size={16} aria-hidden /> Print
+              </Button>
+              <Button variant="quiet" onClick={downloadHistory} title="Download every flashcard review you have made as a spreadsheet file">
+                <Download size={16} aria-hidden /> Reviews
+              </Button>
             </div>
           </div>
           {error && (
@@ -134,12 +158,12 @@ function Progress() {
                   <p className="text-sm text-muted">{an.readiness.note}</p>
                 </>
               )}
-              <form onSubmit={saveGoal} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <form onSubmit={saveGoal} className="no-print grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <Field id="goal-target" name="target" label="Target score (%)" type="number" min={1} max={100} defaultValue={an.goal ? an.goal.targetBp / 100 : 80} required />
                 <Field id="goal-date" name="date" label="Exam date (optional)" type="date" defaultValue={an.goal?.targetDate ?? ""} />
                 <Button type="submit">{an.goal ? "Update goal" : "Set goal"}</Button>
               </form>
-              <p className="flex flex-wrap gap-4 text-sm">
+              <p className="no-print flex flex-wrap gap-4 text-sm">
                 <Link href={`/drills?archive=${archive}`} className="text-accent underline">
                   Drill your weak areas
                 </Link>
