@@ -113,13 +113,33 @@ describe.skipIf(!url)("auth service (integration)", () => {
     const c2 = cookieOf(r1)!;
     expect(c2).not.toBe(c1);
 
-    // Replay the rotated-out token: rejected, and the whole session is revoked.
+    // Replay the rotated-out token after the grace window: rejected, and the whole session is revoked.
+    await pool.query("UPDATE auth.sessions SET rotated_at = now() - interval '1 minute'");
     const replay = await app.inject({ method: "POST", url: "/v1/auth/refresh", cookies: { ultimyr_rt: c1 } });
     expect(replay.statusCode).toBe(401);
     const afterReplay = await app.inject({ method: "POST", url: "/v1/auth/refresh", cookies: { ultimyr_rt: c2 } });
     expect(afterReplay.statusCode).toBe(401);
     const { rows } = await pool.query("SELECT 1 FROM auth.audit_log WHERE action = 'session.reuse_detected'");
     expect(rows).toHaveLength(1);
+  });
+
+  it("lets a refresh that raced a rotation through without revoking the session", async () => {
+    const reg = await register("a@example.com");
+    const c1 = cookieOf(reg)!;
+    const r1 = await app.inject({ method: "POST", url: "/v1/auth/refresh", cookies: { ultimyr_rt: c1 } });
+    const c2 = cookieOf(r1)!;
+
+    // A second tab sent the old cookie before the first response landed.
+    const raced = await app.inject({ method: "POST", url: "/v1/auth/refresh", cookies: { ultimyr_rt: c1 } });
+    expect(raced.statusCode).toBe(200);
+    expect(raced.json().accessToken).toBeTruthy();
+    // It must not rotate again or hand out a competing cookie.
+    expect(cookieOf(raced)).toBeUndefined();
+
+    const next = await app.inject({ method: "POST", url: "/v1/auth/refresh", cookies: { ultimyr_rt: c2 } });
+    expect(next.statusCode).toBe(200);
+    const { rows } = await pool.query("SELECT 1 FROM auth.audit_log WHERE action = 'session.reuse_detected'");
+    expect(rows).toHaveLength(0);
   });
 
   it("logout revokes the session so the access token stops working", async () => {

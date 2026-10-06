@@ -68,6 +68,7 @@
 - **Improved: Admin panel pages have their own titles** ("Users | Admin panel | Ultimyr"), so the tab, history and screen readers say which category you are in. No migrations.
 - **New: a documented revert point for the overnight run.** `docs/ROLLBACK.md` gives the exact commands to return to `main` as it was at `3e8e093`, and lists any migrations added since.
 - **New:** the SSO setup guide now works out the details for you. Choose authentik (default), Okta, Entra ID, Keycloak or Other provider, type your tenant address (plus the application slug for authentik, or the tenant ID for Entra), and the issuer or SAML sign-in URL is derived and filled into the Add a provider form. OpenID Connect issuers are checked live before saving, with a one click fix when the provider reports a different issuer. Adds `POST /api/v1/admin/idp-providers/check` (admin only, stores nothing).
+- **Fix:** opening Ultimyr in two tabs at once, or any two refreshes that overlap, no longer signs you out. A refresh that arrives within 10 seconds of the rotation that replaced its cookie now gets an access token instead of being treated as theft. Replays after that window still revoke the whole session. Adds migration `0007_refresh_grace`; redeploy with `docker compose up -d --build`.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
