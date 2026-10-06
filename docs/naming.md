@@ -35,6 +35,7 @@ Ultimyr has two name sets for the same things. **Plain names** (Course, Study gu
 | Coverage | Observer Wards | Which exam objectives your material covers | Observer Ward, vision over an area |
 | Build with an AI assistant | Commission the Curator | Have an assistant build a course | Demnok Lannik, Head of Acquisitions |
 | Group access | Party Access | Which groups see which courses | Party, the group you play with |
+| Curriculum admin | Grand Magus | Full access to every course and its settings | Rubick, the Grand Magus, the highest title the Hidden Council grants |
 | About this app | Lore | Name, version, license, links | Lore, the history tab on a hero's page |
 | Services | Towers | Whether each part of Ultimyr is running | Towers guard each lane and either stand or have fallen |
 | Exam countdown | Roshan Timer | Days until your real exam | Roshan's respawn timer |

@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 /**
  * Page frame for signed-in screens. Sends anonymous visitors to sign in, and with `admin` shows a
  * plain "not allowed" screen unless the person holds the platform_admin role (or, with `delegate`, the
- * access_delegate role, which only reaches Group access). The admin API enforces
+ * curriculum_admin role, which only reaches Group access). The admin API enforces
  * the same rule on every call, so this only decides what to render.
  */
 export function RequireSession({ children, admin = false, delegate = false, wide = false }: { children: ReactNode; admin?: boolean; delegate?: boolean; wide?: boolean }) {
@@ -22,7 +22,7 @@ export function RequireSession({ children, admin = false, delegate = false, wide
 
   let body: ReactNode;
   if (state.status !== "authenticated") body = <Loading />;
-  else if (admin && !state.user.roles.includes("platform_admin") && !(delegate && state.user.roles.includes("access_delegate"))) {
+  else if (admin && !state.user.roles.includes("platform_admin") && !(delegate && state.user.roles.includes("curriculum_admin"))) {
     body = (
       <div className="space-y-2">
         <h1 className="text-3xl">Not available</h1>

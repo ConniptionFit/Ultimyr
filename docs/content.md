@@ -108,7 +108,7 @@ Access is the best of these, highest wins:
 
 Grants can expire. An item-level grant opens just that item, and the archive card appears in the recipient's list. Admins get no special read access to private material. Token scopes cap everything: an API key with only `content:read` cannot write even for its owner. Unknown and forbidden objects both answer 404, so existence never leaks.
 
-Administrators and **access delegates** can also manage group grants centrally from Admin panel > Group access, without being the owner. They see **view** (`viewer`) and **manage** (`editor`) levels. Delegates only reach archives an administrator delegated to them (table `content.access_delegations`) and cannot change visibility. See [identity.md](identity.md#admin-panel).
+Administrators and **curriculum admins** can also manage group grants centrally from Admin panel > Group access. They see **view** (`viewer`) and **manage** (`editor`) levels. A curriculum admin has owner level access to every course (they can edit, share, change visibility, delete and restore), which is the one exception to "admins get no special read access" above. See [identity.md](identity.md#admin-panel).
 
 People are found by **exact email** (never listed), groups by name. Group memberships are fetched from the auth service and cached for 30 seconds, so a membership change can take up to that long to apply. If auth is unreachable, group grants pause but ownership and direct grants keep working.
 

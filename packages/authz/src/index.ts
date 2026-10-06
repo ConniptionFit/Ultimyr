@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, type CryptoKey, type JWTVerifyGetKey, type KeyObject } from "jose";
 import { z } from "zod";
 
-export const ROLES = ["platform_admin", "org_admin", "author", "learner", "access_delegate"] as const;
+export const ROLES = ["platform_admin", "org_admin", "author", "learner", "curriculum_admin"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ISSUER = "ultimyr-auth";

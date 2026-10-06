@@ -5,13 +5,14 @@ import { Badge, ErrorLine } from "@/components/admin/bits";
 import { Button, Field } from "@/components/ui";
 import { message, when } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { useNaming } from "@/lib/naming";
 import { downloadApi } from "@/lib/download";
 
 interface Row { id: string; email: string; displayName: string; status: "active" | "suspended"; createdVia: string; mustChangePassword?: boolean; createdAt: string; roles: string[] }
 const ROLES: Array<[string, string]> = [
   ["platform_admin", "Administrator"],
   ["org_admin", "Org admin"],
-  ["access_delegate", "Access delegate"],
+  ["curriculum_admin", "Curriculum admin"],
   ["author", "Author"],
   ["learner", "Learner"],
 ];
@@ -41,6 +42,7 @@ function Secret({ label, value, note }: { label: string; value: string; note: st
 }
 
 function AddPerson({ onCreated, disabled }: { onCreated: () => void; disabled: boolean }) {
+  const { t } = useNaming();
   const { api } = useAuth();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<"invite" | "password">("invite");
@@ -112,12 +114,15 @@ function AddPerson({ onCreated, disabled }: { onCreated: () => void; disabled: b
           {method === "password" && <Field id="new-password" name="password" type="text" label="Temporary password (leave empty to generate one)" autoComplete="off" minLength={12} />}
           <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
             <legend className="mb-1 text-sm text-muted">Roles</legend>
-            {ROLES.map(([role, label]) => (
+            {ROLES.map(([role, plain]) => {
+              const label = role === "curriculum_admin" ? t("curriculumAdmin") : plain;
+              return (
               <label key={role} className="flex items-center gap-1.5 text-sm">
                 <input type="checkbox" checked={roles.includes(role)} onChange={(e) => setRoles(e.target.checked ? [...roles, role] : roles.filter((x) => x !== role))} />
                 {label}
               </label>
-            ))}
+              );
+            })}
           </fieldset>
           <ErrorLine error={error} />
           <div className="flex gap-2">
@@ -131,6 +136,7 @@ function AddPerson({ onCreated, disabled }: { onCreated: () => void; disabled: b
 }
 
 export default function Users() {
+  const { t } = useNaming();
   const { api, state } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
@@ -230,7 +236,9 @@ export default function Users() {
             {link?.id === r.id && <Secret label="Sign-in link" value={link.url} note={`Shown once, valid until ${when(link.expires)}. Older links stop working.`} />}
             <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
               <legend className="sr-only">Roles for {r.displayName}</legend>
-              {ROLES.map(([role, label]) => (
+              {ROLES.map(([role, plain]) => {
+              const label = role === "curriculum_admin" ? t("curriculumAdmin") : plain;
+              return (
                 <label key={role} className="flex items-center gap-1.5 text-xs">
                   <input
                     type="checkbox"
@@ -240,7 +248,8 @@ export default function Users() {
                   />
                   {label}
                 </label>
-              ))}
+              );
+              })}
             </fieldset>
           </li>
         ))}
