@@ -20,6 +20,7 @@
 | [api.md](api.md) | Call the auth, content, quiz, AI and MCP APIs |
 | [architecture.md](architecture.md) | Understand how the services, tokens and data fit together (as built) |
 | [operations.md](operations.md) | Back up, upgrade, monitor and troubleshoot |
+| [ROLLBACK.md](ROLLBACK.md) | Return to the app as it was before the 2026-10-06 overnight run |
 | [architecture-plan.md](architecture-plan.md) | See the full approved plan and roadmap (phases 0 to 9) |
 | [adr/](adr) | See why key decisions were made |
 
