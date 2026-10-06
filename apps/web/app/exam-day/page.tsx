@@ -145,7 +145,7 @@ function ExamDay() {
       </div>
       {!credentialId && <div className="no-print">{picker}</div>}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role={error.startsWith("Add an exam date") ? "status" : "alert"} className={`text-sm ${error.startsWith("Add an exam date") ? "text-muted" : "text-danger"}`}>
           {error}
         </p>
       )}
