@@ -22,6 +22,8 @@ export interface StudyCard {
   back: string;
   hint: string | null;
   deckTitle: string;
+  /** The deck this card belongs to, so the review can link back to it. */
+  deckId?: string;
   state: number;
   /** Times the card was forgotten after being learned. Absent on the first card of an older server. */
   lapses?: number;

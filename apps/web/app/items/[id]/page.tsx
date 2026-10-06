@@ -16,6 +16,7 @@ import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
+import { usePageTitle } from "@/lib/page-title";
 import { canEdit, type Card, type ItemDetail } from "@/lib/types";
 
 interface Version {
@@ -32,6 +33,7 @@ export default function ItemPage() {
   const { t, copy } = useNaming();
   const router = useRouter();
   const [it, setIt] = useState<ItemDetail | null>(null);
+  usePageTitle(it?.title);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [versions, setVersions] = useState<Version[] | null>(null);
