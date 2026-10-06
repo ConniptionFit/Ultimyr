@@ -16,7 +16,7 @@ The page asks "How well did you remember?" and each button carries a one-line me
 
 The schedule comes from **FSRS-5**, the open Free Spaced Repetition Scheduler. It tracks, per card, how stable the memory is and how difficult the card is for you, and schedules the next review for when your chance of remembering has dropped to your **desired retention** (default 90%).
 
-You can change two settings (`GET` and `PUT /study/settings`): **desired retention** (70% to 99%; higher means more reviews and fewer forgotten cards) and **new cards per day** (0 to 500, default 20). Only published decks you can read are offered, and your schedule lives in the content service next to the cards, so a card you can no longer read simply stops appearing. Deleting a card deletes its schedule.
+You can change two settings in **Settings > Flashcards**, or through the API (`GET` and `PUT /study/settings`): **desired retention** (70% to 99%; higher means more reviews and fewer forgotten cards) and **new cards per day** (0 to 500, default 20). Only published decks you can read are offered, and your schedule lives in the content service next to the cards, so a card you can no longer read simply stops appearing. Deleting a card deletes its schedule.
 
 The scheduler is a pure function (`packages/fsrs`): the same history always produces the same schedule, with no random fuzz. It is covered by tests for the formulas (for example, the recall probability is exactly 90% when the time since review equals the stability), for how intervals grow, shrink after a lapse, and respond to early or late reviews, and by randomised property tests (difficulty stays between 1 and 10, stability stays positive, results are repeatable).
 
