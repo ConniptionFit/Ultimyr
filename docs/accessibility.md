@@ -61,3 +61,5 @@ Empty states, saved messages and streaks use encouraging copy ("Nothing due, enj
 
 ## Keyboard shortcuts
 Press **?** anywhere (outside a text box) for the full list.
+
+Press **/** to jump to search.
