@@ -12,7 +12,7 @@ This is the project's own review of what Ultimyr protects, how, and what is left
 | AI provider keys | Envelope encryption: a per-person key wrapped by `vault_kek`. Never returned by any API. Deleting your AI data destroys the key (crypto-shred) |
 | Quiz answer keys | Never sent to learners until a question is checked or the attempt closes. Snapshotted per attempt |
 | MCP and OAuth | OAuth 2.1 with PKCE S256, public clients only, single-use 5 minute codes, 30 minute access tokens, rotating refresh tokens with reuse detection, per-scope tool listing, writes land as drafts |
-| Browser | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: SAMEORIGIN` and a restrictive `Permissions-Policy` on every page, `frame-ancestors 'none'` on the consent page. APIs answer `no-store` |
+| Browser | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: SAMEORIGIN` and a restrictive `Permissions-Policy` on every page, a `Content-Security-Policy` limited to `base-uri 'self'; object-src 'none'; frame-ancestors 'self'` (not a script policy), and `frame-ancestors 'none'` on the consent page. APIs answer `no-store` |
 | Containers | Every Ultimyr container runs as the unprivileged `node` user with all Linux capabilities dropped (`cap_drop: [ALL]`) and `no-new-privileges`. Only the web container publishes a port; services talk over the internal network |
 | Service worker | Caches only the offline page and icons, never pages, API, OAuth or MCP |
 
