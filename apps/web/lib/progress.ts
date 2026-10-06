@@ -43,3 +43,16 @@ export function formatNext(n: { due: string; days: number }, now = Date.now()): 
 /** A card forgotten this many times is a "leech": the way it is written is probably the problem, not your memory. */
 export const LEECH_LAPSES = 6;
 export const isLeech = (card: { lapses?: number }) => (card.lapses ?? 0) >= LEECH_LAPSES;
+
+export interface ReviewNote {
+  rating: 1 | 2 | 3 | 4;
+  ms: number;
+}
+
+/** One line for the end of a review session, or null when nothing was reviewed. Remembered means rated Good or Easy. */
+export function sessionSummary(notes: ReviewNote[]): string | null {
+  if (notes.length === 0) return null;
+  const minutes = Math.max(1, Math.round(notes.reduce((s, n) => s + n.ms, 0) / 60_000));
+  const good = notes.filter((n) => n.rating >= 3).length;
+  return `${notes.length} ${notes.length === 1 ? "review" : "reviews"} in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}. You remembered ${good} of them (${Math.round((good / notes.length) * 100)}%).`;
+}

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
-import { formatNext, isLeech, type StudyCard, type StudyQueue } from "@/lib/progress";
+import { formatNext, isLeech, sessionSummary, type ReviewNote, type StudyCard, type StudyQueue } from "@/lib/progress";
 
 const RATINGS = [
   { n: 1, label: "Again", hint: "rateAgain" },
@@ -28,6 +28,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [counts, setCounts] = useState<StudyQueue["counts"] | null>(null);
   const [shown, setShown] = useState(false);
   const [done, setDone] = useState(0);
+  const [notes, setNotes] = useState<ReviewNote[]>([]);
   const [last, setLast] = useState<{ card: StudyCard; reviewId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
@@ -63,6 +64,8 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
       }
       setError(null);
       setDone((n) => n + 1);
+      const ms = Date.now() - shownAt.current;
+      setNotes((l) => [...l, { rating, ms }]);
       // Cards you missed come back in a minute or ten: keep them in this session.
       const again = rating <= 2 && card.next[String(rating) as "1" | "2"].days === 0;
       setQueue((q) => (q ? [...q.slice(1), ...(again ? [{ ...card, state: 1 }] : [])] : q));
@@ -82,6 +85,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
     }
     setError(null);
     setDone((n) => Math.max(0, n - 1));
+    setNotes((l) => l.slice(0, -1));
     // Put the card back first, and drop the copy a missed card queued for later in this session.
     setQueue((q) => [last.card, ...(q ?? []).filter((c) => c.id !== last.card.id)]);
     setLast(null);
@@ -138,6 +142,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
           {!card ? (
             <div className="space-y-3 rounded-md border border-line p-6">
               <p className="text-xl">{done ? copy("caughtUp") : copy("nothingDue")}</p>
+              {done > 0 && <p className="text-sm">{sessionSummary(notes)}</p>}
               <p className="text-muted">
                 {counts && counts.newAllowanceLeft === 0 ? "You have reached today's limit of new cards. " : ""}
                 Cards come back when it is time to see them again.
