@@ -104,6 +104,7 @@
 - **New: due flashcards on each course card.** The dashboard's course cards say how many flashcards from that course are due. New route `GET /study/due` returns the counts per course.
 - **New: a daily review reminder for your calendar.** Settings > Flashcards can download a repeating daily calendar entry at a time you pick, with a link back to the review. Nothing is sent from Ultimyr.
 - **Fixed: semicolons in credential names broke the calendar file.** They were not escaped in the downloaded .ics, so some calendar apps cut the title short.
+- **Improved: the course path starts higher on a phone.** For editors, the roadmap tools (edit, paste an outline, copy, publish) fold into one line once the roadmap is published, so the path itself is the first thing you see. A draft roadmap keeps them open. The exam countdown also asks for a missing date in plain grey text instead of red.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
