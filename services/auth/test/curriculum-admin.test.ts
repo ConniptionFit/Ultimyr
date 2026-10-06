@@ -30,12 +30,12 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("curriculum_admin role", () => {
     expect((await h.app.inject({ url: "/v1/admin/users", headers: bearer(token) })).statusCode).toBe(403);
   });
 
-  it("migration 0007 moves existing access_delegate people to curriculum_admin", async () => {
+  it("migration 0008 moves existing access_delegate people to curriculum_admin", async () => {
     const bob = (await register(h.app, "bob@example.com")).json();
     // Put the database back in its 0006 state, then run the migration SQL again.
     await h.pool.query("ALTER TABLE auth.role_assignments DROP CONSTRAINT role_assignments_role_check");
     await h.pool.query("INSERT INTO auth.role_assignments (user_id, role) VALUES ($1, 'access_delegate')", [bob.user.id]);
-    const sql = readFileSync(resolve(import.meta.dirname, "../migrations/0007_curriculum_admin_role.sql"), "utf8");
+    const sql = readFileSync(resolve(import.meta.dirname, "../migrations/0008_curriculum_admin_role.sql"), "utf8");
     await h.pool.query(sql);
     const { rows } = await h.pool.query("SELECT role FROM auth.role_assignments WHERE user_id = $1 ORDER BY role", [bob.user.id]);
     const roles = rows.map((r) => r.role);
