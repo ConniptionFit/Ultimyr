@@ -21,6 +21,11 @@ x-db-env: &db-env
   PG_DATABASE: ${PG_DATABASE:-}
   PG_SSLMODE: ${PG_SSLMODE:-disable}
 
+# Applied to every Ultimyr container: no extra Linux capabilities and no privilege gain through setuid binaries.
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
 services:
 
   # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
@@ -42,6 +47,7 @@ services:
     restart: unless-stopped
 
   migrate:
+    <<: *hardening
     build: { context: ., target: migrate }
     environment:
       <<: *db-env
@@ -53,6 +59,7 @@ services:
     restart: "no"
 
   auth:
+    <<: *hardening
     build: { context: ., target: auth }
     environment:
       <<: *db-env
@@ -83,6 +90,7 @@ services:
     restart: unless-stopped
 
   content:
+    <<: *hardening
     build: { context: ., target: content }
     environment:
       <<: *db-env
@@ -99,6 +107,7 @@ services:
     restart: unless-stopped
 
   quiz:
+    <<: *hardening
     build: { context: ., target: quiz }
     environment:
       <<: *db-env
@@ -117,6 +126,7 @@ services:
     restart: unless-stopped
 
   ai-gateway:
+    <<: *hardening
     build: { context: ., target: ai-gateway }
     environment:
       <<: *db-env
@@ -141,6 +151,7 @@ services:
     restart: unless-stopped
 
   notes:
+    <<: *hardening
     build: { context: ., target: notes }
     environment:
       <<: *db-env
@@ -165,6 +176,7 @@ services:
     restart: unless-stopped
 
   mcp:
+    <<: *hardening
     build: { context: ., target: mcp }
     environment:
       # Verifies tokens (JWKS) at auth and calls content and quiz as the signed in person. No database, no secrets.
@@ -185,6 +197,7 @@ services:
     restart: unless-stopped
 
   web:
+    <<: *hardening
     build:
       context: .
       target: web
