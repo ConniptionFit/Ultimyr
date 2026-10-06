@@ -9,7 +9,7 @@ const next = join(import.meta.dirname, "../apps/web/.next");
 const dir = join(next, "static/chunks");
 const BUDGET = {
   totalJsKb: 450, // every client chunk together (without the legacy-browser polyfills), an upper bound for any single page
-  pageJsKb: 260, // the heaviest page's first load: the JavaScript a browser downloads to open it
+  pageJsKb: 230, // the heaviest page's first load: the JavaScript a browser downloads to open it
   largestJsKb: 90, // the biggest single chunk (the React runtime)
   cssKb: 15,
 };
