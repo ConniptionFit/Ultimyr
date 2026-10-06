@@ -42,6 +42,7 @@ This is not a full audit by a person using assistive technology. Please report a
 ## Install as an app (PWA)
 Browsers offer "Install" because Ultimyr ships a manifest, icons and a service worker.
 - **What it does:** opens in its own window, and shows a friendly **offline page** when there is no connection.
+- **Offline notice:** with no connection a strip says changes may not save (announced politely to screen readers) and leaves when you are back.
 - **What it does not do:** study offline. The worker never caches pages, API, OAuth or MCP responses, so nothing private is stored on the device and you never see stale data. Offline study is a possible later phase.
 
 ## Example archive
