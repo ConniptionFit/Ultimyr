@@ -52,6 +52,7 @@ export function studyRoutes(ctx: Ctx) {
     deckTitle: c.deck_title,
     archiveId: c.archive_id,
     state: st.state,
+    lapses: st.lapses,
     due: new Date(st.due).toISOString(),
     // What each button would schedule, so the UI can label them ("again 1 min", "good 3 days").
     next: Object.fromEntries(Object.entries(preview(st, now, p)).map(([g, v]) => [g, { due: new Date(v.due).toISOString(), days: v.scheduledDays }])),

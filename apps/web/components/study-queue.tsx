@@ -9,7 +9,7 @@ import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
-import { formatNext, type StudyCard, type StudyQueue } from "@/lib/progress";
+import { formatNext, isLeech, type StudyCard, type StudyQueue } from "@/lib/progress";
 
 const RATINGS = [
   { n: 1, label: "Again", hint: "rateAgain" },
@@ -161,6 +161,11 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                   <div className="border-t border-line pt-4" aria-live="polite">
                     <Markdown>{card.back}</Markdown>
                   </div>
+                )}
+                {shown && isLeech(card) && (
+                  <p className="rounded-md bg-surface p-3 text-sm text-muted">
+                    You have forgotten this card {card.lapses} times. It may help to say the answer in your own words, tie it to a picture, or ask the author to split it into smaller cards.
+                  </p>
                 )}
               </div>
               {!shown ? (

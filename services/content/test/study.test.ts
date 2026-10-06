@@ -153,6 +153,7 @@ describe.skipIf(!testDbUrl)("undo a review", () => {
     expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: two.reviewId })).statusCode).toBe(200);
     const stats = json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`));
     expect(stats.cards[0].state).toBe(2);
+    expect(stats.cards[0].lapses).toBe(0);
     expect(stats.cards[0].due).toBe(one.due);
   });
 });

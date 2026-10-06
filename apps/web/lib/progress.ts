@@ -23,6 +23,8 @@ export interface StudyCard {
   hint: string | null;
   deckTitle: string;
   state: number;
+  /** Times the card was forgotten after being learned. Absent on the first card of an older server. */
+  lapses?: number;
   next: Record<"1" | "2" | "3" | "4", { due: string; days: number }>;
 }
 export interface StudyQueue {
@@ -37,3 +39,7 @@ export function formatNext(n: { due: string; days: number }, now = Date.now()): 
   const mins = Math.max(1, Math.round((new Date(n.due).getTime() - now) / 60_000));
   return `${mins} min`;
 }
+
+/** A card forgotten this many times is a "leech": the way it is written is probably the problem, not your memory. */
+export const LEECH_LAPSES = 6;
+export const isLeech = (card: { lapses?: number }) => (card.lapses ?? 0) >= LEECH_LAPSES;

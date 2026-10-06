@@ -86,6 +86,7 @@
 - **Tests: the exam grader is checked against random exams.** New property tests build hundreds of seeded random exams and assert that earned never exceeds the maximum, totals add up, results do not depend on the order answers were stored in, a perfect sheet always scores 100%, a blank one 0, a better sheet never scores lower, and scaled scores never fall as raw scores rise, for every official profile and the penalty and partial credit modes. No behaviour changes.
 - **New: Quick jump (themed: Boots of Travel).** Press Ctrl+K (Cmd+K on a Mac) anywhere to open a small box, type part of a page or course name and press Enter. Arrow keys choose, Esc closes, and the last row searches everything for what you typed. It loads only when first used.
 - **New: choose how many new flashcards a day, and how much you want to remember.** Settings > Flashcards has the two study settings that only the API could change before: new cards per day (none to 80) and the retention target (80% to 95%). They are saved to your account.
+- **New: a gentle note on cards you keep forgetting.** After you show the answer on a flashcard you have forgotten six or more times, a short note suggests restating it in your own words, tying it to a picture, or asking the author to split it. The queue response now includes each card's `lapses` count.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
