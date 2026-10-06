@@ -132,6 +132,17 @@ export function pathGet(root: any, path: string): any {
   return path.split(".").reduce((c, p) => (c == null ? undefined : c[p]), root);
 }
 
+/** Minutes left at which a screen reader is told how much time remains. */
+export const TIME_NOTICES = [30, 15, 10, 5, 1];
+
+/** The sentence to announce when the whole minutes left go from `prev` to `mins`, or null. `prev` null is the first look at the clock. */
+export function timeNotice(prev: number | null, mins: number): string | null {
+  if (mins <= 0 || mins === prev) return null;
+  if (prev === null) return `${mins} ${mins === 1 ? "minute" : "minutes"} remaining.`;
+  const crossed = TIME_NOTICES.some((m) => m < prev && m >= mins);
+  return crossed ? `${mins} ${mins === 1 ? "minute" : "minutes"} remaining.` : null;
+}
+
 export function formatClock(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(s / 3600);

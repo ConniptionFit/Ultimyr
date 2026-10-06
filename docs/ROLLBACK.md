@@ -38,4 +38,5 @@ Last migration at the revert point: `services/content/migrations/0009_review_und
 
 | Migration | Service | What it does | Manual undo |
 |---|---|---|---|
-| none yet | | | |
+| `0007_refresh_grace` | auth | Adds `auth.sessions.rotated_at` (the refresh grace window) | None needed. Old code ignores the column. |
+| `0008_curriculum_admin_role` | auth | Replaces the Access delegate role with Curriculum admin and moves its people | `UPDATE auth.role_assignments SET role = 'access_delegate' WHERE role = 'curriculum_admin';` then restore the old constraint: `ALTER TABLE auth.role_assignments DROP CONSTRAINT role_assignments_role_check; ALTER TABLE auth.role_assignments ADD CONSTRAINT role_assignments_role_check CHECK (role IN ('platform_admin','org_admin','author','learner','access_delegate'));` |

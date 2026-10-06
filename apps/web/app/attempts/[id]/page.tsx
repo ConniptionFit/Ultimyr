@@ -13,7 +13,7 @@ import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { REASON_LABEL } from "@/lib/certs";
-import { FIDELITY_LABEL, MODE_LABEL, formatClock, pct, type Attempt, type PlayQuestion } from "@/lib/quiz";
+import { FIDELITY_LABEL, MODE_LABEL, formatClock, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
 
 const answered = (q: PlayQuestion) => q.response !== null && q.response !== undefined && JSON.stringify(q.response) !== "{}";
 
@@ -57,6 +57,17 @@ export default function AttemptPage() {
   useEffect(() => {
     if (open && remaining !== null && remaining <= -1000) void load(); // ask the server to close it
   }, [open, remaining, load]);
+
+  // Screen readers hear the time left once at the start and again at 30, 15, 10, 5 and 1 minutes (the clock itself stays silent).
+  const [notice, setNotice] = useState("");
+  const lastMinute = useRef<number | null>(null);
+  const minutesLeft = open && remaining !== null ? Math.ceil(remaining / 60_000) : null;
+  useEffect(() => {
+    if (minutesLeft === null) return;
+    const said = timeNotice(lastMinute.current, minutesLeft);
+    lastMinute.current = minutesLeft;
+    if (said) setNotice(said);
+  }, [minutesLeft]);
 
   // Ask the server for its clock: corrects the display and tells us at once when time is up.
   const token = state.status === "authenticated" ? state.accessToken : null;
@@ -229,6 +240,7 @@ export default function AttemptPage() {
                 </p>
               )}
               {open && <FocusButton />}
+              <p className="sr-only" role="status" aria-live="polite">{notice}</p>
             </div>
           </div>
           {error && (
