@@ -196,6 +196,7 @@ export default function Users() {
       </div>
       <form
         role="search"
+        aria-label="Filter people"
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
