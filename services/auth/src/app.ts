@@ -36,6 +36,14 @@ type RouteModule = (ctx: Ctx) => (r: FastifyInstance) => Promise<void>;
 /** Route modules, each registered at `/...` and `/api/...` so proxies can forward /api/v1/* untouched. */
 const modules: RouteModule[] = [coreRoutes, mfaRoutes, passkeyRoutes, keyRoutes, adminRoutes, directoryRoutes, scimRoutes, ssoRoutes, samlRoutes, oauthRoutes];
 
+/** Postgres refusing the data itself (NUL character, malformed value, too long). Drizzle wraps the driver error, so look down the cause chain. */
+function isBadData(err: unknown): boolean {
+  for (let e: any = err, depth = 0; e && depth < 4; e = e.cause, depth++) {
+    if (typeof e.code === "string" && ["22021", "22P05", "22P02", "22001"].includes(e.code)) return true;
+  }
+  return false;
+}
+
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { pool, config, keys } = deps;
   const app = Fastify({ logger: config.nodeEnv === "test" ? false : { level: "info" }, trustProxy: true });
@@ -56,6 +64,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
     if (err.validation) return reply.code(400).send({ error: "invalid_request", issues: err.validation });
     if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.message });
+    if (isBadData(err)) return reply.code(400).send({ error: "invalid_request" });
     app.log.error(err);
     return reply.code(500).send({ error: "internal_error" });
   });
