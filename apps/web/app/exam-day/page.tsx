@@ -83,7 +83,7 @@ function ExamDay() {
     if (!archiveId) return;
     setError(null);
     try {
-      const q = new URLSearchParams({ archive: archiveId, minutes: String(minutes), mode: credential?.examMode ?? "unknown" });
+      const q = new URLSearchParams({ archive: archiveId, minutes: String(minutes), mode: credential?.examMode ?? "unknown", today: todayIso() });
       if (date) q.set("examDate", date);
       setPlan(await api<Plan>("GET", `plan?${q}`));
     } catch (e) {
@@ -145,7 +145,7 @@ function ExamDay() {
       </div>
       {!credentialId && <div className="no-print">{picker}</div>}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role={error.startsWith("Add an exam date") ? "status" : "alert"} className={`text-sm ${error.startsWith("Add an exam date") ? "text-muted" : "text-danger"}`}>
           {error}
         </p>
       )}

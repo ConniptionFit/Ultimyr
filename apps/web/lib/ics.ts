@@ -1,7 +1,7 @@
 import { MODE_LABEL, type Credential } from "./certs";
 
 /** Escape text for an iCalendar value (RFC 5545 section 3.3.11). */
-export const icsText = (s: string) => s.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\;").replace(/,/g, "\\,");
+export const icsText = (s: string) => s.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
 
 /** Fold a line at 75 octets, breaking only between characters. */
 export function foldLine(line: string): string {
@@ -90,5 +90,35 @@ export function buildIcs(credentials: Credential[], now = new Date()): string {
       lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsText(e.summary)}`, `TRIGGER:-P${e.alarmDays}D`, "END:VALARM", "END:VEVENT");
     }
   lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+/** A calendar entry that repeats every day at a local time (no time zone, so it follows the device). `hhmm` is "19:30". */
+export function dailyReminderIcs(hhmm: string, url: string, now = new Date()): string {
+  const [h = 19, m = 0] = hhmm.split(":").map(Number);
+  const at = `${String(h).padStart(2, "0")}${String(m).padStart(2, "0")}00`;
+  const today = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Ultimyr//Daily review//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    "UID:daily-review@ultimyr",
+    `DTSTAMP:${stamp(now)}`,
+    `DTSTART:${today}T${at}`,
+    "DURATION:PT15M",
+    "RRULE:FREQ=DAILY",
+    `SUMMARY:${icsText("Ultimyr daily review")}`,
+    `DESCRIPTION:${icsText(`Your flashcards are waiting: ${url}`)}`,
+    `URL:${url}`,
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:Daily review",
+    "TRIGGER:PT0M",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }

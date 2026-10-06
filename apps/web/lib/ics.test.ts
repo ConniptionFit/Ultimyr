@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Credential } from "./certs";
-import { buildIcs, credentialEvents, foldLine, icsText } from "./ics";
+import { buildIcs, credentialEvents, dailyReminderIcs, foldLine, icsText } from "./ics";
 
 const base: Credential = {
   id: "c1", name: "Claude Architect, Foundations", issuer: "Anthropic", archiveId: null, status: "scheduled", credentialNumber: "", examDate: "2026-12-31", examTime: "23:30",
@@ -8,7 +8,7 @@ const base: Credential = {
 };
 
 describe("ics", () => {
-  it("escapes text", () => expect(icsText("a,b;c\\d\ne")).toBe("a\\,b\;c\\\\d\\ne"));
+  it("escapes text", () => expect(icsText("a,b;c\\d\ne")).toBe("a\\,b\\;c\\\\d\\ne"));
   it("folds long lines at 75 octets", () => {
     const folded = foldLine("X:" + "é".repeat(100));
     for (const l of folded.split("\r\n")) expect(new TextEncoder().encode(l).length).toBeLessThanOrEqual(75);
@@ -29,4 +29,15 @@ describe("ics", () => {
     expect(e[0]?.alarmDays).toBe(60);
   });
   it("skips credentials with no dates", () => expect(credentialEvents({ ...base, examDate: null, voucherExpires: null })).toEqual([]));
+});
+
+describe("dailyReminderIcs", () => {
+  it("repeats daily at a floating local time and links back to the app", () => {
+    const ics = dailyReminderIcs("07:05", "https://ultimyr.example/study", new Date(2026, 9, 6, 12, 0, 0));
+    expect(ics).toContain("DTSTART:20261006T070500\r\n");
+    expect(ics).toContain("RRULE:FREQ=DAILY");
+    expect(ics).toContain("URL:https://ultimyr.example/study");
+    expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+    expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
+  });
 });

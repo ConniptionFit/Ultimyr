@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Choice } from "@/components/display-panel";
+import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { dailyReminderIcs } from "@/lib/ics";
 import { withCurrent } from "@/lib/study-settings";
 
 interface StudySettings {
@@ -15,6 +17,7 @@ export function StudyPanel() {
   const { api } = useAuth();
   const [s, setS] = useState<StudySettings | null>(null);
   const [msg, setMsg] = useState("");
+  const [at, setAt] = useState("19:00");
 
   useEffect(() => {
     api<StudySettings>("GET", "study/settings").then(setS).catch(() => setMsg("Could not load your study settings."));
@@ -60,6 +63,29 @@ export function StudyPanel() {
       ) : (
         !msg && <p className="text-sm text-muted">Loading</p>
       )}
+      <div className="space-y-1">
+        <p className="text-sm">Daily reminder</p>
+        <p className="text-xs text-muted">Downloads a calendar entry that repeats every day, so your own calendar app can nudge you. Nothing is sent from here.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="remind-at">
+            Reminder time
+          </label>
+          <input id="remind-at" type="time" value={at} onChange={(e) => setAt(e.target.value || "19:00")} className="rounded-md border border-line bg-surface px-3 py-1.5 text-ink" />
+          <Button
+            variant="quiet"
+            onClick={() => {
+              const url = URL.createObjectURL(new Blob([dailyReminderIcs(at, `${location.origin}/study`)], { type: "text/calendar;charset=utf-8" }));
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "ultimyr-daily-review.ics";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download calendar entry
+          </Button>
+        </div>
+      </div>
       <p role="status" className="text-sm text-muted">
         {msg}
       </p>

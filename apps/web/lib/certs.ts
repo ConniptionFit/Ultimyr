@@ -56,7 +56,8 @@ export function formatDay(day: string | null | undefined): string {
 export function formatDayShort(day: string): string {
   return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 }
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+/** Today's date on the person's own calendar (not UTC), as YYYY-MM-DD. */
+export const todayIso = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
 export function daysText(daysLeft: number | null): string {
   if (daysLeft === null) return "";

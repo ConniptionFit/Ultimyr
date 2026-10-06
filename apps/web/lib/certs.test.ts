@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysText, formatDay, formatDayShort } from "./certs";
+import { daysText, formatDay, formatDayShort, todayIso } from "./certs";
 
 describe("certification helpers", () => {
   it("shows plain days without shifting them by time zone", () => {
@@ -16,5 +16,12 @@ describe("certification helpers", () => {
     expect(daysText(-1)).toBe("yesterday");
     expect(daysText(-5)).toBe("5 days ago");
     expect(daysText(null)).toBe("");
+  });
+});
+
+describe("todayIso", () => {
+  it("uses the local calendar date, not UTC", () => {
+    expect(todayIso(new Date(2026, 9, 6, 23, 30))).toBe("2026-10-06");
+    expect(todayIso(new Date(2026, 0, 5, 0, 5))).toBe("2026-01-05");
   });
 });

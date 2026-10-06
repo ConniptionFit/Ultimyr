@@ -186,6 +186,11 @@ describe.skipIf(!testDbUrl)("weak-area drills, objective stats and the countdown
     const p = json(await call(learner, "GET", `/v1/plan?archive=${archive}&examDate=2026-10-14&mode=online&minutes=60`));
     expect(p).toMatchObject({ archiveId: archive, usedGoalDate: false, daysLeft: 10, status: "upcoming", phase: "consolidate" });
     expect(p.days).toHaveLength(11);
+    // A learner whose evening is still the 3rd gets the 3rd; a wildly different day is ignored.
+    const local = json(await call(learner, "GET", `/v1/plan?archive=${archive}&examDate=2026-10-14&today=2026-10-03`));
+    expect(local.daysLeft).toBe(11);
+    const bogus = json(await call(learner, "GET", `/v1/plan?archive=${archive}&examDate=2026-10-14&today=2026-01-01`));
+    expect(bogus.daysLeft).toBe(10);
     expect(p.checklist.join(" ")).toContain("system check");
     expect(p.readiness.bp).not.toBeNull();
     // Networking was missed, so it is the first weak topic named.

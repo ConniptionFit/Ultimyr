@@ -5,12 +5,22 @@ import type { Ctx } from "../ctx.js";
 import { buildPlan } from "../plan.js";
 
 const analyticsQuery = z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(1).max(365).default(30) });
+/** The day the plan starts from: the caller's local date when it is plausible (within one day of UTC), else the server's UTC date. */
+export function planToday(now: Date, claimed?: string): string {
+  const utc = now.toISOString().slice(0, 10);
+  if (!claimed) return utc;
+  const gap = Math.abs(Date.parse(`${claimed}T00:00:00Z`) - Date.parse(`${utc}T00:00:00Z`)) / 86_400_000;
+  return gap <= 1 ? claimed : utc;
+}
+
 const planQuery = z.object({
   archive: z.uuid(),
   /** The exam date. Falls back to the date on the archive's goal. */
   examDate: z.iso.date().optional(),
   minutes: z.coerce.number().int().min(15).max(480).default(45),
   mode: z.enum(["unknown", "test_center", "online"]).default("unknown"),
+  /** The person's own calendar day. Honoured only when it is within a day of the server's UTC date, so an evening in the Americas still counts as today. */
+  today: z.iso.date().optional(),
 });
 const goalBody = z.object({
   targetBp: z.number().int().min(1).max(10_000),
@@ -143,7 +153,7 @@ export function progressRoutes(ctx: Ctx) {
         .sort((x, y) => x.bp - y.bp || x.domain.localeCompare(y.domain))
         .slice(0, 4)
         .map((d) => d.domain);
-      return { archiveId: q.archive, usedGoalDate: !q.examDate, ...buildPlan({ today: ctx.now().toISOString().slice(0, 10), examDate, readinessBp: est.bp, targetBp: g[0]?.target_bp ?? null, weakAreas, minutesPerDay: q.minutes, mode: q.mode }) };
+      return { archiveId: q.archive, usedGoalDate: !q.examDate, ...buildPlan({ today: planToday(ctx.now(), q.today), examDate, readinessBp: est.bp, targetBp: g[0]?.target_bp ?? null, weakAreas, minutesPerDay: q.minutes, mode: q.mode }) };
     });
 
     /** Questions and the caller's own results for each exam objective of an archive, for the coverage map. */

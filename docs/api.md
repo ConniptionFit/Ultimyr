@@ -238,7 +238,7 @@ Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/drills` | `{ archiveId, count: 3 to 50, focus: mixed\|weak\|missed, objectiveId?, restart? }`. Resumes an open drill unless `restart`. 409 `no_questions` or `nothing_to_drill`. A drill is an attempt with `kind: "drill"`, so the attempt routes above apply. Drills do not feed the readiness estimate. |
-| GET | `/plan?archive=&examDate=&minutes=&mode=` | Phases, daily tasks (up to 28 days plus exam day), advice and an exam-day checklist. |
+| GET | `/plan?archive=&examDate=&minutes=&mode=&today=` | Phases, daily tasks (up to 28 days plus exam day), advice and an exam-day checklist. `today` is the caller's own calendar date (YYYY-MM-DD); it is used only when within a day of the server's UTC date. |
 
 ## AI gateway
 See [ai.md](ai.md#api) for the full list: `/ai/status`, `/ai/credentials`, `/ai/preferences`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads`, `/ai/me`. Scope `ai:use`.
