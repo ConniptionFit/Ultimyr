@@ -119,6 +119,7 @@
 - **Improved: flashcards can be written over several lines.** The Front and Back boxes on a deck are now resizable text areas (a back can hold a list or a code line), Ctrl or Cmd plus Enter saves or adds, and the card list shows each card the way the review does, with bold, lists and code formatted instead of raw Markdown marks.
 - **New: print a flashcard deck.** Decks get the same Print or save as PDF button as study guides. The printout lists each card with its front and back and leaves out the buttons, editors and forms.
 - **Improved: sign-in says to wait when you are rate limited.** After too many tries in a minute the form said "Something went wrong". It now says there were too many attempts and to wait a minute.
+- **Improved: Quick jump also finds your study material.** Type two or more letters and guides, decks and quizzes whose titles match appear under the pages and courses, so Ctrl+K takes you straight to "Ports flashcards".
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

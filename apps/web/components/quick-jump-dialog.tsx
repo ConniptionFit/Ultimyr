@@ -47,7 +47,31 @@ export default function QuickJumpDialog({ onClose }: { onClose: () => void }) {
 
   const results = useMemo(() => rankJump(entries, query), [entries, query]);
   const q = query.trim();
-  const rows: JumpEntry[] = q ? [...results, { id: "q-search", label: `Search everything for “${q}”`, href: `/search?q=${encodeURIComponent(q)}` }] : results;
+
+  // Guides, decks and quizzes by title, from the search service once two letters are typed.
+  const [material, setMaterial] = useState<{ q: string; rows: JumpEntry[] }>({ q: "", rows: [] });
+  useEffect(() => {
+    if (q.length < 2) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      api<{ results: { type: string; id: string; itemId: string | null; title: string }[] }>("GET", `search?q=${encodeURIComponent(q)}&type=item&limit=5`)
+        .then((r) => {
+          const rows = r.results
+            .filter((h) => h.type === "item")
+            .slice(0, 5)
+            .map((h) => ({ id: `i-${h.id}`, label: h.title, hint: "Material", href: `/items/${h.itemId ?? h.id}` }));
+          if (live) setMaterial({ q, rows });
+        })
+        .catch(() => {});
+    }, 200);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [api, q]);
+  const found = material.q === q ? material.rows : [];
+
+  const rows: JumpEntry[] = q ? [...results, ...found, { id: "q-search", label: `Search everything for “${q}”`, href: `/search?q=${encodeURIComponent(q)}` }] : results;
   const at = Math.min(active, rows.length - 1);
 
   function go(e: JumpEntry | undefined) {
@@ -67,8 +91,8 @@ export default function QuickJumpDialog({ onClose }: { onClose: () => void }) {
             aria-expanded="true"
             aria-controls="jump-list"
             aria-activedescendant={rows[at] ? `jump-${rows[at]!.id}` : undefined}
-            aria-label="Go to a page or course"
-            placeholder="Go to a page or course"
+            aria-label="Go to a page, course or material"
+            placeholder="Go to a page, course or material"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
