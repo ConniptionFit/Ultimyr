@@ -7,6 +7,7 @@ export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
   {
     area: "Anywhere",
     keys: [
+      ["Ctrl+K or Cmd+K", "Jump to any page or course"],
       ["/", "Search"],
       ["?", "Show this list"],
     ],

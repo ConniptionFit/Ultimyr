@@ -65,3 +65,5 @@ Empty states, saved messages and streaks use encouraging copy ("Nothing due, enj
 Press **?** anywhere (outside a text box) for the full list.
 
 Press **/** to jump to search.
+
+Press **Ctrl+K** (**Cmd+K** on a Mac) to open Quick jump (themed: Boots of Travel). Type part of a page or course name, use the arrow keys, and press Enter. It works anywhere, even inside a text box.

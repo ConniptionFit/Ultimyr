@@ -84,6 +84,7 @@
 - **New: spoken time warnings in timed quizzes.** A screen reader now hears "15 minutes remaining" when a timed attempt opens and at 30, 15, 10, 5 and 1 minutes. The on-screen clock is unchanged and still silent for assistive tech, so it does not chatter.
 - **Changed: containers run with no extra privileges.** Every Ultimyr container now drops all Linux capabilities and sets `no-new-privileges` (they already ran as an unprivileged user). Nothing needs them, so nothing changes for you; `git pull && docker compose up -d --build` recreates the containers.
 - **Tests: the exam grader is checked against random exams.** New property tests build hundreds of seeded random exams and assert that earned never exceeds the maximum, totals add up, results do not depend on the order answers were stored in, a perfect sheet always scores 100%, a blank one 0, a better sheet never scores lower, and scaled scores never fall as raw scores rise, for every official profile and the penalty and partial credit modes. No behaviour changes.
+- **New: Quick jump (themed: Boots of Travel).** Press Ctrl+K (Cmd+K on a Mac) anywhere to open a small box, type part of a page or course name and press Enter. Arrow keys choose, Esc closes, and the last row searches everything for what you typed. It loads only when first used.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
