@@ -98,6 +98,7 @@
 - **Security: pages send a basic Content-Security-Policy** (`base-uri 'self'; object-src 'none'; frame-ancestors 'self'`). It blocks an injected base tag, plugins and framing from other sites without restricting scripts, so nothing about how the app loads changes.
 - **Improved: the exam countdown fills itself in.** With one course it is chosen for you, and a course whose goal on Progress has an exam date opens with that date already entered.
 - **Fixed: a NUL character in a title, note or search no longer ends in "internal error".** Text the database cannot store (a NUL character, a malformed value, text that is too long) now gets a normal 400 `invalid_request` from every service instead of a 500.
+- **Improved: the study guide editor.** It shows a word count and reading time while you write, can replace the text with a Markdown file from your computer, and the browser asks before you close the tab with unsaved changes.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
