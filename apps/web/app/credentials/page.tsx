@@ -43,9 +43,11 @@ function Credentials() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  // Soonest date first within a group; undated ones last.
+  const soonest = (key: "examDate" | "expiresOn") => (a: Credential, b: Credential) => (a[key] ?? "9999-12-31").localeCompare(b[key] ?? "9999-12-31");
   const groups: { title: string; items: Credential[] }[] = [
-    { title: "Working toward", items: list.filter((c) => c.status === "planned" || c.status === "scheduled") },
-    { title: "Earned", items: list.filter((c) => c.status === "earned") },
+    { title: "Working toward", items: list.filter((c) => c.status === "planned" || c.status === "scheduled").sort(soonest("examDate")) },
+    { title: "Earned", items: list.filter((c) => c.status === "earned").sort(soonest("expiresOn")) },
     { title: "Retired", items: list.filter((c) => c.status === "retired") },
   ].filter((g) => g.items.length);
 
