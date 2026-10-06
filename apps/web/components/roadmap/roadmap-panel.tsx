@@ -26,6 +26,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [pasting, setPasting] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [others, setOthers] = useState<{ id: string; title: string }[] | null>(null);
   const [notes, setNotes] = useState<ArchiveNotes | null>(null);
@@ -319,7 +320,9 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
         </p>
       )}
       {canEdit && (
-        <div className="flex flex-wrap items-center gap-2">
+        <details open={!road.exists || road.status === "draft" || toolsOpen} onToggle={(e) => setToolsOpen(e.currentTarget.open)}>
+          <summary className="cursor-pointer text-sm text-muted hover:text-ink">{t("roadmap")} tools: edit, paste an outline, copy, publish</summary>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button variant="quiet" onClick={startEdit}>
             <Pencil size={16} aria-hidden /> {road.exists ? "Edit" : "Build"} {t("roadmap").toLowerCase()}
           </Button>
@@ -345,6 +348,7 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
           )}
           {road.status === "draft" && <span className="rounded-full border border-line px-2 text-xs text-muted">draft: only editors see this</span>}
         </div>
+        </details>
       )}
 
       {pasting && (
