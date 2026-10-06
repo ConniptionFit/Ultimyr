@@ -44,9 +44,9 @@ export function Markdown({ children }: { children: string }) {
           ul: ({ children: c }) => <ul className="my-3 list-disc pl-6">{c}</ul>,
           ol: ({ children: c }) => <ol className="my-3 list-decimal pl-6">{c}</ol>,
           code: ({ children: c }) => <code className="rounded bg-surface px-1 py-0.5 text-[0.9em]">{c}</code>,
-          pre: ({ children: c }) => <pre className="my-3 overflow-x-auto rounded-md border border-line bg-surface p-3 text-sm">{c}</pre>,
+          pre: ({ children: c }) => <pre tabIndex={0} className="my-3 overflow-x-auto rounded-md border border-line bg-surface p-3 text-sm">{c}</pre>,
           blockquote: ({ children: c }) => <blockquote className="my-3 border-l-2 border-line pl-4 text-muted">{c}</blockquote>,
-          table: ({ children: c }) => <div className="my-3 overflow-x-auto"><table className="w-full border-collapse text-sm">{c}</table></div>,
+          table: ({ children: c }) => <div role="region" aria-label="Table" tabIndex={0} className="my-3 overflow-x-auto"><table className="w-full border-collapse text-sm">{c}</table></div>,
           th: ({ children: c }) => <th scope="col" className="border border-line px-2 py-1 text-left">{c}</th>,
           td: ({ children: c }) => <td className="border border-line px-2 py-1">{c}</td>,
         }}
