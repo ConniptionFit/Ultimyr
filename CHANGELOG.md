@@ -89,6 +89,7 @@
 - **New: a gentle note on cards you keep forgetting.** After you show the answer on a flashcard you have forgotten six or more times, a short note suggests restating it in your own words, tying it to a picture, or asking the author to split it. The queue response now includes each card's `lapses` count.
 - **New: a Study days calendar on Progress.** Twelve weeks of small squares, one per day, shaded by how much you studied (flashcard reviews plus quiz attempts). It follows the course picker, has a text version for screen readers, and uses the new `GET /study/activity` route.
 - **New: Redo what I missed.** The results of a quiz, practice exam or drill have a button that starts a short practice drill of the questions you got wrong or only partly right, with instant feedback.
+- **New: reading time and a "you are here" marker in study guides.** A guide shows "About 12 min read" under its summary, and the contents list beside it underlines the section you are reading.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
