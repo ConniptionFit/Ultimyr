@@ -123,7 +123,7 @@ export default function ItemPage() {
               </p>
             </div>
             <div className="no-print flex shrink-0 gap-2">
-              {it.kind === "guide" && (
+              {it.kind !== "quiz" && (
                 <Button variant="quiet" aria-label="Print or save as PDF" title="Print or save as PDF" onClick={() => window.print()}>
                   <Printer size={16} />
                 </Button>
@@ -197,14 +197,22 @@ export default function ItemPage() {
           )}
 
           {it.kind === "guide" && (editing ? <GuideEditor it={it} onSubmit={saveGuide} onCancel={() => setEditing(false)} /> : <GuideReader it={it} />)}
-          {editor && it.kind !== "quiz" && <ObjectivePicker archiveId={it.archive.id} kind="item" refId={id} />}
+          {editor && it.kind !== "quiz" && (
+            <div className="no-print">
+              <ObjectivePicker archiveId={it.archive.id} kind="item" refId={id} />
+            </div>
+          )}
           {it.kind === "deck" && <Deck it={it} editor={editor} studying={studying} setStudying={setStudying} reload={load} fail={fail} />}
           {it.kind === "quiz" && <QuizPanel itemId={id} archiveId={it.archive.id} editor={editor} published={it.status === "published"} />}
 
-          {it.kind !== "quiz" && it.status === "published" && <AssistantPanel context={{ type: "item", id }} label="Ask about this" />}
+          {it.kind !== "quiz" && it.status === "published" && (
+            <div className="no-print">
+              <AssistantPanel context={{ type: "item", id }} label="Ask about this" />
+            </div>
+          )}
 
           {editor && (
-            <div className="flex flex-wrap items-start gap-3 border-t border-line pt-4">
+            <div className="no-print flex flex-wrap items-start gap-3 border-t border-line pt-4">
               {it.relation === "owner" && <ShareToggle id={id} />}
               <Button
                 variant="quiet"
@@ -359,10 +367,14 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl">{cards.length} {cards.length === 1 ? t("card").toLowerCase() : `${t("card").toLowerCase()}s`}</h2>
-        {cards.length > 0 && <Button onClick={() => setStudying(true)}>Study</Button>}
+        {cards.length > 0 && (
+          <Button className="no-print" onClick={() => setStudying(true)}>
+            Study
+          </Button>
+        )}
       </div>
       {mine && cards.length > 0 && (
-        <p className="text-sm text-muted">
+        <p className="no-print text-sm text-muted">
           {Math.min(cards.length, mine.learning + mine.review)} of {cards.length} {cards.length === 1 ? "card" : "cards"} in your daily review
           {mine.dueNow > 0 && (
             <>
@@ -376,7 +388,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         </p>
       )}
       {cards.length > 8 && (
-        <div>
+        <div className="no-print">
           <label className="sr-only" htmlFor="card-filter">
             Filter {t("card").toLowerCase()}s
           </label>
@@ -387,7 +399,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         {cards.length === 0 && <li className="p-4 text-muted">No cards yet.</li>}
         {cards.length > 0 && shownCards.length === 0 && <li className="p-4 text-muted">No card matches “{filter}”.</li>}
         {shownCards.map((c) => (
-          <li key={c.id} className="p-3">
+          <li key={c.id} className="break-inside-avoid p-3">
             {editId === c.id ? (
               <form onSubmit={(e) => saveCard(c, e)} className="space-y-2">
                 <TextAreaField id={`f-${c.id}`} name="front" label="Front" defaultValue={c.front} required maxLength={5000} />
@@ -411,7 +423,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
                   </div>
                 </div>
                 {editor && (
-                  <div className="flex shrink-0 gap-1">
+                  <div className="no-print flex shrink-0 gap-1">
                     <Button variant="quiet" aria-label="Edit card" onClick={() => setEditId(c.id)}>
                       <Pencil size={14} />
                     </Button>
@@ -433,7 +445,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         ))}
       </ul>
       {editor && (
-        <>
+        <div className="no-print space-y-4">
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <TextAreaField id="new-front" name="front" label="Front" required maxLength={5000} />
             <TextAreaField id="new-back" name="back" label="Back" required maxLength={10000} />
@@ -444,7 +456,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
             Import cards from CSV (front, back, tags). Creates a new deck.
             <input type="file" accept=".csv,.txt,text/csv,text/plain" className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
           </label>
-        </>
+        </div>
       )}
     </section>
   );

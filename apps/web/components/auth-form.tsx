@@ -8,6 +8,7 @@ import { takeReturn } from "@/lib/after-login";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
+import { fallbackError } from "@/lib/auth-errors";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const { state, signIn, changePassword, register, verifyMfa, signInWithPasskey } = useAuth();
@@ -61,7 +62,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       router.push(takeReturn() ?? "/reading-room");
     } catch (err) {
       setStatus("error");
-      setError(err instanceof ApiError && err.code === "invalid_code" ? "That code did not work." : err instanceof ApiError && err.status === 401 ? "This sign-in expired. Start again." : "Something went wrong. Please try again.");
+      setError(err instanceof ApiError && err.code === "invalid_code" ? "That code did not work." : err instanceof ApiError && err.status === 401 ? "This sign-in expired. Start again." : fallbackError(err));
     }
   }
 
@@ -86,7 +87,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       if (err instanceof ApiError && err.code === "password_unchanged") setError("Choose a different password from the temporary one.");
       else if (err instanceof ApiError && err.code === "invalid_request") setError(err.issues[0] ?? "Please check the password and try again.");
       else if (err instanceof ApiError && err.status === 401) setError("This step expired. Sign in again.");
-      else setError("Something went wrong. Please try again.");
+      else setError(fallbackError(err));
     }
   }
 
@@ -121,7 +122,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         else if (err.code === "local_users_disabled") setError(mode === "login" ? "Password sign-in is turned off here. Use single sign-on, or ask an administrator." : "Accounts on this installation come from single sign-on. Ask an administrator.");
         else if (err.code === "registration_closed") setError("Registration is closed on this installation. Ask an administrator for an invitation.");
         else if (err.code === "invalid_request") setError(err.issues[0] ?? "Please check the details and try again.");
-        else setError("Something went wrong. Please try again.");
+        else setError(fallbackError(err));
       } else setError("Could not reach the server.");
     }
   }
