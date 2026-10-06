@@ -111,6 +111,8 @@
 - **Improved: the daily review shows how far through the session you are.** A thin progress bar sits under the counter, and the deck name above a card links to that deck, handy for fixing a card as you meet it.
 - **Fixed: the Credentials header was crushed on a phone.** "Add to calendar" and "Add" were squeezed into tall, one-letter-wide columns beside the title once a credential had dates. They now sit under the title, and a long credential name wraps over two lines instead of being cut off.
 - **Improved: Progress no longer shows an empty chart.** With no cards due in the next week, the daily review card says so in a line instead of leaving a blank block.
+- **Fixed: the depth choices on Build with an AI assistant broke words in two on a phone.** "Quick" and "Standard" wrapped as "Quic / k". Each option now keeps its label together.
+- **Fixed: two more phone layouts.** On a course's Coverage tab the "Depth" label stacked letter by letter and its menu ran off the screen. On a study guide with a long title, the print, export, edit and history buttons shrank to specks beside it. Both now keep their size.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

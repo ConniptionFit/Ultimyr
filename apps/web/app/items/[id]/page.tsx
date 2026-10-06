@@ -113,7 +113,7 @@ export default function ItemPage() {
             ← {it.archive.title}
           </Link>
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-3xl">{it.title}</h1>
               <p className="text-sm text-muted">
                 {t(it.kind)}
@@ -122,7 +122,7 @@ export default function ItemPage() {
                 {it.version ? ` · version ${it.version.number}` : ""}
               </p>
             </div>
-            <div className="no-print flex gap-2">
+            <div className="no-print flex shrink-0 gap-2">
               {it.kind === "guide" && (
                 <Button variant="quiet" aria-label="Print or save as PDF" title="Print or save as PDF" onClick={() => window.print()}>
                   <Printer size={16} />
