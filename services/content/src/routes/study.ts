@@ -203,6 +203,21 @@ export function studyRoutes(ctx: Ctx) {
       return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", 'attachment; filename="ultimyr-review-history.csv"').send([head, ...lines].join("\n") + "\n");
     });
 
+    /** Flashcard reviews per day (UTC) for the activity grid on the progress page. Days without reviews are left out. */
+    r.get("/v1/study/activity", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const q = parse(z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(7).max(366).default(84) }), req.query);
+      const now = ctx.now();
+      const { rows } = await pool.query(
+        `SELECT to_char(reviewed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, count(*)::int AS reviews
+           FROM content.srs_reviews
+          WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND reviewed_at >= date_trunc('day', $3::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' - make_interval(days => $4::int - 1)
+          GROUP BY 1 ORDER BY 1`,
+        [a.userId, q.archive ?? null, now, q.days],
+      );
+      return { days: q.days, activity: rows };
+    });
+
     /** Counts, retention and a seven day forecast for the progress page. */
     r.get("/v1/study/stats", async (req) => {
       const a = await ctx.actor(req, "content:read");

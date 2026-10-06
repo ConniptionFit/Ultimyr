@@ -26,7 +26,7 @@ The scheduler is a pure function (`packages/fsrs`): the same history always prod
 - **Summary:** attempts, accuracy (marks earned over marks available), minutes spent answering, and your **streak** (consecutive days with an attempt, counted through today or yesterday so a day is not lost before you study).
 - **By day:** attempts, accuracy and minutes for each day.
 - **By domain:** accuracy and how many questions that rests on. The three lowest domains with at least 3 questions are suggested as where to start.
-- **Daily review:** cards learning, in review and due now, how many you reviewed today, the share you recalled over the last 30 days, and a forecast of cards due in each of the next 7 days (`GET /study/stats`).
+- **Daily review:** cards learning, in review and due now, how many you reviewed today, the share you recalled over the last 30 days, and a forecast of cards due in each of the next 7 days (`GET /study/stats`). A **Study days** calendar of the last 12 weeks shades each day by how much you studied, counting reviews (`GET /study/activity`) and quiz attempts.
 
 Everything is computed from your attempts and reviews when you ask, so there is no background job to run and nothing to go stale.
 
