@@ -111,6 +111,23 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     expect(json(await call(bob, "GET", `/v1/study/stats?archive=${archive}`))).toMatchObject({ review: 0, reviewedToday: 0 });
   });
 
+  it("counts reviews per day for the activity grid, only yours and only inside the window", async () => {
+    at("2027-02-10T08:00:00Z");
+    const { archive, cards } = await deckWith(3);
+    for (const c of cards) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 3 });
+    at("2027-02-13T22:00:00Z");
+    await call(alice, "POST", "/v1/study/review", { cardId: cards[0]!.id, rating: 3 });
+    const week = json(await call(alice, "GET", `/v1/study/activity?archive=${archive}&days=7`));
+    expect(week.activity).toEqual([
+      { date: "2027-02-10", reviews: 3 },
+      { date: "2027-02-13", reviews: 1 },
+    ]);
+    expect(json(await call(bob, "GET", `/v1/study/activity?archive=${archive}&days=7`)).activity).toEqual([]);
+    at("2027-02-20T08:00:00Z");
+    expect(json(await call(alice, "GET", `/v1/study/activity?archive=${archive}&days=7`)).activity).toEqual([]);
+    expect((await call(alice, "GET", "/v1/study/activity?days=2")).statusCode).toBe(400);
+  });
+
   it("deleting a card removes its schedule", async () => {
     at("2027-02-01T08:00:00Z");
     const { archive, deck, cards } = await deckWith(2);
@@ -153,6 +170,7 @@ describe.skipIf(!testDbUrl)("undo a review", () => {
     expect((await call(alice, "POST", "/v1/study/review/undo", { reviewId: two.reviewId })).statusCode).toBe(200);
     const stats = json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`));
     expect(stats.cards[0].state).toBe(2);
+    expect(stats.cards[0].lapses).toBe(0);
     expect(stats.cards[0].due).toBe(one.due);
   });
 });

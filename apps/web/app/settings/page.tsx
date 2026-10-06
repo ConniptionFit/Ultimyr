@@ -6,6 +6,7 @@ import { DisplayPanel } from "@/components/display-panel";
 import { MyDataPanel } from "@/components/my-data-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { NotesPanel } from "@/components/notes-panel";
+import { StudyPanel } from "@/components/study-panel";
 import { SecurityPanel } from "@/components/security-panel";
 import { Pane } from "@/components/side-nav";
 import { Toggle } from "@/components/ui";
@@ -14,6 +15,7 @@ import { useNaming } from "@/lib/naming";
 
 const SECTIONS = [
   { id: "display", label: "Display" },
+  { id: "study", label: "Flashcards" },
   { id: "security", label: "Security" },
   { id: "ai", label: "AI keys" },
   { id: "notes", label: "Notes" },
@@ -46,6 +48,9 @@ export default function Settings() {
       >
         <div id="display" className="scroll-mt-6 [&>section]:border-t-0 [&>section]:pt-0">
           <DisplayPanel />
+        </div>
+        <div id="study" className="scroll-mt-6 [&>section]:pt-8">
+          <StudyPanel />
         </div>
         <div id="security" className="scroll-mt-6 space-y-8 border-t border-line pt-8">
           <h2 className="text-xl">Security</h2>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
-import { formatNext, type StudyCard, type StudyQueue } from "@/lib/progress";
+import { formatNext, isLeech, sessionSummary, type ReviewNote, type StudyCard, type StudyQueue } from "@/lib/progress";
 
 const RATINGS = [
   { n: 1, label: "Again", hint: "rateAgain" },
@@ -28,6 +28,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [counts, setCounts] = useState<StudyQueue["counts"] | null>(null);
   const [shown, setShown] = useState(false);
   const [done, setDone] = useState(0);
+  const [notes, setNotes] = useState<ReviewNote[]>([]);
   const [last, setLast] = useState<{ card: StudyCard; reviewId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
@@ -63,6 +64,8 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
       }
       setError(null);
       setDone((n) => n + 1);
+      const ms = Date.now() - shownAt.current;
+      setNotes((l) => [...l, { rating, ms }]);
       // Cards you missed come back in a minute or ten: keep them in this session.
       const again = rating <= 2 && card.next[String(rating) as "1" | "2"].days === 0;
       setQueue((q) => (q ? [...q.slice(1), ...(again ? [{ ...card, state: 1 }] : [])] : q));
@@ -82,6 +85,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
     }
     setError(null);
     setDone((n) => Math.max(0, n - 1));
+    setNotes((l) => l.slice(0, -1));
     // Put the card back first, and drop the copy a missed card queued for later in this session.
     setQueue((q) => [last.card, ...(q ?? []).filter((c) => c.id !== last.card.id)]);
     setLast(null);
@@ -131,13 +135,14 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
           {last && (
             <p className="text-sm">
               <button onClick={undo} className="text-accent underline">
-                Undo last rating (U)
+                Undo last rating<span className="hidden md:inline"> (U)</span>
               </button>
             </p>
           )}
           {!card ? (
             <div className="space-y-3 rounded-md border border-line p-6">
               <p className="text-xl">{done ? copy("caughtUp") : copy("nothingDue")}</p>
+              {done > 0 && <p className="text-sm">{sessionSummary(notes)}</p>}
               <p className="text-muted">
                 {counts && counts.newAllowanceLeft === 0 ? "You have reached today's limit of new cards. " : ""}
                 Cards come back when it is time to see them again.
@@ -162,9 +167,16 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                     <Markdown>{card.back}</Markdown>
                   </div>
                 )}
+                {shown && isLeech(card) && (
+                  <p className="rounded-md bg-surface p-3 text-sm text-muted">
+                    You have forgotten this card {card.lapses} times. It may help to say the answer in your own words, tie it to a picture, or ask the author to split it into smaller cards.
+                  </p>
+                )}
               </div>
               {!shown ? (
-                <Button onClick={() => setShown(true)}>Show answer (space)</Button>
+                <Button onClick={() => setShown(true)}>
+                  Show answer<span className="hidden opacity-70 md:inline"> (space)</span>
+                </Button>
               ) : (
                 <div className="space-y-2">
                   <p className="text-sm">{copy("rateQuestion")}</p>
@@ -173,7 +185,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                     {RATINGS.map((r) => (
                       <Button key={r.n} variant={r.n === 3 ? "primary" : "quiet"} onClick={() => rate(r.n)} className="h-auto flex-col gap-0.5 py-2">
                         <span>
-                          {r.label} <span className="text-xs opacity-70">({r.n})</span>
+                          {r.label} <span className="hidden text-xs opacity-70 md:inline">({r.n})</span>
                         </span>
                         <span className="text-xs font-normal opacity-80">{copy(r.hint)}</span>
                         <span className="text-xs">Next: {formatNext(card.next[String(r.n) as "1" | "2" | "3" | "4"])}</span>
