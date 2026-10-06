@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **Changed: course builds leave out FAQs, introductions and other filler.** The connector prompt, the paste prompt, the Claude Skill, the `build_certification` MCP prompt, the build queue's guide task and the built-in AI guide generator now say to keep only learning material that serves the exam objectives, in guides and in saved links.
 - **New: print the exam countdown plan.** A Print button on the countdown page prints or saves the day-by-day plan as a clean black-on-white page without the menus and the course picker.
 - **Changed: credentials are listed by what is coming up.** Under Working toward the nearest exam date comes first, and under Earned the one that expires soonest, with undated ones last.
 - **New: press / to search.** From any page (outside a text box) the slash key puts the cursor in the search box, or opens the search page on a phone. It is listed under the ? shortcuts.
