@@ -29,12 +29,14 @@ export default function ReadingRoom() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [paths, setPaths] = useState<RoadmapSummary[]>([]);
+  const [dueBy, setDueBy] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
     try {
       setArchives((await api<{ archives: Archive[] }>("GET", "archives")).archives);
       // Roadmaps are a bonus on this page: if they fail to load, the list above still works.
+      api<{ byCourse: Record<string, number> }>("GET", "study/due").then((d) => setDueBy(d.byCourse)).catch(() => undefined);
       setPaths((await api<{ roadmaps: RoadmapSummary[] }>("GET", "roadmaps").catch(() => ({ roadmaps: [] }))).roadmaps);
     } catch {
       setArchives([]);
@@ -204,6 +206,7 @@ export default function ReadingRoom() {
                           <span className="block text-sm text-muted">
                             {[a.vendor, `${a.itemCount ?? 0} items`, a.relation === "owner" ? null : "shared with you"].filter(Boolean).join(" · ")}
                           </span>
+                          {(dueBy[a.id] ?? 0) > 0 && <span className="mt-1 block text-sm text-accent">{dueBy[a.id]} {dueBy[a.id] === 1 ? "flashcard" : "flashcards"} due</span>}
                         </span>
                       </Link>
                     </li>

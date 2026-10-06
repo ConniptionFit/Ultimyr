@@ -25,7 +25,22 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
   const [mode, setMode] = useState<Mode>("practice");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [find, setFind] = useState("");
+  const [area, setArea] = useState("");
 
+  const drafts = questions.filter((q) => q.status === "draft");
+  const areas = Array.from(new Set(questions.flatMap((q) => (q.domain ? [q.domain] : [])))).sort();
+  const needle = find.trim().toLowerCase();
+  const shownQuestions = questions.filter((q) => (!area || q.domain === area) && (!needle || q.stem.toLowerCase().includes(needle)));
+  async function publishAllDrafts() {
+    if (!confirm(`Publish ${drafts.length} draft questions? Learners will see them straight away.`)) return;
+    try {
+      for (const q of drafts) await api("PATCH", `questions/${q.id}`, { status: "published" });
+    } catch (e) {
+      fail(e);
+    }
+    await load();
+  }
   const fail = (e: unknown) => setError(e instanceof ApiError ? (e.issues[0] ?? e.code.replaceAll("_", " ")) : "Something went wrong.");
 
   const load = useCallback(async () => {
@@ -203,9 +218,41 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
                 }}
               />
             )}
+            {drafts.length > 1 && (
+              <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
+                {drafts.length} questions are drafts.
+                <Button variant="quiet" onClick={publishAllDrafts}>
+                  Publish all {drafts.length}
+                </Button>
+              </p>
+            )}
+            {questions.length > 8 && (
+              <div className="flex flex-wrap gap-2">
+                <label className="sr-only" htmlFor="q-find">
+                  Filter questions
+                </label>
+                <input id="q-find" type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={`Filter ${questions.length} questions`} className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-ink" />
+                {areas.length > 0 && (
+                  <>
+                    <label className="sr-only" htmlFor="q-area">
+                      Domain
+                    </label>
+                    <select id="q-area" value={area} onChange={(e) => setArea(e.target.value)} className="rounded-md border border-line bg-surface px-3 py-2 text-ink">
+                      <option value="">All domains</option>
+                      {areas.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            )}
             <ul className="divide-y divide-line rounded-md border border-line">
               {questions.length === 0 && <li className="p-4 text-muted">No questions yet. This {word} cannot be attempted until you add some.</li>}
-              {questions.map((q) => (
+              {questions.length > 0 && shownQuestions.length === 0 && <li className="p-4 text-muted">No question matches that filter.</li>}
+              {shownQuestions.map((q) => (
                 <li key={q.id} className="p-3">
                   {editing === q.id ? (
                     <QuestionEditor

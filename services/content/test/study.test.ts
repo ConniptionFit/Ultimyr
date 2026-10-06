@@ -98,8 +98,10 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
 
   it("reports counts, retention and a seven day forecast", async () => {
     at("2027-01-10T08:00:00Z");
-    const { archive, cards } = await deckWith(3);
+    const { archive, deck, cards } = await deckWith(3);
     for (const c of cards) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 3 });
+    expect(json(await call(alice, "GET", `/v1/study/stats?deck=${deck}`))).toMatchObject({ review: 3, learning: 0 });
+    expect(json(await call(alice, "GET", `/v1/study/stats?deck=${uuid()}`))).toMatchObject({ review: 0, learning: 0 });
     const fresh = json(await call(alice, "GET", `/v1/study/stats?archive=${archive}`));
     expect(fresh).toMatchObject({ review: 3, learning: 0, dueNow: 0, reviewedToday: 3, retentionBp: null, forecast: [0, 0, 0, 3, 0, 0, 0] });
     at("2027-01-13T08:00:00Z");
@@ -109,6 +111,20 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     expect(s).toMatchObject({ recalls30d: 2, retentionBp: 5000, learning: 1, review: 2, reviewedToday: 2 });
     expect(s.dueNow).toBeGreaterThanOrEqual(1);
     expect(json(await call(bob, "GET", `/v1/study/stats?archive=${archive}`))).toMatchObject({ review: 0, reviewedToday: 0 });
+  });
+
+  it("counts due cards per course, only yours", async () => {
+    at("2027-03-10T08:00:00Z");
+    const one = await deckWith(2);
+    const two = await deckWith(1);
+    for (const c of [...one.cards, ...two.cards]) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 1 });
+    at("2027-03-10T08:30:00Z");
+    const due = json(await call(alice, "GET", "/v1/study/due")).byCourse as Record<string, number>;
+    expect(due[one.archive]).toBe(2);
+    expect(due[two.archive]).toBe(1);
+    const bobs = json(await call(bob, "GET", "/v1/study/due")).byCourse as Record<string, number>;
+    expect(bobs[one.archive]).toBeUndefined();
+    expect(bobs[two.archive]).toBeUndefined();
   });
 
   it("counts reviews per day for the activity grid, only yours and only inside the window", async () => {

@@ -21,6 +21,11 @@ describe.skipIf(!testDbUrl)("API keys and sessions", () => {
     h.app.inject({ method: "POST", url: "/v1/me/api-keys", headers: bearer(token), payload: body });
   const exchange = (key: string) => h.app.inject({ method: "POST", url: "/v1/auth/token", headers: bearer(key) });
 
+  it("answers 400, not 500, when a key name holds a NUL character", async () => {
+    const token = await setup();
+    expect((await createKey(token, { name: "a\u0000b", scopes: ["content:read"] })).statusCode).toBe(400);
+  });
+
   it("creates a key shown once, stores only a hash, and exchanges it for a scoped token", async () => {
     const token = await setup();
     const created = await createKey(token, { name: "mcp", scopes: ["content:read", "content:write"] });

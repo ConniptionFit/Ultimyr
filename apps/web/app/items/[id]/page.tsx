@@ -10,6 +10,7 @@ import { Header } from "@/components/header";
 import { Markdown } from "@/components/markdown";
 import { ObjectivePicker } from "@/components/coverage/objective-picker";
 import { QuizPanel } from "@/components/quiz/quiz-panel";
+import { readingMinutes } from "@/lib/reading-time";
 import { GuideReader, Study } from "@/components/item-views";
 import { SharePanel } from "@/components/share-panel";
 import { Button, Field, Shell } from "@/components/ui";
@@ -242,6 +243,16 @@ function ShareToggle({ id }: { id: string }) {
 function GuideEditor({ it, onSubmit, onCancel }: { it: ItemDetail; onSubmit: (e: FormEvent<HTMLFormElement>) => void; onCancel: () => void }) {
   const [text, setText] = useState(it.markdown ?? "");
   const [preview, setPreview] = useState(false);
+  const changed = text !== (it.markdown ?? "");
+
+  // Closing the tab with unsaved edits asks first. Saving reloads the item, which unmounts this editor and removes the guard.
+  useEffect(() => {
+    if (!changed) return;
+    const guard = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [changed]);
+
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <Field id="g-title" name="title" label="Title" defaultValue={it.title} required maxLength={160} />
@@ -262,6 +273,30 @@ function GuideEditor({ it, onSubmit, onCancel }: { it: ItemDetail; onSubmit: (e:
         <textarea id="g-md" name="markdown" value={text} onChange={(e) => setText(e.target.value)} rows={22} spellCheck className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm text-ink" />
       )}
       {preview && <input type="hidden" name="markdown" value={text} />}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+        <span>
+          {text.trim() ? `${text.trim().split(/\s+/).length} words, about ${readingMinutes(text)} min read` : "Nothing written yet"}
+          {changed ? " · unsaved changes" : ""}
+        </span>
+        <label className="block">
+          <span className="sr-only">Replace the text with a Markdown file</span>
+          <input
+            type="file"
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            className="text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              if (text.trim() && !window.confirm("Replace the text above with this file?")) {
+                e.target.value = "";
+                return;
+              }
+              setText(await f.text());
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
       <Field id="g-note" name="note" label="What changed? (optional)" maxLength={200} />
       <div className="flex gap-2">
         <Button type="submit">Save new version</Button>
@@ -277,6 +312,10 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
   const { api } = useAuth();
   const { t } = useNaming();
   const cards = it.cards ?? [];
+  const [mine, setMine] = useState<{ learning: number; review: number; dueNow: number } | null>(null);
+  useEffect(() => {
+    api<{ learning: number; review: number; dueNow: number }>("GET", `study/stats?deck=${it.id}`).then(setMine).catch(() => setMine(null));
+  }, [api, it.id]);
   const [editId, setEditId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -320,6 +359,20 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         <h2 className="text-xl">{cards.length} {cards.length === 1 ? t("card").toLowerCase() : `${t("card").toLowerCase()}s`}</h2>
         {cards.length > 0 && <Button onClick={() => setStudying(true)}>Study</Button>}
       </div>
+      {mine && cards.length > 0 && (
+        <p className="text-sm text-muted">
+          {Math.min(cards.length, mine.learning + mine.review)} of {cards.length} {cards.length === 1 ? "card" : "cards"} in your daily review
+          {mine.dueNow > 0 && (
+            <>
+              {" "}
+              ·{" "}
+              <Link href={`/study?deck=${it.id}`} className="text-accent underline">
+                {mine.dueNow} due, review now
+              </Link>
+            </>
+          )}
+        </p>
+      )}
       {cards.length > 8 && (
         <div>
           <label className="sr-only" htmlFor="card-filter">

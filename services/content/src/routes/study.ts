@@ -203,6 +203,13 @@ export function studyRoutes(ctx: Ctx) {
       return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", 'attachment; filename="ultimyr-review-history.csv"').send([head, ...lines].join("\n") + "\n");
     });
 
+    /** Cards due now, counted per course, for the dashboard. Courses with nothing due are left out. */
+    r.get("/v1/study/due", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const { rows } = await pool.query("SELECT archive_id, count(*)::int AS due FROM content.srs_state WHERE user_id = $1 AND due <= $2 GROUP BY archive_id", [a.userId, ctx.now()]);
+      return { byCourse: Object.fromEntries(rows.map((x) => [x.archive_id, x.due])) };
+    });
+
     /** Flashcard reviews per day (UTC) for the activity grid on the progress page. Days without reviews are left out. */
     r.get("/v1/study/activity", async (req) => {
       const a = await ctx.actor(req, "content:read");
@@ -221,14 +228,15 @@ export function studyRoutes(ctx: Ctx) {
     /** Counts, retention and a seven day forecast for the progress page. */
     r.get("/v1/study/stats", async (req) => {
       const a = await ctx.actor(req, "content:read");
-      const { archive } = parse(z.object({ archive: z.uuid().optional() }), req.query);
+      const { archive, deck } = parse(z.object({ archive: z.uuid().optional(), deck: z.uuid().optional() }), req.query);
       const now = ctx.now();
       const args = [a.userId, archive ?? null, now];
+      // `deck` narrows the card counts only (learning, review, due now); reviews and the forecast stay per course.
       const { rows: st } = await pool.query(
         `SELECT count(*) FILTER (WHERE state = 1 OR state = 3)::int AS learning, count(*) FILTER (WHERE state = 2)::int AS review,
                 count(*) FILTER (WHERE due <= $3)::int AS due_now
-           FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2)`,
-        args,
+           FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND ($4::uuid IS NULL OR deck_id = $4)`,
+        [...args, deck ?? null],
       );
       const { rows: rv } = await pool.query(
         `SELECT count(*) FILTER (WHERE reviewed_at >= date_trunc('day', $3::timestamptz))::int AS today,
