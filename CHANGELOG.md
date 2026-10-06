@@ -63,6 +63,7 @@
 - **Improved: every page has its own title.** Browser tabs, history and screen readers now say "Progress | Ultimyr", "Daily review | Ultimyr" and so on instead of just "Ultimyr". No migrations.
 - **Improved: every page has its own title.** Browser tabs, history and screen readers now say "Progress | Ultimyr", "Daily review | Ultimyr" and so on instead of just "Ultimyr". No migrations.
 - **Improved: weak passwords are turned away.** Choosing a password (sign up, invite link, first sign-in after a temporary password) now also rejects the most common 12-character choices (such as `password12345`), repeated characters or short patterns, runs like `123456789012`, and a password that contains your email name, with a message that says why. The 12-character minimum is unchanged, existing passwords keep working, and passphrases are fine. No migrations.
+- **Improved: Admin panel pages have their own titles** ("Users | Admin panel | Ultimyr"), so the tab, history and screen readers say which category you are in. No migrations.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
