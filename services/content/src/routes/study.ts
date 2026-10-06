@@ -1,5 +1,5 @@
 import { DEFAULT_W, State, newCard, preview, review, type CardState, type Params, type Rating } from "@ultimyr/fsrs";
-import { HttpError, parse, uuidv7 } from "@ultimyr/service-kit";
+import { HttpError, parse, resolveZone, uuidv7 } from "@ultimyr/service-kit";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ARCHIVE_REL, ITEM_GRANT, RANK, loadItem } from "../access.js";
@@ -10,6 +10,8 @@ const queueQuery = z.object({
   archive: z.uuid().optional(),
   deck: z.uuid().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
+  /** IANA time zone, so the daily new-card allowance resets at the person's own midnight. */
+  tz: z.string().max(64).optional(),
 });
 const reviewBody = z.object({
   cardId: z.uuid(),
@@ -101,7 +103,8 @@ export function studyRoutes(ctx: Ctx) {
           WHERE st.due <= $5 ORDER BY st.due LIMIT $6`,
         [...base, now, q.limit],
       );
-      const { rows: today } = await pool.query("SELECT count(*)::int AS n FROM content.srs_reviews WHERE user_id = $1 AND state_before = 0 AND reviewed_at >= date_trunc('day', $2::timestamptz)", [a.userId, now]);
+      const zone = await resolveZone(pool, q.tz);
+      const { rows: today } = await pool.query("SELECT count(*)::int AS n FROM content.srs_reviews WHERE user_id = $1 AND state_before = 0 AND reviewed_at >= date_trunc('day', $2::timestamptz AT TIME ZONE $3) AT TIME ZONE $3", [a.userId, now, zone]);
       const room = Math.max(0, Math.min(s.newPerDay - today[0].n, q.limit - due.length));
       const { rows: fresh } = room
         ? await pool.query(
@@ -210,17 +213,18 @@ export function studyRoutes(ctx: Ctx) {
       return { byCourse: Object.fromEntries(rows.map((x) => [x.archive_id, x.due])) };
     });
 
-    /** Flashcard reviews per day (UTC) for the activity grid on the progress page. Days without reviews are left out. */
+    /** Flashcard reviews per calendar day (in the caller's `tz`, UTC if none) for the activity grid on the progress page. Days without reviews are left out. */
     r.get("/v1/study/activity", async (req) => {
       const a = await ctx.actor(req, "content:read");
-      const q = parse(z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(7).max(366).default(84) }), req.query);
+      const q = parse(z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(7).max(366).default(84), tz: z.string().max(64).optional() }), req.query);
       const now = ctx.now();
+      const zone = await resolveZone(pool, q.tz);
       const { rows } = await pool.query(
-        `SELECT to_char(reviewed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, count(*)::int AS reviews
+        `SELECT to_char(reviewed_at AT TIME ZONE $5, 'YYYY-MM-DD') AS date, count(*)::int AS reviews
            FROM content.srs_reviews
-          WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND reviewed_at >= date_trunc('day', $3::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' - make_interval(days => $4::int - 1)
+          WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND reviewed_at >= (date_trunc('day', $3::timestamptz AT TIME ZONE $5) - make_interval(days => $4::int - 1)) AT TIME ZONE $5
           GROUP BY 1 ORDER BY 1`,
-        [a.userId, q.archive ?? null, now, q.days],
+        [a.userId, q.archive ?? null, now, q.days, zone],
       );
       return { days: q.days, activity: rows };
     });
@@ -228,26 +232,27 @@ export function studyRoutes(ctx: Ctx) {
     /** Counts, retention and a seven day forecast for the progress page. */
     r.get("/v1/study/stats", async (req) => {
       const a = await ctx.actor(req, "content:read");
-      const { archive, deck } = parse(z.object({ archive: z.uuid().optional(), deck: z.uuid().optional() }), req.query);
+      const { archive, deck, tz } = parse(z.object({ archive: z.uuid().optional(), deck: z.uuid().optional(), tz: z.string().max(64).optional() }), req.query);
+      const zone = await resolveZone(pool, tz);
       const now = ctx.now();
-      const args = [a.userId, archive ?? null, now];
+      const args = [a.userId, archive ?? null, now, zone];
       // `deck` narrows the card counts only (learning, review, due now); reviews and the forecast stay per course.
       const { rows: st } = await pool.query(
         `SELECT count(*) FILTER (WHERE state = 1 OR state = 3)::int AS learning, count(*) FILTER (WHERE state = 2)::int AS review,
                 count(*) FILTER (WHERE due <= $3)::int AS due_now
            FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND ($4::uuid IS NULL OR deck_id = $4)`,
-        [...args, deck ?? null],
+        [a.userId, archive ?? null, now, deck ?? null],
       );
       const { rows: rv } = await pool.query(
-        `SELECT count(*) FILTER (WHERE reviewed_at >= date_trunc('day', $3::timestamptz))::int AS today,
+        `SELECT count(*) FILTER (WHERE reviewed_at >= date_trunc('day', $3::timestamptz AT TIME ZONE $4) AT TIME ZONE $4)::int AS today,
                 count(*) FILTER (WHERE state_before IN (2, 3) AND reviewed_at >= $3::timestamptz - interval '30 days')::int AS recalls,
                 count(*) FILTER (WHERE state_before IN (2, 3) AND rating > 1 AND reviewed_at >= $3::timestamptz - interval '30 days')::int AS recalled
            FROM content.srs_reviews WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2)`,
         args,
       );
       const { rows: fc } = await pool.query(
-        `SELECT (floor(extract(epoch FROM (due - date_trunc('day', $3::timestamptz))) / 86400))::int AS day, count(*)::int AS n
-           FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND due >= $3::timestamptz AND due < date_trunc('day', $3::timestamptz) + interval '7 days'
+        `SELECT (floor(extract(epoch FROM (due - (date_trunc('day', $3::timestamptz AT TIME ZONE $4) AT TIME ZONE $4))) / 86400))::int AS day, count(*)::int AS n
+           FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND due >= $3::timestamptz AND due < (date_trunc('day', $3::timestamptz AT TIME ZONE $4) + interval '7 days') AT TIME ZONE $4
           GROUP BY 1 ORDER BY 1`,
         args,
       );

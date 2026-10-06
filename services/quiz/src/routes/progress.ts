@@ -1,10 +1,10 @@
-import { HttpError, idParam, parse } from "@ultimyr/service-kit";
+import { HttpError, resolveZone, zoneDay, idParam, parse } from "@ultimyr/service-kit";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Ctx } from "../ctx.js";
 import { buildPlan } from "../plan.js";
 
-const analyticsQuery = z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(1).max(365).default(30) });
+const analyticsQuery = z.object({ archive: z.uuid().optional(), days: z.coerce.number().int().min(1).max(365).default(30), /** IANA time zone for day boundaries (UTC when missing or unknown). */ tz: z.string().max(64).optional() });
 /** The day the plan starts from: the caller's local date when it is plausible (within one day of UTC), else the server's UTC date. */
 export function planToday(now: Date, claimed?: string): string {
   const utc = now.toISOString().slice(0, 10);
@@ -54,19 +54,21 @@ export function progressRoutes(ctx: Ctx) {
       const q = parse(analyticsQuery, req.query);
       const now = ctx.now();
       const since = new Date(now.getTime() - q.days * 86_400_000);
+      const zone = await resolveZone(pool, q.tz);
       const args = [a.userId, since, q.archive ?? null];
+      const argsTz = [...args, zone];
       const closed = "a.user_id = $1 AND a.status <> 'in_progress' AND a.started_at >= $2 AND ($3::uuid IS NULL OR a.archive_id = $3)";
 
       const { rows: daily } = await pool.query(
-        `SELECT to_char(date_trunc('day', a.started_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day, count(*)::int AS attempts,
+        `SELECT to_char(date_trunc('day', a.started_at AT TIME ZONE $4), 'YYYY-MM-DD') AS day, count(*)::int AS attempts,
                 COALESCE(sum(a.raw_earned), 0)::bigint AS earned, COALESCE(sum(a.raw_max), 0)::bigint AS max
            FROM quiz.attempts a WHERE ${closed} GROUP BY 1 ORDER BY 1`,
-        args,
+        argsTz,
       );
       const { rows: mins } = await pool.query(
-        `SELECT to_char(date_trunc('day', a.started_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day, COALESCE(sum(ai.time_ms), 0)::bigint AS ms
+        `SELECT to_char(date_trunc('day', a.started_at AT TIME ZONE $4), 'YYYY-MM-DD') AS day, COALESCE(sum(ai.time_ms), 0)::bigint AS ms
            FROM quiz.attempts a JOIN quiz.attempt_items ai ON ai.attempt_id = a.id WHERE ${closed} GROUP BY 1`,
-        args,
+        argsTz,
       );
       const { rows: doms } = await pool.query(
         `SELECT COALESCE(ai.question->>'domain', 'General') AS domain, COALESCE(sum(ai.points_awarded), 0)::bigint AS earned,
@@ -77,8 +79,8 @@ export function progressRoutes(ctx: Ctx) {
         args,
       );
       const { rows: active } = await pool.query(
-        "SELECT DISTINCT to_char(date_trunc('day', started_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day FROM quiz.attempts WHERE user_id = $1 AND status <> 'in_progress' AND started_at >= $2 ORDER BY 1 DESC",
-        [a.userId, new Date(now.getTime() - 120 * 86_400_000)],
+        "SELECT DISTINCT to_char(date_trunc('day', started_at AT TIME ZONE $3), 'YYYY-MM-DD') AS day FROM quiz.attempts WHERE user_id = $1 AND status <> 'in_progress' AND started_at >= $2 ORDER BY 1 DESC",
+        [a.userId, new Date(now.getTime() - 120 * 86_400_000), zone],
       );
 
       const minutesByDay = new Map(mins.map((m) => [m.day, Math.round(Number(m.ms) / 60_000)]));
@@ -90,7 +92,7 @@ export function progressRoutes(ctx: Ctx) {
 
       // Streak: consecutive active days ending today (or yesterday, so the day is not lost before you study).
       const days = new Set(active.map((x) => x.day));
-      const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+      const iso = (t: number) => zoneDay(t, zone);
       let cursor = now.getTime();
       if (!days.has(iso(cursor))) cursor -= 86_400_000;
       let streakDays = 0;

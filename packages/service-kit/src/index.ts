@@ -31,6 +31,32 @@ export function isBadDataError(err: unknown): boolean {
   return false;
 }
 
+const zoneKnown = new Map<string, boolean>();
+
+/**
+ * The caller's IANA time zone (for "today" in their own calendar), or "UTC" when it is missing or not one Postgres knows.
+ * Checked against pg_timezone_names once per name and remembered.
+ */
+export async function resolveZone(pool: Pool, tz: unknown): Promise<string> {
+  if (typeof tz !== "string" || tz === "UTC" || !/^[A-Za-z][A-Za-z0-9_+\-]*(\/[A-Za-z0-9_+\-]+){0,2}$/.test(tz) || tz.length > 64) return "UTC";
+  let ok = zoneKnown.get(tz);
+  if (ok === undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz });
+      ok = (await pool.query("SELECT 1 FROM pg_timezone_names WHERE name = $1", [tz])).rowCount === 1;
+    } catch {
+      ok = false;
+    }
+    if (zoneKnown.size < 500) zoneKnown.set(tz, ok);
+  }
+  return ok ? tz : "UTC";
+}
+
+/** YYYY-MM-DD of an instant on a zone's calendar. */
+export function zoneDay(ms: number, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+}
+
 export function parse<T extends z.ZodType>(schema: T, data: unknown): z.infer<T> {
   const r = schema.safeParse(data);
   if (!r.success) {

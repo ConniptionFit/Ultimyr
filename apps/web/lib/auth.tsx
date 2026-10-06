@@ -1,5 +1,6 @@
 "use client";
 
+import { localZone, withZone } from "@/lib/tz";
 import { clearOffline } from "./offline";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const api = useCallback(
     async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
       const send = (t: string | null) =>
-        fetch(`/api/v1/${path}`, {
+        fetch(`/api/v1/${method === "GET" ? withZone(path, localZone()) : path}`, {
           method,
           headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(t ? { authorization: `Bearer ${t}` } : {}) },
           body: body !== undefined ? JSON.stringify(body) : undefined,

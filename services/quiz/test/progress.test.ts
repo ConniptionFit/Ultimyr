@@ -79,6 +79,17 @@ describe.skipIf(!testDbUrl)("progress: analytics, goals and the live clock", () 
     expect(json(await call(learner, "GET", "/v1/analytics")).summary.streakDays).toBe(0);
   });
 
+  it("counts days and the streak on the caller's own calendar when given a time zone", async () => {
+    // Attempts were at 10:00Z on Oct 1 to 3, which is 00:00 on Oct 2 to 4 in Kiritimati (UTC+14).
+    at("2026-10-05T09:00:00Z");
+    expect(json(await call(learner, "GET", "/v1/analytics")).summary.streakDays).toBe(0);
+    const k = json(await call(learner, "GET", "/v1/analytics?tz=Pacific/Kiritimati&days=30"));
+    expect(k.summary.streakDays).toBe(3);
+    expect(k.daily.map((d: any) => d.date)).toEqual(["2026-10-02", "2026-10-03", "2026-10-04"]);
+    // A zone Postgres does not know is treated as UTC.
+    expect(json(await call(learner, "GET", "/v1/analytics?tz=Nowhere/Land")).summary.streakDays).toBe(0);
+  });
+
   it("stores one goal per archive and reports progress against it", async () => {
     at("2026-10-04T09:00:00Z");
     expect(json(await call(learner, "GET", `/v1/goals/${archive}`))).toEqual({ goal: null });
