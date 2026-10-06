@@ -239,4 +239,17 @@ describe.skipIf(!testDbUrl)("OIDC and OAuth2 sign-in", () => {
     // An SSO-only account has no password to log in with.
     expect((await h.app.inject({ method: "POST", url: "/v1/auth/login", payload: { email: "ada@corp.example", password: PASSWORD } })).statusCode).toBe(401);
   });
+
+  it("checks an issuer before anything is saved, for admins only", async () => {
+    const check = (issuer: string, token = admin) => h.app.inject({ method: "POST", url: "/v1/admin/idp-providers/check", headers: bearer(token), payload: { issuer } });
+    expect((await check(idp.issuer)).json()).toMatchObject({ ok: true, issuer: idp.issuer });
+    // A trailing slash is the usual slip: the provider reports the address it really uses.
+    expect((await check(`${idp.issuer}/`)).json()).toMatchObject({ ok: true });
+    expect((await check(`${idp.issuer}/nope`)).json()).toMatchObject({ ok: false, reason: "unreachable" });
+    expect((await check("ftp://example.com")).json()).toMatchObject({ ok: false });
+    expect((await h.pool.query("SELECT 1 FROM auth.idp_providers")).rowCount).toBe(0);
+    const learner = (await register(h.app, "bob@example.com")).json().accessToken;
+    expect((await check(idp.issuer, learner)).statusCode).toBe(403);
+    expect((await h.app.inject({ method: "POST", url: "/v1/admin/idp-providers/check", payload: { issuer: idp.issuer } })).statusCode).toBe(401);
+  });
 });
