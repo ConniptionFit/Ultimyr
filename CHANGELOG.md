@@ -124,6 +124,7 @@
 - **Improved: big flashcard decks open about four times faster.** A deck page now draws 100 cards at a time with a "Show more" button (the filter still searches every card, and printing includes them all). A 2,000 card deck went from about 3.9 s to about 1.0 s to appear.
 - **Fixed: the guide editor's Preview link split into "Previe / w" on a phone.** It now keeps its size and the label above it wraps instead.
 - **Fixed: file pickers pushed the page sideways on the narrowest phones.** On a 320 px wide screen the "Choose File" boxes (Build, deck import, guide editor, course icon) ran past the edge. They now stay inside it.
+- **Fixed: green buttons dropped below the contrast minimum while the pointer was over them.** The hover effect faded the whole button, which lowered text contrast in the light theme. It now darkens the button instead, and a hover audit of the sign-in, review and quiz editor buttons passes in light and dark.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
