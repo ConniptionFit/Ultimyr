@@ -319,3 +319,20 @@ describe.skipIf(!testDbUrl)("content service", () => {
     expect(json(await call(owner, "GET", "/v1/archives?scope=shared")).archives).toHaveLength(0);
   });
 });
+
+describe.skipIf(!testDbUrl)("data the database cannot store", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+
+  it("answers 400, not 500, for a NUL character in a title or a search", async () => {
+    const u = uuid();
+    const headers = await h.issuer.bearer({ userId: u });
+    const make = await h.app.inject({ method: "POST", url: "/v1/archives", headers, payload: { title: "a\u0000b" } });
+    expect(make.statusCode).toBe(400);
+    const find = await h.app.inject({ method: "GET", url: "/v1/search?q=%00", headers });
+    expect(find.statusCode).toBe(400);
+  });
+});

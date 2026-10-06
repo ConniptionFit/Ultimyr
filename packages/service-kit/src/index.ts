@@ -20,6 +20,9 @@ export class HttpError extends Error {
 }
 
 /** Validate untrusted input with Zod. Failures become a 400 listing each problem. */
+/** SQLSTATE classes for data the database cannot store: 22021 bad encoding or NUL, 22P05 untranslatable character, 22P02 malformed text, 22001 too long. */
+export const BAD_DATA_CODES = new Set(["22021", "22P05", "22P02", "22001"]);
+
 export function parse<T extends z.ZodType>(schema: T, data: unknown): z.infer<T> {
   const r = schema.safeParse(data);
   if (!r.success) {
@@ -96,9 +99,11 @@ export async function createService(opts: ServiceOptions): Promise<Service> {
     return payload;
   });
 
-  app.setErrorHandler((err: Error & { validation?: unknown; statusCode?: number }, req, reply) => {
+  app.setErrorHandler((err: Error & { validation?: unknown; statusCode?: number; code?: string }, req, reply) => {
     if (err instanceof HttpError) return reply.code(err.status).send({ error: err.code, ...err.extra });
     if (err.validation) return reply.code(400).send({ error: "invalid_request" });
+    // Postgres refusing the data itself (a NUL character, a malformed value, text too long) is the caller's mistake, not ours.
+    if (typeof err.code === "string" && BAD_DATA_CODES.has(err.code)) return reply.code(400).send({ error: "invalid_request" });
     if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.message });
     // `ref` is the request id in the log line, so a person can quote it and an administrator can find the cause.
     app.log.error({ err, ref: req.id }, "unhandled error");
