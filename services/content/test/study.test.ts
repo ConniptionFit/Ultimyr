@@ -113,6 +113,20 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     expect(json(await call(bob, "GET", `/v1/study/stats?archive=${archive}`))).toMatchObject({ review: 0, reviewedToday: 0 });
   });
 
+  it("counts due cards per course, only yours", async () => {
+    at("2027-03-10T08:00:00Z");
+    const one = await deckWith(2);
+    const two = await deckWith(1);
+    for (const c of [...one.cards, ...two.cards]) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 1 });
+    at("2027-03-10T08:30:00Z");
+    const due = json(await call(alice, "GET", "/v1/study/due")).byCourse as Record<string, number>;
+    expect(due[one.archive]).toBe(2);
+    expect(due[two.archive]).toBe(1);
+    const bobs = json(await call(bob, "GET", "/v1/study/due")).byCourse as Record<string, number>;
+    expect(bobs[one.archive]).toBeUndefined();
+    expect(bobs[two.archive]).toBeUndefined();
+  });
+
   it("counts reviews per day for the activity grid, only yours and only inside the window", async () => {
     at("2027-02-10T08:00:00Z");
     const { archive, cards } = await deckWith(3);

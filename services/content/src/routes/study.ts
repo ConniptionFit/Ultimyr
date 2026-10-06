@@ -203,6 +203,13 @@ export function studyRoutes(ctx: Ctx) {
       return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", 'attachment; filename="ultimyr-review-history.csv"').send([head, ...lines].join("\n") + "\n");
     });
 
+    /** Cards due now, counted per course, for the dashboard. Courses with nothing due are left out. */
+    r.get("/v1/study/due", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const { rows } = await pool.query("SELECT archive_id, count(*)::int AS due FROM content.srs_state WHERE user_id = $1 AND due <= $2 GROUP BY archive_id", [a.userId, ctx.now()]);
+      return { byCourse: Object.fromEntries(rows.map((x) => [x.archive_id, x.due])) };
+    });
+
     /** Flashcard reviews per day (UTC) for the activity grid on the progress page. Days without reviews are left out. */
     r.get("/v1/study/activity", async (req) => {
       const a = await ctx.actor(req, "content:read");
