@@ -267,11 +267,11 @@ function GuideEditor({ it, onSubmit, onCancel }: { it: ItemDetail; onSubmit: (e:
     <form onSubmit={onSubmit} className="space-y-3">
       <Field id="g-title" name="title" label="Title" defaultValue={it.title} required maxLength={160} />
       <Field id="g-summary" name="summary" label="Summary" defaultValue={it.summary} maxLength={2000} />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <label htmlFor="g-md" className="text-sm text-muted">
           Markdown (headings split the guide into sections)
         </label>
-        <button type="button" className="text-sm text-accent underline" onClick={() => setPreview(!preview)}>
+        <button type="button" className="shrink-0 text-sm text-accent underline" onClick={() => setPreview(!preview)}>
           {preview ? "Edit" : "Preview"}
         </button>
       </div>
