@@ -4,7 +4,7 @@ export function Button({ variant = "primary", className = "", ...rest }: ButtonH
   const base = "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60";
   const tone =
     variant === "primary"
-      ? "bg-accent text-accent-ink hover:opacity-90"
+      ? "bg-accent text-accent-ink hover:brightness-90"
       : "border border-line text-ink hover:bg-surface";
   return <button className={`${base} ${tone} ${className}`} {...rest} />;
 }

@@ -10,7 +10,7 @@ export function SplashCta({ label }: { label: string }) {
   return (
     <Link
       href={signedIn ? "/reading-room" : "/login"}
-      className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
+      className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition hover:brightness-90"
     >
       {signedIn ? "Continue" : label}
     </Link>
