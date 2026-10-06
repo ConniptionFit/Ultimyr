@@ -91,6 +91,7 @@
 - **New: Redo what I missed.** The results of a quiz, practice exam or drill have a button that starts a short practice drill of the questions you got wrong or only partly right, with instant feedback.
 - **New: reading time and a "you are here" marker in study guides.** A guide shows "About 12 min read" under its summary, and the contents list beside it underlines the section you are reading.
 - **New: a summary when a daily review ends.** After the last card it says how many reviews you did, about how long they took, and how many you remembered.
+- **Improved: decks with more than eight cards have a filter box,** and the file pickers (CSV import, course icon, bundle upload) look like the other buttons instead of the browser default. Phones no longer show keyboard hints such as "(space)" in the daily review.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

@@ -278,6 +278,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
   const { t } = useNaming();
   const cards = it.cards ?? [];
   const [editId, setEditId] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
 
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -310,6 +311,8 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
     }
   }
 
+  const needle = filter.trim().toLowerCase();
+  const shownCards = needle ? cards.filter((c) => `${c.front}\n${c.back}`.toLowerCase().includes(needle)) : cards;
   if (studying && cards.length) return <Study cards={cards} onDone={() => setStudying(false)} />;
   return (
     <section className="space-y-4">
@@ -317,9 +320,18 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         <h2 className="text-xl">{cards.length} {cards.length === 1 ? t("card").toLowerCase() : `${t("card").toLowerCase()}s`}</h2>
         {cards.length > 0 && <Button onClick={() => setStudying(true)}>Study</Button>}
       </div>
+      {cards.length > 8 && (
+        <div>
+          <label className="sr-only" htmlFor="card-filter">
+            Filter {t("card").toLowerCase()}s
+          </label>
+          <input id="card-filter" type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={`Filter ${cards.length} ${t("card").toLowerCase()}s`} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" />
+        </div>
+      )}
       <ul className="divide-y divide-line rounded-md border border-line">
         {cards.length === 0 && <li className="p-4 text-muted">No cards yet.</li>}
-        {cards.map((c) => (
+        {cards.length > 0 && shownCards.length === 0 && <li className="p-4 text-muted">No card matches “{filter}”.</li>}
+        {shownCards.map((c) => (
           <li key={c.id} className="p-3">
             {editId === c.id ? (
               <form onSubmit={(e) => saveCard(c, e)} className="space-y-2">
@@ -369,7 +381,7 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
           </form>
           <label className="block text-sm text-muted">
             Import cards from CSV (front, back, tags). Creates a new deck.
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" className="mt-1 block text-ink" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" className="mt-1 block text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-bg" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
           </label>
         </>
       )}
