@@ -105,6 +105,7 @@
 - **New: a daily review reminder for your calendar.** Settings > Flashcards can download a repeating daily calendar entry at a time you pick, with a link back to the review. Nothing is sent from Ultimyr.
 - **Fixed: semicolons in credential names broke the calendar file.** They were not escaped in the downloaded .ics, so some calendar apps cut the title short.
 - **Improved: the course path starts higher on a phone.** For editors, the roadmap tools (edit, paste an outline, copy, publish) fold into one line once the roadmap is published, so the path itself is the first thing you see. A draft roadmap keeps them open. The exam countdown also asks for a missing date in plain grey text instead of red.
+- **Fixed: "today" was tomorrow in the evening in the Americas.** The exam countdown, the minimum exam date and the default date when logging CEU hours used the UTC date, so after about 7 pm US Central they were a day ahead. They now use your own calendar day (`GET /plan` takes an optional `today`, accepted only within a day of the server's date).
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

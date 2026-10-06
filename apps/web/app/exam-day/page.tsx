@@ -83,7 +83,7 @@ function ExamDay() {
     if (!archiveId) return;
     setError(null);
     try {
-      const q = new URLSearchParams({ archive: archiveId, minutes: String(minutes), mode: credential?.examMode ?? "unknown" });
+      const q = new URLSearchParams({ archive: archiveId, minutes: String(minutes), mode: credential?.examMode ?? "unknown", today: todayIso() });
       if (date) q.set("examDate", date);
       setPlan(await api<Plan>("GET", `plan?${q}`));
     } catch (e) {
