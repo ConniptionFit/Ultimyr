@@ -92,7 +92,7 @@ function Progress() {
                 {state.status === "authenticated" ? state.user.displayName : ""} · {archive ? archives.find((a) => a.id === archive)?.title : "All courses"} · last {days} days · {new Date().toLocaleDateString()}
               </p>
             </div>
-            <div className="no-print flex gap-2">
+            <div className="no-print flex flex-wrap gap-2">
               <label className="sr-only" htmlFor="pg-archive">
                 {t("archive")}
               </label>
