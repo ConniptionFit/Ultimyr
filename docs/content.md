@@ -9,7 +9,7 @@ The content service owns everything a person studies. All routes are under `/api
 | **Item** | Lives in an archive. Kinds: **guide** (Markdown), **deck** (flashcards) and **quiz** (a shell here, the questions live in the quiz service). |
 | **Version** | Every change to a guide or deck makes a new, numbered version labelled with its source (`human`, `ai`, `mcp`, `import`, `restore`). Restoring copies an old version forward, so history is never rewritten. |
 | **Section** | A guide is split at `#`, `##` and `###` headings. Sections get stable anchors (`#ports`) for deep links and search. Headings inside code fences are ignored. |
-| **Card** | A deck entry: front, back, optional hint and tags. Front and back are Markdown and can run over several lines (Ctrl or Cmd plus Enter saves in the editor). Up to 5,000 per deck. A deck prints as a plain list of fronts and backs (Print or save as PDF on the deck page). |
+| **Card** | A deck entry: front, back, optional hint and tags. Front and back are Markdown and can run over several lines (Ctrl or Cmd plus Enter saves in the editor). Up to 5,000 per deck. A deck page shows 100 cards at a time (Show more loads the next 100; the filter searches all of them). A deck prints as a plain list of fronts and backs (Print or save as PDF on the deck page). |
 
 ## Roadmaps and external resources
 An archive can carry a **roadmap** (themed name: Labyrinth) and a library of **resources** (themed name: Secret Shop). Open them from the tabs on the archive page.
