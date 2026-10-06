@@ -44,7 +44,7 @@ export function CredentialCard({ c, archives, reload }: { c: Credential; archive
     <li className="space-y-3 rounded-md border border-line p-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-serif text-lg">{c.name}</h3>
+          <h3 className="line-clamp-2 break-words font-serif text-lg" title={c.name}>{c.name}</h3>
           <p className="text-sm text-muted">{[STATUS_LABEL[c.status], c.issuer, archive ? `course: ${archive.title}` : null].filter(Boolean).join(" · ")}</p>
         </div>
         <Button variant="quiet" aria-label={`Edit ${c.name}`} onClick={() => setEditing(true)}>

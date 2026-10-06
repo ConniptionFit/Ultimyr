@@ -109,6 +109,7 @@
 - **Fixed: days, streaks and the daily new-card limit now follow your own time zone.** They used UTC, so in the US evening "reviewed today" reset to zero, the new-card allowance came back early, and a quiz taken after about 7 pm US Central counted for tomorrow. The queue, stats, activity and analytics routes take an optional IANA `tz` (the web app sends it; API clients that omit it still get UTC). A zone Postgres does not know is ignored.
 - **Improved: the tab title names the course or item you are on.** Open pages used to read "Course | Ultimyr" or "Study item | Ultimyr" whatever you were viewing, so several tabs looked the same and a screen reader announced nothing new. Now the title is the page's own name.
 - **Improved: the daily review shows how far through the session you are.** A thin progress bar sits under the counter, and the deck name above a card links to that deck, handy for fixing a card as you meet it.
+- **Fixed: the Credentials header was crushed on a phone.** "Add to calendar" and "Add" were squeezed into tall, one-letter-wide columns beside the title once a credential had dates. They now sit under the title, and a long credential name wraps over two lines instead of being cut off.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
