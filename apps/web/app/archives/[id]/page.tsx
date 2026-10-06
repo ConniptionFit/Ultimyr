@@ -234,10 +234,10 @@ export default function ArchivePage() {
           {tab === "material" && (
           <div id="panel-material" role="tabpanel" aria-labelledby="tab-material" className="space-y-8">
           <section className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xl">Material</h2>
               {editor && !adding && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="quiet" onClick={() => setAdding("guide")}>
                     + {t("guide")}
                   </Button>
