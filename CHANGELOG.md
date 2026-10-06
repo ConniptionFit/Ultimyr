@@ -92,6 +92,9 @@
 - **New: reading time and a "you are here" marker in study guides.** A guide shows "About 12 min read" under its summary, and the contents list beside it underlines the section you are reading.
 - **New: a summary when a daily review ends.** After the last card it says how many reviews you did, about how long they took, and how many you remembered.
 - **Improved: decks with more than eight cards have a filter box,** and the file pickers (CSV import, course icon, bundle upload) look like the other buttons instead of the browser default. Phones no longer show keyboard hints such as "(space)" in the daily review.
+- **New: press C to check your answer in practice mode,** so a whole practice quiz can be done from the keyboard (1 to 9 to pick, C to check, N for next).
+- **New: due flashcards show on the course page.** When cards from a course are due, a line above its tabs says how many and links to a review of just that course.
+- **New: pace on quiz results.** The results page says about how long each question took you and which one was slowest.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

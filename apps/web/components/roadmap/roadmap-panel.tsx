@@ -271,11 +271,11 @@ export function RoadmapPanel({ archiveId, items, canEdit, onChanged }: { archive
       {road.stages.map((st, i) => (
         <li key={st.id} id={`stage-${st.id}`} className="scroll-mt-24">
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-lg">
+            <h2 className="flex items-center gap-2 text-lg">
               <span className="text-muted">{i + 1}. </span>
               {st.icon?.name && <CatalogIcon name={st.icon.name} size={18} className="shrink-0 text-muted" />}
               {st.title}
-            </h3>
+            </h2>
             <span className="flex items-center gap-3 text-xs text-muted">
               {notes && (
                 <button type="button" aria-expanded={digest === st.id} onClick={() => setDigest(digest === st.id ? null : st.id)} className="underline hover:text-ink">

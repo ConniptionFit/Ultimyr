@@ -13,7 +13,7 @@ import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { REASON_LABEL } from "@/lib/certs";
-import { FIDELITY_LABEL, MODE_LABEL, formatClock, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
+import { FIDELITY_LABEL, MODE_LABEL, formatClock, paceSummary, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
 
 const answered = (q: PlayQuestion) => q.response !== null && q.response !== undefined && JSON.stringify(q.response) !== "{}";
 
@@ -159,7 +159,16 @@ export default function AttemptPage() {
     }
   }
 
-  // Keyboard: N next, P previous, F flag, 1 to 9 pick an option. Ignored while typing or when a modifier is held.
+  /** Practice mode: save the answer, then ask the server to grade this one question. */
+  async function checkNow(question: PlayQuestion) {
+    clearTimeout(timers.current.get(question.id));
+    timers.current.delete(question.id);
+    if (question.response !== null && question.response !== undefined) await save(question.id, { response: question.response });
+    const feedback = await api<PlayQuestion["feedback"]>("POST", `attempts/${id}/items/${question.id}/check`).catch(() => undefined);
+    if (feedback) patchLocal(question.id, { feedback });
+  }
+
+  // Keyboard: N next, P previous, F flag, C check (practice), 1 to 9 pick an option. Ignored while typing or when a modifier is held.
   const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
   keys.current = (e) => {
     const el = e.target as HTMLElement | null;
@@ -169,6 +178,7 @@ export default function AttemptPage() {
     const n = at.questions.length;
     if (k === "n" && idx < n - 1) go(idx + 1);
     else if (k === "p" && idx > 0) go(idx - 1);
+    else if (k === "c" && open && at.mode === "practice" && !q.feedback) void checkNow(q);
     else if (k === "f" && open) {
       patchLocal(q.id, { flagged: !q.flagged });
       void save(q.id, { flagged: !q.flagged });
@@ -269,6 +279,7 @@ export default function AttemptPage() {
                 {pct(summary.rawBp)} of marks ({summary.earned / 1000} of {summary.max / 1000}). {summary.counts.correct} correct, {summary.counts.partial} partly, {summary.counts.incorrect} incorrect, {summary.counts.unanswered} unanswered.
                 {at.status === "expired" ? " Time ran out, so this was graded as it stood at the deadline." : ""}
               </p>
+              {paceSummary(qs.map((x) => x.timeMs)) && <p className="text-sm text-muted">{paceSummary(qs.map((x) => x.timeMs))}</p>}
               {summary.counts.incorrect + summary.counts.partial > 0 && <p className="text-sm">{copy("attemptGap")}</p>}
               {drill ? (
                 <p className="text-xs text-muted">A drill is built from the questions you miss most, so it is meant to feel harder than the real thing. It does not change your readiness estimate.</p>
@@ -373,7 +384,7 @@ export default function AttemptPage() {
                 Question {idx + 1} of {qs.length}
               </p>
               {drill && q.drillReason && REASON_LABEL[q.drillReason] && <p className="mb-2 text-xs text-muted">{REASON_LABEL[q.drillReason]}</p>}
-              {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag.</p>}
+              {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag{at.mode === "practice" ? ", C check the answer" : ""}.</p>}
               <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -397,15 +408,9 @@ export default function AttemptPage() {
                 )}
                 {open && at.mode === "practice" && !q.feedback && (
                   <Button
-                    onClick={async () => {
-                      clearTimeout(timers.current.get(q.id));
-                      timers.current.delete(q.id);
-                      if (q.response !== null && q.response !== undefined) await save(q.id, { response: q.response });
-                      const feedback = await api<PlayQuestion["feedback"]>("POST", `attempts/${id}/items/${q.id}/check`).catch(() => undefined);
-                      if (feedback) patchLocal(q.id, { feedback });
-                    }}
+                    onClick={() => void checkNow(q)}
                   >
-                    Check answer
+                    Check answer<span className="hidden opacity-70 md:inline"> (C)</span>
                   </Button>
                 )}
                 {open && idx === qs.length - 1 && <Button onClick={() => setReviewing(true)}>Review and submit</Button>}

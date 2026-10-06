@@ -5,6 +5,7 @@ import { BookOpen, ChevronDown, ChevronRight, Download, FileQuestion, Layers, Pe
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { DueLink } from "@/components/due-link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
@@ -199,6 +200,8 @@ export default function ArchivePage() {
               onChanged={load}
             />
           )}
+
+          <DueLink archive={id} />
 
           <div role="tablist" aria-label="Sections" className="flex gap-1 overflow-x-auto border-b border-line">
             {TABS.map((k) => (

@@ -33,6 +33,7 @@ export const SHORTCUTS: { area: string; keys: [string, string][] }[] = [
       ["1 to 9", "Pick or untick an option"],
       ["N / P", "Next or previous question"],
       ["F", "Flag the question"],
+      ["C", "Check the answer (practice mode)"],
     ],
   },
 ];

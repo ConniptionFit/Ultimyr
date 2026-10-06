@@ -155,7 +155,7 @@ export function StageDigest({ archiveId, steps, titleOf }: { archiveId: string; 
     <div className="space-y-4 rounded-md border border-line p-3 text-sm">
       {mine.map((n) => (
         <section key={n.stepId}>
-          <h4 className="font-serif text-base">{titleOf(n.stepId)}</h4>
+          <h3 className="font-serif text-base">{titleOf(n.stepId)}</h3>
           <pre className="mt-1 whitespace-pre-wrap font-sans text-ink/90">{n.content}</pre>
         </section>
       ))}
