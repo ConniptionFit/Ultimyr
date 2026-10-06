@@ -36,7 +36,7 @@ export interface RowProps {
 const NO_VIDEO: Pick<Resource, "url" | "kind" | "tags" | "title" | "provider"> = { url: "", kind: "other", tags: [], title: "", provider: "" };
 
 export function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved, guided, currentId, cursorId, today, returnTo }: { step: RoadmapStep; depth: number } & RowProps) {
-  const { t } = useNaming();
+  const { t, copy } = useNaming();
   const [open, setOpen] = useState(!step.done);
   const label = step.kind === "milestone" ? step.title! : step.kind === "item" ? step.item!.title : step.resource!.title;
   const Icon = step.kind === "milestone" ? Flag : step.kind === "item" ? ITEM_ICON[step.item!.kind] : KIND_ICON[step.resource!.kind];
@@ -115,7 +115,7 @@ export function StepRow({ step, depth, onTick, archiveId, notes, onNoteSaved, gu
           </p>
           <p className="text-xs text-muted">
             {current && <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-accent-ink">You are here</span>}
-            {today?.includes(step.id) && !step.done && <span className="mr-2 rounded-full border border-accent px-2 py-0.5 text-ink">Today</span>}
+            {today?.includes(step.id) && !step.done && <span className="mr-2 rounded-full border border-accent px-2 py-0.5 text-ink">{copy("todayBadge")}</span>}
             {meta}
           </p>
           {step.note && <p className="mt-1 text-sm text-ink/80">{step.note}</p>}
