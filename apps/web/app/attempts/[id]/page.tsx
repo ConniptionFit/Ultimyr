@@ -410,7 +410,7 @@ export default function AttemptPage() {
                   <Button
                     onClick={() => void checkNow(q)}
                   >
-                    Check answer<span className="hidden opacity-70 md:inline"> (C)</span>
+                    Check answer<span className="hidden font-normal md:inline"> (C)</span>
                   </Button>
                 )}
                 {open && idx === qs.length - 1 && <Button onClick={() => setReviewing(true)}>Review and submit</Button>}

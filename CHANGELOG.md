@@ -113,6 +113,7 @@
 - **Improved: Progress no longer shows an empty chart.** With no cards due in the next week, the daily review card says so in a line instead of leaving a blank block.
 - **Fixed: the depth choices on Build with an AI assistant broke words in two on a phone.** "Quick" and "Standard" wrapped as "Quic / k". Each option now keeps its label together.
 - **Fixed: two more phone layouts.** On a course's Coverage tab the "Depth" label stacked letter by letter and its menu ran off the screen. On a study guide with a long title, the print, export, edit and history buttons shrank to specks beside it. Both now keep their size.
+- **Fixed: keyboard hints on green buttons were too faint to read.** "(space)" on Show answer, the key number on Good and "(C)" on Check answer failed the contrast minimum. They are now full strength. A full audit of 18 pages in light and dark themes, including the opened review and an open quiz attempt, now reports no contrast or labelling problems.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

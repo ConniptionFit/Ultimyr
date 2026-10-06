@@ -198,7 +198,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
               </div>
               {!shown ? (
                 <Button onClick={() => setShown(true)}>
-                  Show answer<span className="hidden opacity-70 md:inline"> (space)</span>
+                  Show answer<span className="hidden font-normal md:inline"> (space)</span>
                 </Button>
               ) : (
                 <div className="space-y-2">
@@ -208,9 +208,9 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                     {RATINGS.map((r) => (
                       <Button key={r.n} variant={r.n === 3 ? "primary" : "quiet"} onClick={() => rate(r.n)} className="h-auto flex-col gap-0.5 py-2">
                         <span>
-                          {r.label} <span className="hidden text-xs opacity-70 md:inline">({r.n})</span>
+                          {r.label} <span className={`hidden text-xs md:inline${r.n === 3 ? "" : " opacity-70"}`}>({r.n})</span>
                         </span>
-                        <span className="text-xs font-normal opacity-80">{copy(r.hint)}</span>
+                        <span className={`text-xs font-normal${r.n === 3 ? "" : " opacity-80"}`}>{copy(r.hint)}</span>
                         <span className="text-xs">Next: {formatNext(card.next[String(r.n) as "1" | "2" | "3" | "4"])}</span>
                       </Button>
                     ))}
