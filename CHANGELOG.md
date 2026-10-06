@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **Changed: credentials are listed by what is coming up.** Under Working toward the nearest exam date comes first, and under Earned the one that expires soonest, with undated ones last.
 - **New: press / to search.** From any page (outside a text box) the slash key puts the cursor in the search box, or opens the search page on a phone. It is listed under the ? shortcuts.
 - **New: copy buttons for voucher codes and credential IDs** on each credential, with a tick to show it copied.
 - **New: copy a link to a guide section.** Hover a heading in a study guide (or tab to it) and press **#** to copy a link that opens straight at that section.
