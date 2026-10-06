@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Markdown } from "../components/markdown";
+import { Markdown } from "../components/markdown-render";
 
 describe("underline in notes", () => {
   it("renders <u> pairs and nothing else from raw HTML", () => {

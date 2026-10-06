@@ -2,12 +2,12 @@
 
 import { ArchiveIcon } from "@ultimyr/ui-icons";
 import { BookOpen, ChevronDown, ChevronRight, Download, FileQuestion, Layers, Pencil } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
-import { BuildPanel } from "@/components/build/build-panel";
 import { CoveragePanel } from "@/components/coverage/coverage-panel";
 import { GeneratePanel } from "@/components/generate-panel";
 import { SharePanel } from "@/components/share-panel";
@@ -19,6 +19,9 @@ import { ArchiveEditForm } from "@/components/archive-edit-form";
 import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
+
+// The build panel carries the whole course-builder library (25 KB gzip) and only editors open it, so it loads on demand.
+const BuildPanel = dynamic(() => import("@/components/build/build-panel").then((m) => m.BuildPanel), { loading: () => <Loading /> });
 
 const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
 const TABS = ["roadmap", "material", "resources", "coverage"] as const;

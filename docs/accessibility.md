@@ -53,8 +53,8 @@ The reading room has an **Add a small example** button. It imports a tiny CompTI
 
 | Measure | Budget | Today |
 |---|---|---|
-| All JavaScript (without legacy-browser polyfills) | 450 KB | 398 KB |
-| Heaviest page, first load | 260 KB | 255 KB |
+| All JavaScript (without legacy-browser polyfills) | 450 KB | 400 KB |
+| Heaviest page, first load | 220 KB | 203 KB |
 | Largest JS chunk | 90 KB | 70 KB |
 | CSS | 15 KB | 5 KB |
 
