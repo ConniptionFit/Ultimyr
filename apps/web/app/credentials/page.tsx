@@ -53,13 +53,13 @@ function Credentials() {
 
   return (
     <div className="ulti-fade space-y-8">
-      <div className="flex items-end justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 basis-64 flex-1">
           <h1 className="text-3xl">{t("credentials")}</h1>
           <p className="text-sm text-muted">Exam dates, vouchers, renewals and continuing education hours, kept private to you.</p>
         </div>
         {!adding && (
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             {hasDates && (
               <Button variant="quiet" onClick={downloadCalendar} title="Download exam, voucher and renewal dates as a calendar file (voucher codes are left out)">
                 <CalendarPlus size={16} aria-hidden /> Add to calendar

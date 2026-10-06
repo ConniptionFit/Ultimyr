@@ -229,7 +229,11 @@ function Progress() {
                 {study.reviewedToday} reviewed today · {study.learning} learning · {study.review} in review
                 {study.retentionBp !== null ? ` · ${pct(study.retentionBp)} recalled over the last 30 days (${study.recalls30d} reviews)` : ""}
               </p>
-              <BarChart label="Cards due each day for the next week" data={study.forecast.map((n, i) => ({ label: i === 0 ? "today" : `in ${i} days`, value: n }))} />
+              {study.forecast.some((n) => n > 0) ? (
+                <BarChart label="Cards due each day for the next week" data={study.forecast.map((n, i) => ({ label: i === 0 ? "today" : `in ${i} days`, value: n }))} />
+              ) : (
+                <p className="text-sm text-muted">Nothing is scheduled for the next week.</p>
+              )}
             </section>
           )}
         </div>
