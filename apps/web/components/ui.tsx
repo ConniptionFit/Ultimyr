@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 
 export function Button({ variant = "primary", className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "quiet" }) {
   const base = "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60";
@@ -16,6 +16,29 @@ export function Field({ label, id, ...rest }: InputHTMLAttributes<HTMLInputEleme
         {label}
       </label>
       <input id={id} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" {...rest} />
+    </div>
+  );
+}
+
+/** A multi-line field. Ctrl or Cmd plus Enter submits the form it sits in. */
+export function TextAreaField({ label, id, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; id: string }) {
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="text-sm text-muted">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        rows={2}
+        className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-ink"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
+        {...rest}
+      />
     </div>
   );
 }

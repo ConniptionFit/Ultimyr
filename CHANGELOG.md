@@ -116,6 +116,7 @@
 - **Fixed: keyboard hints on green buttons were too faint to read.** "(space)" on Show answer, the key number on Good and "(C)" on Check answer failed the contrast minimum. They are now full strength. A full audit of 18 pages in light and dark themes, including the opened review and an open quiz attempt, now reports no contrast or labelling problems.
 - **Fixed: wide tables and code blocks could not be scrolled with the keyboard.** The audit log on a phone, and tables and code blocks inside guides, now take focus so the arrow keys scroll them. This was the last problem in an audit of every admin page on a phone and on a desktop in dark mode.
 - **Fixed: the repository had no LICENSE file.** The README and package.json said MIT, but the text itself was missing. It is added, with ConniptionFit as the copyright holder. Change the name if you want a different one.
+- **Improved: flashcards can be written over several lines.** The Front and Back boxes on a deck are now resizable text areas (a back can hold a list or a code line), Ctrl or Cmd plus Enter saves or adds, and the card list shows each card the way the review does, with bold, lists and code formatted instead of raw Markdown marks.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
