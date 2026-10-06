@@ -46,6 +46,7 @@ Ultimyr has two name sets for the same things. **Plain names** (Course, Study gu
 | Search notes | Scan | Search your own notes for a course | Scan, reveals a chosen area of the map |
 | Offline reading | Backpack | Keep a copy of a guide or deck to read without a connection | Backpack, items a hero carries without equipping |
 | Copy a roadmap from another course | Tempest Double | Copy a roadmap | Arc Warden's Tempest Double, a copy that carries the original's items and abilities |
+| Jump to any page or course by typing | Boots of Travel | Quick jump | The Boots of Travel item, which teleports you to any allied unit or building on the map |
 
 The story the names tell: study in the Archives (Tomes, Grimoires, Runes), practise in Aghanim's Trial, face the real exam like Roshan, and earn the Aegis.
 
