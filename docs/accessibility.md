@@ -27,7 +27,7 @@ When starting a timed or exam-style quiz, a learner can **declare** extra time: 
 - Every page has its own title in the tab and history (for example "Progress | Ultimyr"), which screen readers also announce when you move between pages.
 - Every control works with a keyboard. Flashcards: Space shows the answer, 1 to 4 rate it. Matching questions use drop-down lists instead of dragging.
 - Dialogs (the phone menu, the shortcuts list) trap Tab, close with Escape and return focus to the button that opened them. The current page is exposed with `aria-current="page"`. In forced-colours (Windows high contrast) mode focus rings and form borders use system colours.
-- Status changes (saved, checked, time warnings) use live regions.
+- Status changes (saved, checked, time warnings) use live regions. In a timed quiz or practice exam the clock itself stays silent; a screen reader is told how much time is left when the attempt opens and again at 30, 15, 10, 5 and 1 minutes.
 - Automated check: axe-core reported no violations on the main pages (sign in, reading room, archive, study, quiz, attempt, progress, settings) in light and dark themes.
 - Lighthouse (mobile profile, local build): accessibility, best practices and SEO scores in the 90s, with good first paint.
 
