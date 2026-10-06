@@ -16,6 +16,8 @@ export interface FnsNote {
 
 export interface Fns {
   vaults(token: string): Promise<string[]>;
+  /** Paths of the notes in a vault (for suggesting folders). Capped, so a huge vault stays cheap. */
+  listPaths(token: string, vault: string, max?: number): Promise<string[]>;
   getNote(token: string, vault: string, path: string): Promise<FnsNote | null>;
   /** createOnly fails when the note exists, so a scaffold can never overwrite writing. Returns the new hash. */
   createNote(token: string, vault: string, path: string, content: string): Promise<string>;
@@ -56,6 +58,17 @@ export function httpFns(baseUrl: string, timeoutMs = 8000): Fns {
       const data = (await call(token, "GET", "/vault")) as { vault: string }[] | null;
       return (data ?? []).map((v) => v.vault);
     },
+    async listPaths(token, vault, max = 2000) {
+      const out: string[] = [];
+      const pageSize = 200;
+      for (let page = 1; out.length < max && page <= 10; page++) {
+        const d = await call(token, "GET", "/notes", { query: { vault, page: String(page), pageSize: String(pageSize) } });
+        const list = (d?.list ?? []) as { path?: string }[];
+        for (const n of list) if (typeof n.path === "string") out.push(n.path);
+        if (list.length < pageSize) break;
+      }
+      return out;
+    },
     async getNote(token, vault, path) {
       try {
         const d = await call(token, "GET", "/note", { query: { vault, path } });
@@ -78,4 +91,17 @@ export function httpFns(baseUrl: string, timeoutMs = 8000): Fns {
       await call(token, "PATCH", "/note/frontmatter", { body: { vault, path, updates } });
     },
   };
+}
+
+/**
+ * Is anything that looks like a Fast Note Sync server answering at this address? A real server answers an unauthenticated
+ * call with a JSON error, so any answer below 500 that is not a redirect counts. Used only when an administrator sets the address.
+ */
+export async function probeFns(baseUrl: string, timeoutMs = 5000): Promise<boolean> {
+  try {
+    const res = await fetch(`${baseUrl}/api/vault`, { headers: { token: "ultimyr-probe" }, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
 }

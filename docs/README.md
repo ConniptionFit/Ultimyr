@@ -5,13 +5,14 @@
 | [Root README](../README.md) | Install with Docker, pick a reverse proxy, develop locally |
 | [configuration.md](configuration.md) | Look up every environment variable and secret |
 | [identity.md](identity.md) | Set up MFA, passkeys, SSO (OIDC, OAuth2, SAML), SCIM and API keys, and use the admin panel |
+| [naming.md](naming.md) | Follow the Dota 2 lore naming convention and see every themed name, its function and its source |
 | [content.md](content.md) | Understand archives, guides, decks, roadmaps and external links, versions, sharing, search and import/export |
 | [tagging.md](tagging.md) | Understand tags, the bundled icon library and how icons are suggested and assigned |
 | [notes.md](notes.md) | Use the standard layout and format for study notes in Obsidian |
 | [quiz.md](quiz.md) | Understand question types, attempts, the server clock and scoring profiles |
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
 | [prep.md](prep.md) | Track credentials and renewals, run weak-area drills, map exam objectives, follow a countdown plan |
-| [bundle.md](bundle.md) | Build a certification with any chat by copy and paste, and see the text format |
+| [bundle.md](bundle.md) | Build a certification with any chat by copy and paste, the repeatable passes and skill, and the text format |
 | [accessibility.md](accessibility.md) | Use display settings, focus mode, extra time, install the app, see the performance budget |
 | [security.md](security.md) | Review how data is protected, run the deployment checklist, see known limits |
 | [mcp.md](mcp.md) | Connect Claude or another MCP app, see the tools, understand the safety rules and OAuth |

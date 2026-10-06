@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Dumbbell, Layers, ListChecks, Timer } from "lucide-react";
+import { CalendarClock, Dumbbell, Layers, ListChecks, Printer, Timer } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -115,13 +115,20 @@ function ExamDay() {
 
   return (
     <div className="ulti-fade space-y-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl">
-          <CalendarClock aria-hidden /> {t("countdown")}
-        </h1>
-        <p className="mt-1 text-sm text-muted">{credential ? credential.name : "A day-by-day plan to your exam date, shaped by how many days are left and how you are scoring."}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-3xl">
+            <CalendarClock aria-hidden /> {t("countdown")}
+          </h1>
+          <p className="mt-1 text-sm text-muted">{credential ? credential.name : "A day-by-day plan to your exam date, shaped by how many days are left and how you are scoring."}</p>
+        </div>
+        {plan && (
+          <Button variant="quiet" className="no-print shrink-0" onClick={() => window.print()} title="Print or save the plan as PDF">
+            <Printer size={16} aria-hidden /> Print
+          </Button>
+        )}
       </div>
-      {!credentialId && picker}
+      {!credentialId && <div className="no-print">{picker}</div>}
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}
