@@ -2,7 +2,8 @@
 
 import { clearOffline } from "./offline";
 import { startAuthentication } from "@simplewebauthn/browser";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { refreshDelay, tokenExpiry } from "./token";
 
 export interface User {
   id: string;
@@ -111,18 +112,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: "authenticated", ...s });
   }, []);
   const token = state.status === "authenticated" ? state.accessToken : null;
+  // `api` reads the token from a ref so its identity never changes. Pages that reload when `api` changes would otherwise reload every time the token is renewed.
+  const tokenRef = useRef<string | null>(null);
+  tokenRef.current = token;
+  const [retry, setRetry] = useState(0);
+
+  // One renewal at a time. A real refusal (401) signs the person out; a dropped connection keeps the session and tries again shortly.
+  const renewing = useRef<Promise<string | null> | null>(null);
+  const renew = useCallback(() => {
+    renewing.current ??= post("refresh")
+      .then(session)
+      .then((s) => {
+        setState({ status: "authenticated", ...s });
+        return s.accessToken;
+      })
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401) setState({ status: "anonymous" });
+        else setTimeout(() => setRetry((n) => n + 1), 15_000);
+        return null;
+      })
+      .finally(() => {
+        renewing.current = null;
+      });
+    return renewing.current;
+  }, []);
+
+  // Access tokens last 10 minutes. Renew before they run out, and at once when a sleeping tab wakes up late.
+  useEffect(() => {
+    if (!token) return;
+    const expiry = tokenExpiry(token);
+    const timer = setTimeout(() => void renew(), refreshDelay(expiry, Date.now()));
+    const wake = () => {
+      if (document.visibilityState === "visible" && expiry !== null && expiry - Date.now() < 60_000) void renew();
+    };
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", wake);
+    };
+  }, [token, renew, retry]);
+
   const api = useCallback(
     async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
-      const res = await fetch(`/api/v1/${path}`, {
-        method,
-        headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-        credentials: "same-origin",
-      });
+      const send = (t: string | null) =>
+        fetch(`/api/v1/${path}`, {
+          method,
+          headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(t ? { authorization: `Bearer ${t}` } : {}) },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+          credentials: "same-origin",
+        });
+      let res = await send(tokenRef.current);
+      if (res.status === 401 && tokenRef.current) {
+        // The token ran out between renewals (a laptop that slept). Renew it and try once more.
+        const fresh = await renew();
+        if (fresh) res = await send(fresh);
+      }
       if (res.status === 204) return undefined as T;
       return json<T>(res);
     },
-    [token],
+    [renew],
   );
   const register = useCallback(async (displayName: string, email: string, password: string) => {
     const s = await session(await post("register", { displayName, email, password }));

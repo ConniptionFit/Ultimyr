@@ -28,7 +28,7 @@ Browser ──► reverse proxy (Nginx Proxy Manager or Traefik, TLS)
 
 ## Tokens and sessions
 1. Login (password, MFA, passkey or SSO) creates a `sessions` row and sets the refresh cookie `ultimyr_rt` (httpOnly, SameSite=Lax, path `/api/v1/auth`, 30 days).
-2. The web app calls `/auth/refresh` on load to get a 10 minute EdDSA access token, kept in memory only.
+2. The web app calls `/auth/refresh` on load to get a 10 minute EdDSA access token, kept in memory only. It renews the token a minute before it expires (and when a sleeping tab wakes up), and an API call that still gets a 401 renews once and retries.
 3. Refresh rotates the cookie. A reused (stolen) cookie revokes the whole session, except for a 10 second grace window after a rotation so two tabs refreshing at once do not sign you out.
 4. Connected apps (MCP) sign in with OAuth and get a 30 minute token (session id `mcp:<connection>`) limited to the scopes the person approved, plus a rotating refresh token. They cannot change account security.
 5. API keys (`ulk_<prefix>_<secret>`) are exchanged at `/auth/token` for a 10 minute token carrying only the key's scopes. Their session id starts with `key:`, and account-management routes refuse them.
