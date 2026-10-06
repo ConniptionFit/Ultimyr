@@ -45,9 +45,11 @@ function Build() {
           <legend className="text-sm text-ink">How much to build</legend>
           <div className="mt-1 flex flex-wrap gap-4">
             {(Object.keys(DEPTH_WORDS) as Depth[]).map((d) => (
-              <label key={d} className="flex items-center gap-2 text-sm text-ink">
-                <input type="radio" name="depth" checked={depth === d} onChange={() => setDepth(d)} /> {DEPTH_WORDS[d].label}
-                <span className="text-muted">({DEPTH_WORDS[d].detail})</span>
+              <label key={d} className="flex items-start gap-2 text-sm text-ink">
+                <input type="radio" name="depth" checked={depth === d} onChange={() => setDepth(d)} className="mt-1 shrink-0" />
+                <span>
+                  {DEPTH_WORDS[d].label} <span className="text-muted">({DEPTH_WORDS[d].detail})</span>
+                </span>
               </label>
             ))}
           </div>
