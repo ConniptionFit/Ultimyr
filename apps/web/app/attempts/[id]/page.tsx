@@ -159,7 +159,16 @@ export default function AttemptPage() {
     }
   }
 
-  // Keyboard: N next, P previous, F flag, 1 to 9 pick an option. Ignored while typing or when a modifier is held.
+  /** Practice mode: save the answer, then ask the server to grade this one question. */
+  async function checkNow(question: PlayQuestion) {
+    clearTimeout(timers.current.get(question.id));
+    timers.current.delete(question.id);
+    if (question.response !== null && question.response !== undefined) await save(question.id, { response: question.response });
+    const feedback = await api<PlayQuestion["feedback"]>("POST", `attempts/${id}/items/${question.id}/check`).catch(() => undefined);
+    if (feedback) patchLocal(question.id, { feedback });
+  }
+
+  // Keyboard: N next, P previous, F flag, C check (practice), 1 to 9 pick an option. Ignored while typing or when a modifier is held.
   const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
   keys.current = (e) => {
     const el = e.target as HTMLElement | null;
@@ -169,6 +178,7 @@ export default function AttemptPage() {
     const n = at.questions.length;
     if (k === "n" && idx < n - 1) go(idx + 1);
     else if (k === "p" && idx > 0) go(idx - 1);
+    else if (k === "c" && open && at.mode === "practice" && !q.feedback) void checkNow(q);
     else if (k === "f" && open) {
       patchLocal(q.id, { flagged: !q.flagged });
       void save(q.id, { flagged: !q.flagged });
@@ -373,7 +383,7 @@ export default function AttemptPage() {
                 Question {idx + 1} of {qs.length}
               </p>
               {drill && q.drillReason && REASON_LABEL[q.drillReason] && <p className="mb-2 text-xs text-muted">{REASON_LABEL[q.drillReason]}</p>}
-              {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag.</p>}
+              {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag{at.mode === "practice" ? ", C check the answer" : ""}.</p>}
               <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -397,15 +407,9 @@ export default function AttemptPage() {
                 )}
                 {open && at.mode === "practice" && !q.feedback && (
                   <Button
-                    onClick={async () => {
-                      clearTimeout(timers.current.get(q.id));
-                      timers.current.delete(q.id);
-                      if (q.response !== null && q.response !== undefined) await save(q.id, { response: q.response });
-                      const feedback = await api<PlayQuestion["feedback"]>("POST", `attempts/${id}/items/${q.id}/check`).catch(() => undefined);
-                      if (feedback) patchLocal(q.id, { feedback });
-                    }}
+                    onClick={() => void checkNow(q)}
                   >
-                    Check answer
+                    Check answer<span className="hidden opacity-70 md:inline"> (C)</span>
                   </Button>
                 )}
                 {open && idx === qs.length - 1 && <Button onClick={() => setReviewing(true)}>Review and submit</Button>}
