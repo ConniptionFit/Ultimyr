@@ -29,6 +29,13 @@ export function httpGroupResolver(authUrl: string, ttlMs = 30_000): GroupResolve
   };
 }
 
+/**
+ * Curriculum admins have full access to every course. Instead of threading a flag through every query, the
+ * actor's group list carries this reserved id (never a real group) and the SQL below reads it.
+ */
+export const CURATOR = "00000000-0000-4000-8000-00000000c0a0";
+export const isCurator = (a: { groups: string[] }) => a.groups.includes(CURATOR);
+
 export interface Actor {
   userId: string;
   groups: string[];
@@ -37,7 +44,7 @@ export interface Actor {
 
 /** SQL fragment: the relation rank a user holds on archive `m`, from ownership, visibility and grants. $1 = user id, $2 = group ids. */
 export const ARCHIVE_REL = `GREATEST(
-  CASE WHEN m.owner_id = $1 THEN 4 ELSE 0 END,
+  CASE WHEN m.owner_id = $1 OR $2::uuid[] @> ARRAY['00000000-0000-4000-8000-00000000c0a0']::uuid[] THEN 4 ELSE 0 END,
   CASE WHEN m.visibility IN ('public', 'org') THEN 2 ELSE 0 END,
   COALESCE((SELECT max(g.rank) FROM content.grants g
             WHERE g.object_type = 'archive' AND g.object_id = m.id
@@ -45,10 +52,10 @@ export const ARCHIVE_REL = `GREATEST(
               AND (g.expires_at IS NULL OR g.expires_at > now())), 0))`;
 
 /** SQL fragment: the best rank granted directly on item `s`. */
-export const ITEM_GRANT = `COALESCE((SELECT max(g.rank) FROM content.grants g
+export const ITEM_GRANT = `CASE WHEN $2::uuid[] @> ARRAY['00000000-0000-4000-8000-00000000c0a0']::uuid[] THEN 4 ELSE COALESCE((SELECT max(g.rank) FROM content.grants g
             WHERE g.object_type = 'item' AND g.object_id = s.id
               AND ((g.subject_type = 'user' AND g.subject_id = $1) OR (g.subject_type = 'group' AND g.subject_id = ANY($2::uuid[])))
-              AND (g.expires_at IS NULL OR g.expires_at > now())), 0)`;
+              AND (g.expires_at IS NULL OR g.expires_at > now())), 0) END`;
 
 export interface ArchiveAccess {
   rel: number;

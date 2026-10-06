@@ -40,6 +40,6 @@ export function createCtx(svc: Service, pool: Pool, access: AccessChecker, now: 
       if (!ar) throw new HttpError(404, "not_found");
       return ar;
     },
-    isAuthor: (a) => hasRole(a.principal, "author", "org_admin", "platform_admin"),
+    isAuthor: (a) => hasRole(a.principal, "author", "curriculum_admin", "org_admin", "platform_admin"),
   };
 }
