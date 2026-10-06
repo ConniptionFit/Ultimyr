@@ -13,7 +13,7 @@ import { QuizPanel } from "@/components/quiz/quiz-panel";
 import { readingMinutes } from "@/lib/reading-time";
 import { GuideReader, Study } from "@/components/item-views";
 import { SharePanel } from "@/components/share-panel";
-import { Button, Field, Shell } from "@/components/ui";
+import { Button, Field, Shell, TextAreaField } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { usePageTitle } from "@/lib/page-title";
@@ -390,8 +390,9 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
           <li key={c.id} className="p-3">
             {editId === c.id ? (
               <form onSubmit={(e) => saveCard(c, e)} className="space-y-2">
-                <Field id={`f-${c.id}`} name="front" label="Front" defaultValue={c.front} required />
-                <Field id={`b-${c.id}`} name="back" label="Back" defaultValue={c.back} required />
+                <TextAreaField id={`f-${c.id}`} name="front" label="Front" defaultValue={c.front} required maxLength={5000} />
+                <TextAreaField id={`b-${c.id}`} name="back" label="Back" defaultValue={c.back} required maxLength={10000} rows={4} />
+                <p className="text-xs text-muted">Markdown works. Ctrl or Cmd plus Enter saves.</p>
                 <div className="flex gap-2">
                   <Button type="submit">Save</Button>
                   <Button type="button" variant="quiet" onClick={() => setEditId(null)}>
@@ -402,8 +403,12 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
             ) : (
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">{c.front}</p>
-                  <p className="whitespace-pre-line text-sm text-muted">{c.back}</p>
+                  <div className="font-medium">
+                    <Markdown>{c.front}</Markdown>
+                  </div>
+                  <div className="text-sm text-muted">
+                    <Markdown>{c.back}</Markdown>
+                  </div>
                 </div>
                 {editor && (
                   <div className="flex shrink-0 gap-1">
@@ -430,9 +435,10 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
       {editor && (
         <>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <Field id="new-front" name="front" label="Front" required maxLength={5000} />
-            <Field id="new-back" name="back" label="Back" required maxLength={10000} />
+            <TextAreaField id="new-front" name="front" label="Front" required maxLength={5000} />
+            <TextAreaField id="new-back" name="back" label="Back" required maxLength={10000} />
             <Button type="submit">Add</Button>
+            <p className="text-xs text-muted sm:col-span-3">Markdown works, and a back can run over several lines. Ctrl or Cmd plus Enter adds the card.</p>
           </form>
           <label className="block text-sm text-muted">
             Import cards from CSV (front, back, tags). Creates a new deck.

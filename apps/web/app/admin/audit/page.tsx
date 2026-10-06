@@ -89,7 +89,7 @@ export default function Audit() {
         </Button>
       </div>
       <ErrorLine error={error} />
-      <div className="overflow-x-auto rounded-md border border-line">
+      <div role="region" aria-label="Audit log" tabIndex={0} className="overflow-x-auto rounded-md border border-line">
         <table className="w-full text-left text-xs">
           <thead className="text-muted">
             <tr>
