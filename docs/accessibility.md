@@ -48,11 +48,12 @@ Browsers offer "Install" because Ultimyr ships a manifest, icons and a service w
 The reading room has an **Add a small example** button. It imports a tiny CompTIA A+ style archive (3 guides, 2 decks, a 16 question quiz) so a new install has something to try. It is clearly marked as not official and not exam content. The first real target is the Claude Architect Foundations exam; its archive will be added once the study guide is supplied.
 
 ## Performance budget
-`node scripts/check-budgets.mjs` runs in CI after the web build and fails if gzip sizes pass these limits:
+`node scripts/check-budgets.mjs` runs in CI after the web build and fails if gzip sizes pass these limits. The nomodule polyfill chunk that Next adds for very old browsers is left out, because current browsers never download it:
 
 | Measure | Budget | Today |
 |---|---|---|
-| All JavaScript | 450 KB | 424 KB |
+| All JavaScript (without legacy-browser polyfills) | 450 KB | 398 KB |
+| Heaviest page, first load | 260 KB | 255 KB |
 | Largest JS chunk | 90 KB | 70 KB |
 | CSS | 15 KB | 5 KB |
 
