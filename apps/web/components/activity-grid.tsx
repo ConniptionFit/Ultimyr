@@ -44,7 +44,7 @@ export function ActivityGrid({ archive }: { archive: string }) {
         {active === 0 ? "No study yet in the last 12 weeks." : `You studied on ${active} of the last ${days.length} days.`} Reviews and quiz attempts both count.
       </p>
       <figure>
-        <svg viewBox={`0 0 ${WEEKS * size} ${7 * size}`} role="img" aria-label={`Study activity for the last ${days.length} days. ${active} days with study.`} className="h-auto w-full max-w-md">
+        <svg viewBox={`0 0 ${WEEKS * size} ${7 * size}`} role="img" aria-label={`Study activity for the last ${days.length} days. ${active} days with study.`} style={{ width: "100%", maxWidth: 24 * 12 + "px", height: "auto" }}>
           {grid.map((col, w) =>
             col.map((d, i) =>
               d ? (
