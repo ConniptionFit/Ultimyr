@@ -47,9 +47,9 @@ export function BuildPanel({ archiveId, archiveTitle }: { archiveId: string; arc
           </p>
         </>
       )}
-      <label className="flex items-center gap-2 text-sm text-ink">
+      <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
         Depth
-        <select value={depth} onChange={(e) => setDepth(e.target.value as Depth)} className="rounded-md border border-line bg-bg px-2 py-1">
+        <select value={depth} onChange={(e) => setDepth(e.target.value as Depth)} className="min-w-0 max-w-full rounded-md border border-line bg-bg px-2 py-1">
           {(Object.keys(DEPTH_WORDS) as Depth[]).map((d) => (
             <option key={d} value={d}>
               {DEPTH_WORDS[d].label} ({DEPTH_WORDS[d].detail})
