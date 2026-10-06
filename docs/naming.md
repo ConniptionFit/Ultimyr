@@ -36,6 +36,7 @@ Ultimyr has two name sets for the same things. **Plain names** (Course, Study gu
 | Build with an AI assistant | Commission the Curator | Have an assistant build a course | Demnok Lannik, Head of Acquisitions |
 | Group access | Party Access | Which groups see which courses | Party, the group you play with |
 | About this app | Lore | Name, version, license, links | Lore, the history tab on a hero's page |
+| Services | Towers | Whether each part of Ultimyr is running | Towers guard each lane and either stand or have fallen |
 | Exam countdown | Roshan Timer | Days until your real exam | Roshan's respawn timer |
 | Continue (button) | Town Portal | Jump back to the step you left off at | Town Portal Scroll, teleports you to a friendly building |
 | Today's session | Farming Route | Pick today's minutes and see which steps fit (badge: On route) | Farming route, the camps a hero clears in the time available |

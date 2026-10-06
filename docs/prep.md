@@ -10,6 +10,7 @@ Four tools that help you get to the exam date and stay certified. All are under 
 - One record per credential: status (planned, scheduled, earned, retired), exam date, voucher code and expiry, earned and expiry dates, renewal alert window, CEU hours needed.
 - **CEU log:** add each activity with units and date. The total counts the current renewal cycle.
 - **Alerts** show on the dashboard and the Credentials page: exam today or soon, exam date passed, voucher expiring or expired, renewal due, expired, CEU hours short.
+- **Add to calendar** downloads a `.ics` file with your exam (with a reminder the day before), voucher expiry (a week before) and renewal dates (your alert window before). It is built in your browser and leaves voucher codes out. Import it into Google, Apple or Outlook Calendar.
 - Link a credential to an archive to jump to its drills and countdown.
 - **Private:** only you see your credentials. Voucher codes are stored as plain text. MCP never returns them.
 
@@ -46,3 +47,9 @@ No connector (Gemini, ChatGPT, Claude without one)? The same page has a copy and
 
 ## API and MCP
 See [api.md](api.md) and [mcp.md](mcp.md).
+
+The voucher code and credential ID on a credential each have a copy button.
+
+On the Credentials page, Working toward is ordered by exam date and Earned by expiry date, soonest first.
+
+The countdown plan has a **Print** button for a paper or PDF copy.

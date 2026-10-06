@@ -35,3 +35,26 @@ Set one **goal** per course: a target score and, optionally, an exam date (`PUT 
 
 ## Exam simulation
 Courses can include timed quizzes with a server-owned clock (see [quiz.md](quiz.md)). While an attempt is open the page listens to `GET /attempts/:id/events`, a server-sent event stream that sends the server's time and the time left every 10 seconds and a `closed` event the moment the attempt ends, so the display corrects itself and closes on time even if your device clock is wrong. Before submitting you get a review panel listing unanswered and flagged questions, each a link back to that question. Without the stream the page falls back to the clock it already has, and the server still enforces the deadline.
+
+## Transcript
+On Progress, **Print** (or save as PDF) gives a clean transcript of the current view: your name, course, range and date, then attempts, accuracy, minutes, streak, readiness, domains and review stats. Menus and forms are left out.
+
+## Today strip
+The Reading Room shows one line under the alerts: cards due now (links to the daily review) and your streak. It is hidden when you have neither.
+
+## Printing a guide
+The printer button on a study guide prints or saves it as PDF with the navigation hidden.
+
+## Undo a rating
+After rating a card, **Undo last rating** (or **U**) restores the card's earlier schedule and removes the review from your history, so a slip does not distort your retention numbers. It is available for the most recent rating of each card until you review that card again.
+
+## Review history export
+Progress > **Reviews** downloads a CSV of every flashcard review you have made, for your own analysis. It never includes anyone else's data.
+
+## Filtering courses
+With more than six courses, the Reading Room shows a filter box that matches title or vendor.
+
+While cards are due, the Reading Room also puts the count in the browser tab title, for example "(12) Ultimyr".
+
+## Linking to a section
+Press the # beside a guide heading to copy a link to that section. The link opens the guide scrolled to it (you still need access to the course).

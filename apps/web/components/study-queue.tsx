@@ -28,6 +28,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [counts, setCounts] = useState<StudyQueue["counts"] | null>(null);
   const [shown, setShown] = useState(false);
   const [done, setDone] = useState(0);
+  const [last, setLast] = useState<{ card: StudyCard; reviewId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
 
@@ -55,7 +56,8 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
     async (rating: 1 | 2 | 3 | 4) => {
       if (!card) return;
       try {
-        await api("POST", "study/review", { cardId: card.id, rating, durationMs: Date.now() - shownAt.current });
+        const res = await api<{ reviewId?: string }>("POST", "study/review", { cardId: card.id, rating, durationMs: Date.now() - shownAt.current });
+        setLast(res.reviewId ? { card, reviewId: res.reviewId } : null);
       } catch {
         return setError("Could not save that review. Try again.");
       }
@@ -70,7 +72,24 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
     [api, card],
   );
 
-  // Keyboard: space shows the answer, 1 to 4 rate.
+  const undo = useCallback(async () => {
+    if (!last) return;
+    try {
+      await api("POST", "study/review/undo", { reviewId: last.reviewId });
+    } catch {
+      setLast(null);
+      return setError("That rating can no longer be undone.");
+    }
+    setError(null);
+    setDone((n) => Math.max(0, n - 1));
+    // Put the card back first, and drop the copy a missed card queued for later in this session.
+    setQueue((q) => [last.card, ...(q ?? []).filter((c) => c.id !== last.card.id)]);
+    setLast(null);
+    setShown(false);
+    shownAt.current = Date.now();
+  }, [api, last]);
+
+  // Keyboard: space shows the answer, 1 to 4 rate, U undoes the last rating.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
@@ -78,10 +97,11 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
         e.preventDefault();
         setShown(true);
       } else if (shown && ["1", "2", "3", "4"].includes(e.key)) void rate(Number(e.key) as 1 | 2 | 3 | 4);
+      else if (e.key.toLowerCase() === "u" && !e.ctrlKey && !e.metaKey && !e.altKey) void undo();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [shown, rate]);
+  }, [shown, rate, undo]);
 
   // In a path step, finishing the queue counts as finishing the step.
   const caught = useRef(onCaughtUp);
@@ -106,6 +126,13 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
+            </p>
+          )}
+          {last && (
+            <p className="text-sm">
+              <button onClick={undo} className="text-accent underline">
+                Undo last rating (U)
+              </button>
             </p>
           )}
           {!card ? (

@@ -68,6 +68,10 @@ describe.skipIf(!url)("auth service (integration)", () => {
 
   it("rejects weak passwords, duplicate emails (case-insensitive) and bad input", async () => {
     expect((await register("a@example.com", { password: "short" })).statusCode).toBe(400);
+    const common = await register("b@example.com", { password: "Password12345" });
+    expect(common.statusCode).toBe(400);
+    expect(JSON.stringify(common.json())).toContain("lists attackers try first");
+    expect((await register("carolsmith@example.com", { password: "carolsmith-2026!" })).statusCode).toBe(400);
     expect((await register("not-an-email")).statusCode).toBe(400);
     expect((await register("a@example.com")).statusCode).toBe(201);
     expect((await register("A@Example.com")).statusCode).toBe(409);

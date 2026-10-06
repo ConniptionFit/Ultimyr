@@ -316,7 +316,7 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     return {
       ...q,
       existing: (arch.items ?? []).map((i: any) => ({ id: i.id, kind: i.kind, title: i.title, status: i.status })),
-      howTo: "guide: create_guide with objectiveIds set to the task's objectives. cards: create_deck titled '<code> Flashcards' with objectiveIds set to that one objective (or upsert_cards into a deck you made for it). questions: add to one quiz per domain (create_quiz once, reuse it) with create_quiz_questions, setting each question's objectiveId. Then call get_build_queue again.",
+      howTo: "guide: create_guide (only learning material for the objectives: no FAQs, introductions or other filler) with objectiveIds set to the task's objectives. cards: create_deck titled '<code> Flashcards' with objectiveIds set to that one objective (or upsert_cards into a deck you made for it). questions: add to one quiz per domain (create_quiz once, reuse it) with create_quiz_questions, setting each question's objectiveId. Then call get_build_queue again.",
       note: stats ? undefined : "Question counts are missing because this connection cannot read quizzes, so question tasks may repeat.",
     };
   });
@@ -400,7 +400,7 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     `2. Objectives. Save them with set_objectives (## domain with its percentage, then one line per objective) and check the result with get_objectives.\n` +
     `3. Resources. Add the sources you opened, with add_resources, including videos and playlists (YouTube and Vimeo play inside Ultimyr). Never add a link you did not open.\n` +
     `4. Roadmap. Draft it with import_outline or set_roadmap: stages by week, required steps first, each guide followed by its flashcards and a short quiz, videos where they help, a milestone after each stage.\n` +
-    `5. Build. Call get_build_queue, do every task it returns (guides, flashcards, questions, each linked to its objectives), then call it again. Repeat until done is true. Guides go beyond the vendor guide in your own words. Flashcards and questions align with the guides and research but are never copies of them or of real exam questions, and follow the real exam's reported format and emphasis. Keep unconfirmed facts out. If a write is rate limited, wait a minute and continue.\n` +
+    `5. Build. Call get_build_queue, do every task it returns (guides, flashcards, questions, each linked to its objectives), then call it again. Repeat until done is true. Keep to learning material for the exam objectives: leave out FAQs, welcome and introduction pages and other non-learning content, in guides and in saved links. Guides go beyond the vendor guide in your own words. Flashcards and questions align with the guides and research but are never copies of them or of real exam questions, and follow the real exam's reported format and emphasis. Keep unconfirmed facts out. If a write is rate limited, wait a minute and continue.\n` +
     `6. Report. Call get_coverage and tell me the coverage, anything thin, and what needs my review. Everything is a draft: remind me to review and publish it in Ultimyr.`,
   );
   prompt("continue_build", "Pick up building an archive where an earlier chat stopped.", { archiveId: z.string(), depth: z.enum(["quick", "standard", "deep"]).optional() }, (a) =>

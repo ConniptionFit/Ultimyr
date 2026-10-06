@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 import { ErrorLine, selectCls } from "@/components/admin/bits";
 import { message, when } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { downloadApi } from "@/lib/download";
 
 interface Entry { id: number; ts: string; actorId: string | null; action: string; target: string | null; ip: string | null }
 const FILTERS: Array<[string, string]> = [
@@ -14,15 +16,21 @@ const FILTERS: Array<[string, string]> = [
   ["admin.settings_updated", "Setting changes"],
 ];
 
+const PAGE = 100;
+
 export default function Audit() {
-  const { api } = useAuth();
+  const { api, state } = useAuth();
+  const [actions, setActions] = useState<string[]>([]);
+  const [more, setMore] = useState(false);
   const [rows, setRows] = useState<Entry[]>([]);
   const [action, setAction] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setRows(await api<Entry[]>("GET", `admin/audit?limit=200${action ? `&action=${encodeURIComponent(action)}` : ""}`));
+      const first = await api<Entry[]>("GET", `admin/audit?limit=${PAGE}${action ? `&action=${encodeURIComponent(action)}` : ""}`);
+      setRows(first);
+      setMore(first.length === PAGE);
       setError(null);
     } catch (e) {
       setError(message(e));
@@ -31,28 +39,65 @@ export default function Audit() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    api<string[]>("GET", "admin/audit/actions").then(setActions).catch(() => setActions([]));
+  }, [api]);
+
+  async function loadMore() {
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    try {
+      const next = await api<Entry[]>("GET", `admin/audit?limit=${PAGE}&before=${last.id}${action ? `&action=${encodeURIComponent(action)}` : ""}`);
+      setRows([...rows, ...next]);
+      setMore(next.length === PAGE);
+    } catch (e) {
+      setError(message(e));
+    }
+  }
+
+  async function exportCsv() {
+    if (state.status !== "authenticated") return;
+    const ok = await downloadApi(state.accessToken, `admin/audit?format=csv&limit=5000${action ? `&action=${encodeURIComponent(action)}` : ""}`, "ultimyr-audit-log.csv");
+    if (!ok) setError("Export failed.");
+  }
 
   return (
     <div className="space-y-5">
       <h2 className="text-2xl">Audit log</h2>
-      <p className="text-sm text-muted">The latest 200 sign-ins, security changes and admin actions.</p>
-      <select aria-label="Filter" className={selectCls} value={action} onChange={(e) => setAction(e.target.value)}>
-        {FILTERS.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
+      <p className="text-sm text-muted">Sign-ins, security changes and admin actions, newest first. Export gives up to the latest 5,000 matching entries as a spreadsheet file.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <select aria-label="Filter" className={selectCls} value={action} onChange={(e) => setAction(e.target.value)}>
+          {FILTERS.map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+          {actions.length > 0 && (
+            <optgroup label="All actions">
+              {actions
+                .filter((a) => !FILTERS.some(([v]) => v === a))
+                .map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+            </optgroup>
+          )}
+        </select>
+        <Button variant="quiet" onClick={exportCsv}>
+          Export CSV
+        </Button>
+      </div>
       <ErrorLine error={error} />
       <div className="overflow-x-auto rounded-md border border-line">
         <table className="w-full text-left text-xs">
           <thead className="text-muted">
             <tr>
-              <th className="p-2 font-normal">When</th>
-              <th className="p-2 font-normal">Action</th>
-              <th className="p-2 font-normal">Who</th>
-              <th className="p-2 font-normal">Target</th>
-              <th className="p-2 font-normal">Address</th>
+              <th scope="col" className="p-2 font-normal">When</th>
+              <th scope="col" className="p-2 font-normal">Action</th>
+              <th scope="col" className="p-2 font-normal">Who</th>
+              <th scope="col" className="p-2 font-normal">Target</th>
+              <th scope="col" className="p-2 font-normal">Address</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -75,6 +120,11 @@ export default function Audit() {
           </tbody>
         </table>
       </div>
+      {more && (
+        <Button variant="quiet" onClick={loadMore}>
+          Load older entries
+        </Button>
+      )}
     </div>
   );
 }

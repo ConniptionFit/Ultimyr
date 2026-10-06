@@ -133,3 +133,6 @@ Deleting archives and items is a soft delete. They appear in `GET /api/v1/trash`
 
 ## Limits
 Markdown 500,000 characters, 5,000 cards per deck, 200 items per import, 500 grants per object, 20 tags per archive.
+
+## Search filters
+When results span several kinds, filter chips with counts appear above the list (All, courses, material, guide sections, flashcards, links). Filtering happens in the page, so it is instant.

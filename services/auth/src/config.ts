@@ -12,6 +12,11 @@ const schema = z.object({
   ULTIMYR_ALLOW_INSECURE_IDP: booleanFromEnv.optional(),
   ULTIMYR_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/, "owner/name").default("ConniptionFit/Ultimyr"),
   ULTIMYR_UPDATE_CHECK: booleanFromEnv.optional(),
+  CONTENT_URL: z.url().optional(),
+  QUIZ_URL: z.url().optional(),
+  AI_URL: z.url().optional(),
+  MCP_URL: z.url().optional(),
+  NOTES_URL: z.url().optional(),
 });
 
 export interface AuthConfig {
@@ -32,6 +37,8 @@ export interface AuthConfig {
   repo: string;
   /** Admin panel > About asks GitHub for the latest release. Off for air-gapped installs. */
   updateCheck: boolean;
+  /** Sibling services the admin status card checks (internal addresses, set in the environment, never by a request). */
+  services: { name: string; url: string }[];
 }
 
 export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
@@ -60,5 +67,14 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
     allowInsecureIdp: e.ULTIMYR_ALLOW_INSECURE_IDP ?? e.NODE_ENV !== "production",
     repo: e.ULTIMYR_REPO,
     updateCheck: e.ULTIMYR_UPDATE_CHECK ?? e.NODE_ENV !== "test",
+    services: (
+      [
+        ["Content", e.CONTENT_URL],
+        ["Quizzes", e.QUIZ_URL],
+        ["AI gateway", e.AI_URL],
+        ["MCP", e.MCP_URL],
+        ["Notes", e.NOTES_URL],
+      ] as const
+    ).flatMap(([name, url]) => (url ? [{ name, url: url.replace(/\/$/, "") }] : [])),
   };
 }

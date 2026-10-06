@@ -148,6 +148,36 @@ export default function AttemptPage() {
     }
   }
 
+  // Keyboard: N next, P previous, F flag, 1 to 9 pick an option. Ignored while typing or when a modifier is held.
+  const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  keys.current = (e) => {
+    const el = e.target as HTMLElement | null;
+    if (e.ctrlKey || e.metaKey || e.altKey || reviewing || !at?.questions || !q) return;
+    if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) && !(el instanceof HTMLInputElement && (el.type === "radio" || el.type === "checkbox"))) return;
+    const k = e.key.toLowerCase();
+    const n = at.questions.length;
+    if (k === "n" && idx < n - 1) go(idx + 1);
+    else if (k === "p" && idx > 0) go(idx - 1);
+    else if (k === "f" && open) {
+      patchLocal(q.id, { flagged: !q.flagged });
+      void save(q.id, { flagged: !q.flagged });
+    } else if (/^[1-9]$/.test(k) && open && !q.feedback && (q.type === "mcq" || q.type === "multi")) {
+      const o = q.payload.options?.[Number(k) - 1] as { id: string } | undefined;
+      if (!o) return;
+      if (q.type === "mcq") answer(q.id, { choice: o.id });
+      else {
+        const chosen: string[] = q.response?.choices ?? [];
+        answer(q.id, { choices: chosen.includes(o.id) ? chosen.filter((c) => c !== o.id) : [...chosen, o.id] });
+      }
+    } else return;
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => keys.current(e);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+
   const summary = useMemo(() => at?.result, [at]);
 
   if (state.status !== "authenticated" || (!at && !error)) {
@@ -230,8 +260,8 @@ export default function AttemptPage() {
                 <table className="w-full text-sm">
                   <thead className="text-left text-muted">
                     <tr>
-                      <th className="py-1 font-normal">Domain</th>
-                      <th className="py-1 font-normal">Score</th>
+                      <th scope="col" className="py-1 font-normal">Domain</th>
+                      <th scope="col" className="py-1 font-normal">Score</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -246,14 +276,25 @@ export default function AttemptPage() {
                   </tbody>
                 </table>
               )}
+              {(() => {
+                const missed = qs.flatMap((x, i) => (x.feedback && x.feedback.outcome !== "correct" && x.feedback.outcome !== "excluded" ? [i] : []));
+                return missed.length > 0 ? (
+                  <p className="text-sm">
+                    Review what you missed:{" "}
+                    {missed.map((i) => (
+                      <button key={i} className="mr-2 text-accent underline" onClick={() => { go(i); document.getElementById("question-area")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                        {i + 1}
+                      </button>
+                    ))}
+                  </p>
+                ) : null;
+              })()}
               <AssistantPanel context={{ type: "attempt", id }} label="Explain my mistakes" />
               <div className="flex gap-2">
                 <Button onClick={() => router.push(home)}>Done</Button>
-                {drill && (
-                  <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
-                    Another drill
-                  </Button>
-                )}
+                <Button variant="quiet" onClick={() => router.push(`/drills?archive=${at.archiveId}`)}>
+                  {drill ? "Another drill" : "Drill my weak areas"}
+                </Button>
               </div>
             </section>
           )}
@@ -300,11 +341,12 @@ export default function AttemptPage() {
           </nav>
 
           {q && (
-            <section aria-label={`Question ${idx + 1} of ${qs.length}`}>
+            <section id="question-area" className="scroll-mt-20" aria-label={`Question ${idx + 1} of ${qs.length}`}>
               <p className="mb-2 text-sm text-muted">
                 Question {idx + 1} of {qs.length}
               </p>
               {drill && q.drillReason && REASON_LABEL[q.drillReason] && <p className="mb-2 text-xs text-muted">{REASON_LABEL[q.drillReason]}</p>}
+              {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag.</p>}
               <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">
