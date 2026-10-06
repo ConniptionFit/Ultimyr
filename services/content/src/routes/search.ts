@@ -10,6 +10,12 @@ const query = pageQuery.extend({
   type: z.enum(["archive", "item", "section", "card", "resource"]).optional(),
 });
 
+/** The word being typed at the end of the query, when it is plain letters or digits of three or more. It also matches as a prefix, so "flash" finds "flashcards". */
+export function trailingPrefix(q: string): string {
+  if (/[\s"'-]$/.test(q)) return "";
+  return q.match(/([\p{L}\p{N}]{3,})$/u)?.[1]?.toLowerCase() ?? "";
+}
+
 export function searchRoutes(ctx: Ctx) {
   const { pool } = ctx;
   return async (r: FastifyInstance) => {
@@ -18,7 +24,7 @@ export function searchRoutes(ctx: Ctx) {
       const q = parse(query, req.query);
       // Only material the caller can already read is searched: archives and items, guide sections of the current version, and cards.
       const { rows } = await pool.query(
-        `WITH tq AS (SELECT websearch_to_tsquery('english', $3) AS q),
+        `WITH tq AS (SELECT CASE WHEN $8::text = '' THEN websearch_to_tsquery('english', $3) ELSE websearch_to_tsquery('english', $3) || to_tsquery('simple', $8::text || ':*') END AS q),
          acc AS (SELECT m.*, ${ARCHIVE_REL} AS rel FROM content.master_items m WHERE m.deleted_at IS NULL AND ($4::uuid IS NULL OR m.id = $4)),
          vis AS (
            SELECT s.*, acc.title AS archive_title FROM (
@@ -46,7 +52,7 @@ export function searchRoutes(ctx: Ctx) {
          ) res
          WHERE ($7::text IS NULL OR type = $7)
          ORDER BY score DESC, title LIMIT $5 OFFSET $6`,
-        [a.userId, a.groups, q.q, q.archive ?? null, q.limit, q.offset, q.type ?? null],
+        [a.userId, a.groups, q.q, q.archive ?? null, q.limit, q.offset, q.type ?? null, trailingPrefix(q.q)],
       );
       return {
         results: rows.map((x) => ({ type: x.type, id: x.id, archiveId: x.archive_id, itemId: x.item_id, title: x.title, snippet: x.snippet, anchor: x.anchor, url: x.url, score: Number(x.score) })),

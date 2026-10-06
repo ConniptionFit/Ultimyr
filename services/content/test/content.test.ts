@@ -229,6 +229,10 @@ describe.skipIf(!testDbUrl)("content service", () => {
     const r3 = json(await call(alice, "GET", "/v1/search?q=entanglement&type=archive"));
     expect(r3.results[0]).toMatchObject({ type: "archive", id });
     expect((await call(alice, "GET", "/v1/search?q=")).statusCode).toBe(400);
+    // The word being typed matches as a prefix, so partial words find things.
+    const r4 = json(await call(alice, "GET", "/v1/search?q=entang&type=archive"));
+    expect(r4.results[0]).toMatchObject({ type: "archive", id });
+    expect(json(await call(alice, "GET", "/v1/search?q=en&type=archive")).results).toHaveLength(0); // under three letters stays exact
     // Other users see nothing until shared.
     expect(json(await call(bob, "GET", "/v1/search?q=polarization")).results).toHaveLength(0);
   });

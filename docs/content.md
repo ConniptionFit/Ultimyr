@@ -113,7 +113,7 @@ Administrators and **curriculum admins** can also manage group grants centrally 
 People are found by **exact email** (never listed), groups by name. Group memberships are fetched from the auth service and cached for 30 seconds, so a membership change can take up to that long to apply. If auth is unreachable, group grants pause but ownership and direct grants keep working.
 
 ## Search
-`GET /api/v1/search?q=` searches archives, items, guide sections, cards and saved resources with Postgres full text search (English stemming, ranked, highlighted snippets). It only searches material you can already read. Section results carry an anchor so the UI jumps to the right heading.
+`GET /api/v1/search?q=` searches archives, items, guide sections, cards and saved resources with Postgres full text search (English stemming, ranked, highlighted snippets; the last word, once it has three letters, also matches as a prefix so results appear as you type). It only searches material you can already read. Section results carry an anchor so the UI jumps to the right heading.
 
 ## Import and export
 | Format | Export | Import |
