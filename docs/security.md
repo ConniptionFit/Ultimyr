@@ -5,7 +5,7 @@ This is the project's own review of what Ultimyr protects, how, and what is left
 ## What is protected, and how
 | Asset | Protection |
 |---|---|
-| Passwords | Argon2id, per-IP rate limit (10 per minute), TOTP lockout after repeated bad codes |
+| Passwords | Argon2id, 12 characters or more and not a common password, a repeated pattern, a run like 123456789012 or containing your email name; per-IP rate limit (10 per minute), TOTP lockout after repeated bad codes |
 | Sessions | Short EdDSA access tokens (10 min), rotating 30 day refresh cookie (HttpOnly, SameSite=Lax, Secure in production) with reuse detection |
 | TOTP seeds, IdP secrets | AES-256-GCM with `auth_enc_key` |
 | API keys | Shown once, stored as HMAC with `api_key_pepper`, scoped, revocable |
