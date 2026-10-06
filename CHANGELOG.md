@@ -122,6 +122,8 @@
 - **Improved: Quick jump also finds your study material.** Type two or more letters and guides, decks and quizzes whose titles match appear under the pages and courses, so Ctrl+K takes you straight to "Ports flashcards".
 - **Improved: search finds words as you type them.** The last word of a search also matches as a prefix once it has three letters, so "flash" finds "flashcards" and "entang" finds "entanglement". Quick jump and the Search page both use it. Words are matched against stems, so a cut that falls inside a changed ending (such as "polariz" for "polarization") can still miss.
 - **Improved: big flashcard decks open about four times faster.** A deck page now draws 100 cards at a time with a "Show more" button (the filter still searches every card, and printing includes them all). A 2,000 card deck went from about 3.9 s to about 1.0 s to appear.
+- **Fixed: the guide editor's Preview link split into "Previe / w" on a phone.** It now keeps its size and the label above it wraps instead.
+- **Fixed: file pickers pushed the page sideways on the narrowest phones.** On a 320 px wide screen the "Choose File" boxes (Build, deck import, guide editor, course icon) ran past the edge. They now stay inside it.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
