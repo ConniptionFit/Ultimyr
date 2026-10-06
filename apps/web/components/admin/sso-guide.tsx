@@ -1,55 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/admin/bits";
 import { CopyButton } from "@/components/admin/copy-button";
 import { Button, Field } from "@/components/ui";
 import { cleanBase } from "@/lib/scim-providers";
-import { SSO_PROVIDERS, ssoUrls, validSlug, type Protocol, type SsoFill } from "@/lib/sso-providers";
+import { deriveSso, SSO_PROVIDERS, ssoUrls, validSlug, type Protocol, type SsoFill } from "@/lib/sso-providers";
+import type { SsoSetup } from "@/lib/sso-setup";
 
-const KEY = "ultimyr_sso_guide";
 const PROTOCOLS: Array<[Protocol, string]> = [["oidc", "OpenID Connect"], ["saml", "SAML 2.0"]];
 const FILL_LABEL: Record<SsoFill, string> = { redirect: "Redirect address", acs: "ACS address", entity: "Entity ID", metadata: "Metadata address", issuer: "Issuer" };
 
-interface Saved { provider: string; protocol: Protocol; bases: Record<string, string>; slugs: Record<string, string>; done: Record<string, number[]> }
-const empty: Saved = { provider: "authentik", protocol: "oidc", bases: {}, slugs: {}, done: {} };
-
-function load(): Saved {
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...empty, ...(JSON.parse(raw) as Partial<Saved>) } : empty;
-  } catch {
-    return empty;
-  }
-}
-
-export interface Prefill { kind: Protocol; slug: string; name: string }
-
-export function SsoGuide({ origin, existing, onPrefill }: { origin: string; existing: Array<{ slug: string; kind: string; enabled: boolean }>; onPrefill: (p: Prefill) => void }) {
-  const [saved, setSaved] = useState<Saved>(empty);
-  const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setSaved(load());
-    setReady(true);
-  }, []);
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(saved));
-    } catch {
-      /* private mode: the guide still works without remembering */
-    }
-  }, [saved, ready]);
+export function SsoGuide({ origin, existing, setup, update, onPrefill }: { origin: string; existing: Array<{ slug: string; kind: string; enabled: boolean }>; setup: SsoSetup; update: (p: Partial<SsoSetup>) => void; onPrefill: () => void }) {
+  const [open, setOpen] = useState(true);
+  const saved = setup;
+  const setSaved = (next: SsoSetup) => update(next);
 
   const provider = SSO_PROVIDERS.find((p) => p.id === saved.provider) ?? SSO_PROVIDERS[0]!;
   const protocol = saved.protocol;
   const slug = saved.slugs[provider.id] ?? provider.slug;
   const slugOk = validSlug(slug);
   const urls = slugOk ? ssoUrls(origin, slug) : null;
-  const baseInput = saved.bases[provider.id] ?? "";
+  const typed = saved.fields[provider.id] ?? {};
+  const baseInput = typed.base ?? "";
   const providerBase = provider.id === "keycloak" ? (baseInput.trim() ? baseInput.trim() : null) : cleanBase(baseInput);
+  const derived = deriveSso(provider.id, typed);
   const stepKey = `${provider.id}:${protocol}`;
   const done = new Set(saved.done[stepKey] ?? []);
   const live = existing.find((e) => e.slug === slug && (protocol === "saml" ? e.kind === "saml" : e.kind !== "saml") && e.enabled);
@@ -101,6 +76,20 @@ export function SsoGuide({ origin, existing, onPrefill }: { origin: string; exis
       </div>
       <p className="text-sm">{provider.intro} {protocol === "oidc" ? "OpenID Connect is the simpler choice when your provider supports it." : "SAML sign-in always starts from Ultimyr."}</p>
       <div className="grid gap-3 sm:grid-cols-2">
+        {provider.fields.map((f) => (
+          <div key={`${provider.id}-${f.key}`}>
+            <Field
+              id={`sso-${f.key}`}
+              label={f.label}
+              placeholder={f.placeholder}
+              value={typed[f.key] ?? ""}
+              onChange={(e) => setSaved({ ...saved, fields: { ...saved.fields, [provider.id]: { ...typed, [f.key]: e.target.value } } })}
+              inputMode={f.key === "base" ? "url" : "text"}
+              autoComplete="off"
+            />
+            <p className="mt-1 text-xs text-muted">{f.hint ?? "Used to work out the addresses and links below. Stored in this browser, not sent anywhere."}</p>
+          </div>
+        ))}
         <div>
           <Field
             id="sso-slug"
@@ -111,21 +100,25 @@ export function SsoGuide({ origin, existing, onPrefill }: { origin: string; exis
           />
           <p className="mt-1 text-xs text-muted">{slugOk ? "Part of the addresses below. Use the same one when you add the provider." : "Use 2 to 40 lowercase letters, digits or dashes, not starting or ending with a dash."}</p>
         </div>
-        {provider.base && (
-          <div>
-            <Field
-              id="sso-provider-base"
-              label={provider.base.label}
-              placeholder={provider.base.placeholder}
-              value={baseInput}
-              onChange={(e) => setSaved({ ...saved, bases: { ...saved.bases, [provider.id]: e.target.value } })}
-              inputMode="url"
-              autoComplete="off"
-            />
-            <p className="mt-1 text-xs text-muted">Used only to build the links below. Stored in this browser, not sent anywhere.</p>
-          </div>
-        )}
       </div>
+      {(derived.issuer || derived.entryPoint) && (
+        <div className="space-y-1 rounded-md border border-accent p-3 text-sm" role="status">
+          <p className="text-muted">Worked out from what you typed. These fill the Add a provider form below.</p>
+          {protocol === "oidc" && derived.issuer && (
+            <p className="flex flex-wrap items-center gap-2">
+              Issuer: <code className="break-all">{derived.issuer}</code>
+              <CopyButton text={derived.issuer} label="issuer" />
+            </p>
+          )}
+          {protocol === "saml" && derived.entryPoint && (
+            <p className="flex flex-wrap items-center gap-2">
+              Sign-in URL: <code className="break-all">{derived.entryPoint}</code>
+              <CopyButton text={derived.entryPoint} label="sign-in URL" />
+            </p>
+          )}
+          {protocol === "saml" && !derived.entryPoint && <p className="text-xs text-muted">{provider.name} gives you the sign-in URL when you create the app, so you will paste it below.</p>}
+        </div>
+      )}
       <ol className="space-y-3">
         {provider.steps[protocol].map((s, i) => {
           const href = s.link?.href(providerBase) ?? null;
@@ -161,7 +154,7 @@ export function SsoGuide({ origin, existing, onPrefill }: { origin: string; exis
                       <p className="text-xs text-muted">Enter your provider address above to get a direct link.</p>
                     ))}
                   {s.action === "prefill" && (
-                    <Button disabled={!slugOk} onClick={() => onPrefill({ kind: protocol, slug, name: `${provider.id === "generic" ? "Single sign-on" : provider.name}` })}>
+                    <Button disabled={!slugOk} onClick={onPrefill}>
                       Open the form with these values
                     </Button>
                   )}

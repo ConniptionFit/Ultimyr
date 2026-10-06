@@ -34,6 +34,7 @@ export const sessions = auth.table("sessions", {
   userId: uuid("user_id").notNull(),
   refreshHash: text("refresh_hash").notNull(),
   prevRefreshHash: text("prev_refresh_hash"),
+  rotatedAt: timestamp("rotated_at", { withTimezone: true }),
   userAgent: text("user_agent"),
   ip: text("ip"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
