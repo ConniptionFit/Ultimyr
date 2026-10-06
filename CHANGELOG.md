@@ -120,6 +120,7 @@
 - **New: print a flashcard deck.** Decks get the same Print or save as PDF button as study guides. The printout lists each card with its front and back and leaves out the buttons, editors and forms.
 - **Improved: sign-in says to wait when you are rate limited.** After too many tries in a minute the form said "Something went wrong". It now says there were too many attempts and to wait a minute.
 - **Improved: Quick jump also finds your study material.** Type two or more letters and guides, decks and quizzes whose titles match appear under the pages and courses, so Ctrl+K takes you straight to "Ports flashcards".
+- **Improved: search finds words as you type them.** The last word of a search also matches as a prefix once it has three letters, so "flash" finds "flashcards" and "entang" finds "entanglement". Quick jump and the Search page both use it. Words are matched against stems, so a cut that falls inside a changed ending (such as "polariz" for "polarization") can still miss.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
