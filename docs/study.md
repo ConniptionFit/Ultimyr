@@ -12,7 +12,7 @@ Open **Daily review** (`/study`), optionally narrowed to one course or deck. You
 | Good | 3 | You remembered. |
 | Easy | 4 | No effort at all. |
 
-The page asks "How well did you remember?" and each button carries a one-line meaning (worded to match your themed or plain names setting). Each button shows when the card will come back ("1 min", "10 min", "3 days"). In **Your settings > Display** you can switch on **Flashcard flip**, a short, gentle tilt when an answer appears. It is off by default and never plays with Calm mode or reduced motion.
+A thin bar under the counter shows how far through the session you are, and the deck name above a card links to that deck. The page asks "How well did you remember?" and each button carries a one-line meaning (worded to match your themed or plain names setting). Each button shows when the card will come back ("1 min", "10 min", "3 days"). In **Your settings > Display** you can switch on **Flashcard flip**, a short, gentle tilt when an answer appears. It is off by default and never plays with Calm mode or reduced motion.
 
 The schedule comes from **FSRS-5**, the open Free Spaced Repetition Scheduler. It tracks, per card, how stable the memory is and how difficult the card is for you, and schedules the next review for when your chance of remembering has dropped to your **desired retention** (default 90%).
 

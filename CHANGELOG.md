@@ -107,6 +107,8 @@
 - **Improved: the course path starts higher on a phone.** For editors, the roadmap tools (edit, paste an outline, copy, publish) fold into one line once the roadmap is published, so the path itself is the first thing you see. A draft roadmap keeps them open. The exam countdown also asks for a missing date in plain grey text instead of red.
 - **Fixed: "today" was tomorrow in the evening in the Americas.** The exam countdown, the minimum exam date and the default date when logging CEU hours used the UTC date, so after about 7 pm US Central they were a day ahead. They now use your own calendar day (`GET /plan` takes an optional `today`, accepted only within a day of the server's date).
 - **Fixed: days, streaks and the daily new-card limit now follow your own time zone.** They used UTC, so in the US evening "reviewed today" reset to zero, the new-card allowance came back early, and a quiz taken after about 7 pm US Central counted for tomorrow. The queue, stats, activity and analytics routes take an optional IANA `tz` (the web app sends it; API clients that omit it still get UTC). A zone Postgres does not know is ignored.
+- **Improved: the tab title names the course or item you are on.** Open pages used to read "Course | Ultimyr" or "Study item | Ultimyr" whatever you were viewing, so several tabs looked the same and a screen reader announced nothing new. Now the title is the page's own name.
+- **Improved: the daily review shows how far through the session you are.** A thin progress bar sits under the counter, and the deck name above a card links to that deck, handy for fixing a card as you meet it.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

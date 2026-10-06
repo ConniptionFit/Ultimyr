@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loading } from "@/components/loading";
@@ -135,6 +136,11 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
               </button>
             </p>
           )}
+          {done + queue.length > 0 && (
+            <div role="progressbar" aria-label="Session progress" aria-valuemin={0} aria-valuemax={done + queue.length} aria-valuenow={done} className="h-1.5 overflow-hidden rounded-full bg-line">
+              <div className="h-full bg-accent transition-[width]" style={{ width: `${Math.round((done / (done + queue.length)) * 100)}%` }} />
+            </div>
+          )}
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
@@ -164,7 +170,16 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
             </div>
           ) : (
             <section aria-label="Flashcard" className="space-y-4">
-              <p className="text-xs text-muted">{card.deckTitle}{card.state === 0 ? " · new" : ""}</p>
+              <p className="text-xs text-muted">
+                {card.deckId ? (
+                  <Link href={`/items/${card.deckId}`} className="underline">
+                    {card.deckTitle}
+                  </Link>
+                ) : (
+                  card.deckTitle
+                )}
+                {card.state === 0 ? " · new" : ""}
+              </p>
               <div key={`${card.id}:${shown}`} className={`min-h-40 space-y-4 rounded-md border border-line p-6${display.flip && shown ? " ulti-flip" : ""}`}>
                 <div className="text-xl">
                   <Markdown>{card.front}</Markdown>

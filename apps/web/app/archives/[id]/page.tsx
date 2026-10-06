@@ -19,6 +19,7 @@ import { ApiError, useAuth } from "@/lib/auth";
 import { ArchiveEditForm } from "@/components/archive-edit-form";
 import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
+import { usePageTitle } from "@/lib/page-title";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
 // The build panel carries the whole course-builder library (25 KB gzip) and only editors open it, so it loads on demand.
@@ -34,6 +35,7 @@ export default function ArchivePage() {
   const { t, copy } = useNaming();
   const router = useRouter();
   const [a, setA] = useState<Archive | null>(null);
+  usePageTitle(a?.title);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<ItemSummary["kind"] | null>(null);
   const [editing, setEditing] = useState(false);
