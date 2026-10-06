@@ -100,6 +100,7 @@
 - **Fixed: a NUL character in a title, note or search no longer ends in "internal error".** Text the database cannot store (a NUL character, a malformed value, text that is too long) now gets a normal 400 `invalid_request` from every service instead of a 500.
 - **Improved: the study guide editor.** It shows a word count and reading time while you write, can replace the text with a Markdown file from your computer, and the browser asks before you close the tab with unsaved changes.
 - **New: filter a quiz's questions and publish all drafts at once.** Quizzes with more than eight questions get a text filter and a domain picker, and when several questions are drafts (for example from the connector) a Publish all button publishes them after a confirmation.
+- **New: how a deck is going.** A deck page says how many of its cards are already in your daily review and links to the ones that are due. `GET /study/stats` takes an optional `deck` to count one deck's cards.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

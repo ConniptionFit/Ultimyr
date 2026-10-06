@@ -98,8 +98,10 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
 
   it("reports counts, retention and a seven day forecast", async () => {
     at("2027-01-10T08:00:00Z");
-    const { archive, cards } = await deckWith(3);
+    const { archive, deck, cards } = await deckWith(3);
     for (const c of cards) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 3 });
+    expect(json(await call(alice, "GET", `/v1/study/stats?deck=${deck}`))).toMatchObject({ review: 3, learning: 0 });
+    expect(json(await call(alice, "GET", `/v1/study/stats?deck=${uuid()}`))).toMatchObject({ review: 0, learning: 0 });
     const fresh = json(await call(alice, "GET", `/v1/study/stats?archive=${archive}`));
     expect(fresh).toMatchObject({ review: 3, learning: 0, dueNow: 0, reviewedToday: 3, retentionBp: null, forecast: [0, 0, 0, 3, 0, 0, 0] });
     at("2027-01-13T08:00:00Z");

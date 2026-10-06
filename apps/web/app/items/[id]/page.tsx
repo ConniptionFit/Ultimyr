@@ -312,6 +312,10 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
   const { api } = useAuth();
   const { t } = useNaming();
   const cards = it.cards ?? [];
+  const [mine, setMine] = useState<{ learning: number; review: number; dueNow: number } | null>(null);
+  useEffect(() => {
+    api<{ learning: number; review: number; dueNow: number }>("GET", `study/stats?deck=${it.id}`).then(setMine).catch(() => setMine(null));
+  }, [api, it.id]);
   const [editId, setEditId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -355,6 +359,20 @@ function Deck({ it, editor, studying, setStudying, reload, fail }: { it: ItemDet
         <h2 className="text-xl">{cards.length} {cards.length === 1 ? t("card").toLowerCase() : `${t("card").toLowerCase()}s`}</h2>
         {cards.length > 0 && <Button onClick={() => setStudying(true)}>Study</Button>}
       </div>
+      {mine && cards.length > 0 && (
+        <p className="text-sm text-muted">
+          {Math.min(cards.length, mine.learning + mine.review)} of {cards.length} {cards.length === 1 ? "card" : "cards"} in your daily review
+          {mine.dueNow > 0 && (
+            <>
+              {" "}
+              ·{" "}
+              <Link href={`/study?deck=${it.id}`} className="text-accent underline">
+                {mine.dueNow} due, review now
+              </Link>
+            </>
+          )}
+        </p>
+      )}
       {cards.length > 8 && (
         <div>
           <label className="sr-only" htmlFor="card-filter">
