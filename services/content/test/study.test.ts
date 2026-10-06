@@ -113,6 +113,27 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     expect(json(await call(bob, "GET", `/v1/study/stats?archive=${archive}`))).toMatchObject({ review: 0, reviewedToday: 0 });
   });
 
+  it("keeps today, the new-card allowance and the activity grid on the caller's own calendar when given a time zone", async () => {
+    at("2027-04-09T23:00:00Z"); // 18:00 in Chicago, still the 9th there
+    const { archive, cards } = await deckWith(2);
+    await call(alice, "POST", "/v1/study/review", { cardId: cards[0]!.id, rating: 3 });
+    at("2027-04-10T01:00:00Z"); // 20:00 in Chicago, already the 10th in UTC
+    const utc = json(await call(alice, "GET", `/v1/study/stats?archive=${archive}`));
+    const chi = json(await call(alice, "GET", `/v1/study/stats?archive=${archive}&tz=America/Chicago`));
+    expect(utc.reviewedToday).toBe(0);
+    expect(chi.reviewedToday).toBe(1);
+    const act = json(await call(alice, "GET", `/v1/study/activity?archive=${archive}&days=7&tz=America/Chicago`));
+    expect(act.activity).toEqual([{ date: "2027-04-09", reviews: 1 }]);
+    const actUtc = json(await call(alice, "GET", `/v1/study/activity?archive=${archive}&days=7`));
+    expect(actUtc.activity).toEqual([{ date: "2027-04-09", reviews: 1 }]);
+    // 23:00Z is the 9th in both; the new-card allowance is spent for the day in Chicago but not yet reset there.
+    await call(alice, "PUT", "/v1/study/settings", { newPerDay: 1 });
+    expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}&tz=America/Chicago`)).counts.newAllowanceLeft).toBe(0);
+    expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`)).counts.newAllowanceLeft).toBe(1);
+    // A name Postgres does not know falls back to UTC instead of failing.
+    expect((await call(alice, "GET", `/v1/study/stats?archive=${archive}&tz=Mars/Olympus`)).statusCode).toBe(200);
+  });
+
   it("counts due cards per course, only yours", async () => {
     at("2027-03-10T08:00:00Z");
     const one = await deckWith(2);

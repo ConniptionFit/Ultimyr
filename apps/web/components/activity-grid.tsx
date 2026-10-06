@@ -12,7 +12,11 @@ const LEVEL_OPACITY = [0.08, 0.3, 0.5, 0.75, 1];
 export function ActivityGrid({ archive }: { archive: string }) {
   const { api } = useAuth();
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
-  const today = useMemo(() => new Date(), []);
+  // The grid works in calendar days, so "today" is your local date written as a UTC midnight. The API buckets reviews in your own time zone too.
+  const today = useMemo(() => {
+    const n = new Date();
+    return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
+  }, []);
 
   useEffect(() => {
     const span = gridSpanDays(today, WEEKS);
