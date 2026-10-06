@@ -18,7 +18,8 @@ const targets = process.argv.slice(2).length
     })
   : SERVICES.map(([service, folder]) => ({ service, dir: resolve(root, `services/${folder}/migrations`) })).filter((t) => existsSync(t.dir));
 
-const pool = createPool();
+// Migrations may legitimately run a long statement (an index build), so they get no statement timeout.
+const pool = createPool({ ...process.env, PG_STATEMENT_TIMEOUT_MS: "0" });
 /** Waits for the database to accept connections (it may still be starting), and explains the usual causes if it never does. */
 async function waitForDatabase() {
   for (let attempt = 1; ; attempt++) {

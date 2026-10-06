@@ -26,6 +26,8 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `PG_PORT` | `5432` | |
 | `PG_PASSWORD` | empty | **Secret**. Compose supplies it from `secrets/pg_password`. |
 | `PG_SSLMODE` | `disable` | `disable`, `require` or `verify-full`. |
+| `PG_CONNECT_TIMEOUT_MS` | `10000` | How long a request waits for a free database connection before failing. |
+| `PG_STATEMENT_TIMEOUT_MS` | `30000` | A query running longer than this is cancelled. `0` turns it off. Migrations always run without it. |
 | `TEST_DATABASE_URL` | none | Enables the auth integration tests. Use a throwaway database. |
 
 ## Auth service
