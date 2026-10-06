@@ -98,3 +98,5 @@ Tokens are the same EdDSA JWTs as everywhere else (`sid` is `mcp:<connection id>
 | Consent page says the request is not valid | The client's redirect address was not registered. Remove the connector and add it again. |
 | Tools missing | You did not grant that scope. Disconnect and reconnect, and tick it. |
 | `Ultimyr refused that: too many cards` and similar | The message is the real reason from the service. Reduce the request. |
+
+**Scope:** build prompts, the Claude Skill and the AI generator tell the assistant to keep only learning material for the exam objectives (no FAQs, welcome or intro pages, marketing or policy pages), in guides and in saved links.

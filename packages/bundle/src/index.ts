@@ -429,6 +429,7 @@ export const STANDARDS = {
     "Add real videos and playlists you opened (official demos and the best-regarded community courses) as roadmap links, '- [Title](https://youtu.be/...) 25m', placed at the step they support. YouTube and Vimeo links play inside Ultimyr. Only use a link you actually opened; never guess one.",
   ],
   guide: [
+    "Teach only what is tested. Leave out FAQs, welcome and introduction pages, course overviews, instructor bios, marketing, registration and policy pages, and anything else that is not learning material for the exam objectives. Every sentence in a guide, card or question must serve an objective.",
     "One guide per objective group (2 to 5 related objectives), titled for what the learner can do, such as 'Configure and troubleshoot DNS'.",
     "Always this shape: '# Title', then '## Why it matters' (2 sentences), '## Key ideas' (bullets, each a fact), '## How it shows up on the exam' (what is tested and how, without quoting questions), '## Watch out' (3 or more common mix-ups), '## Check yourself' (3 recall prompts without answers).",
     "Name the objective codes covered in the 'objectives:' line. Keep each guide under about 1,200 words.",
@@ -446,6 +447,7 @@ export const STANDARDS = {
     "Write new questions in your own words. Never reproduce real exam questions or braindumps.",
   ],
   roadmap: [
+    "Roadmap steps and saved links are learning material only: no FAQs, welcome or introduction pages, overviews or marketing pages. Skip a source that does not teach an objective.",
     "Stages by week, in a sensible learning order. Required steps first, then '(optional)' extras. Each stage ends with its domain quiz.",
     "Link guides, decks and quizzes with [[Exact Title]]. Add outside links only if the person gave them or you opened them.",
   ],
