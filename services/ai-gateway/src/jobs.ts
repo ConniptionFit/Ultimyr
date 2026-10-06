@@ -40,6 +40,7 @@ export function buildPrompt(input: GenerateInput): string {
   return [
     `Create a ${input.kind === "guide" ? "study guide" : input.kind === "deck" ? "flashcard deck" : "quiz"} about: ${input.topic}`,
     n ? `Number of ${input.kind === "deck" ? "cards" : "questions"}: ${n}.` : "",
+    input.kind === "guide" ? "Include only learning material relevant to the topic. Leave out FAQs, welcome or introduction pages, overviews, marketing and other filler." : "",
     input.title ? `Use this title: ${input.title}` : "",
     input.instructions ? `Extra instructions from the user: ${input.instructions}` : "",
     `Return JSON of exactly this shape: ${SHAPES[input.kind]}`,

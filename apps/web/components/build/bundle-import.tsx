@@ -1,18 +1,20 @@
 "use client";
 
-import { parseBundle, summarize } from "@ultimyr/bundle";
+import { checkBundles, parseBundle, summarize } from "@ultimyr/bundle";
+import type { Depth } from "@ultimyr/coverage";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PromptBox } from "@/components/build/prompt-box";
 import { Button } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
+import { gapPrompt } from "@/lib/build-prompt";
 import { runBundle, type RunResult } from "@/lib/bundle-run";
 import type { Archive } from "@/lib/types";
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 /** Paste (or upload) text a chat wrote in the bundle format, check it, and save it as drafts. */
-export function BundleImport() {
+export function BundleImport({ depth = "standard" }: { depth?: Depth }) {
   const { api } = useAuth();
   const [text, setText] = useState("");
   const [archives, setArchives] = useState<Archive[]>([]);
@@ -29,6 +31,7 @@ export function BundleImport() {
   }, [api]);
 
   const bundle = useMemo(() => (text.trim() ? parseBundle(text) : null), [text]);
+  const check = useMemo(() => (bundle && !bundle.errors.length ? checkBundles([bundle], depth) : null), [bundle, depth]);
   const sum = bundle ? summarize(bundle) : null;
   const empty = sum && !sum.objectives && !sum.roadmap && !sum.guides && !sum.decks && !sum.quizzes;
   const needsArchive = target === "new" && !!bundle && !bundle.archive.title;
@@ -100,6 +103,28 @@ export function BundleImport() {
                 <li key={w}>{w}</li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+
+      {check && check.objectives > 0 && (
+        <div className="space-y-2 rounded-md border border-line p-3 text-sm" aria-live="polite">
+          <p className="text-ink">
+            Coverage check ({depth}): {check.complete} of {plural(check.objectives, "objective")} complete in the text above.
+            {check.gaps.length === 0 && " Nothing missing."}
+          </p>
+          {check.gaps.length > 0 && (
+            <>
+              <ul className="list-disc pl-5 text-muted">
+                {check.gaps.slice(0, 6).map((g) => (
+                  <li key={g.code}>
+                    {g.code}: {[g.guide ? "no guide" : "", g.cardsMissing ? `${g.cardsMissing} cards short` : "", g.questionsMissing ? `${g.questionsMissing} questions short` : ""].filter(Boolean).join(", ")}
+                  </li>
+                ))}
+                {check.gaps.length > 6 && <li>...and {check.gaps.length - 6} more.</li>}
+              </ul>
+              <PromptBox label="Ask the chat to fill the gaps" prompt={gapPrompt(check)} connection={false} />
+            </>
           )}
         </div>
       )}

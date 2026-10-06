@@ -68,6 +68,12 @@ services:
       ULTIMYR_UPDATE_CHECK: ${ULTIMYR_UPDATE_CHECK:-true}
       ULTIMYR_REPO: ${ULTIMYR_REPO:-ConniptionFit/Ultimyr}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Admin panel > General checks these services' /readyz.
+      CONTENT_URL: http://content:4002
+      QUIZ_URL: http://quiz:4003
+      AI_URL: http://ai-gateway:4004
+      MCP_URL: http://mcp:4005
+      NOTES_URL: http://notes:4006
       NODE_ENV: production
     secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper]
     depends_on:

@@ -1,5 +1,5 @@
 import { API_KEY_SESSION_PREFIX, SCOPES, isScope } from "@ultimyr/authz";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -118,6 +118,18 @@ export function keyRoutes(ctx: Ctx) {
         lastSeenAt: s.lastSeenAt,
         amr: s.amr,
       }));
+    });
+
+    // Sign out every other device, keeping the one making the request.
+    r.delete("/v1/me/sessions", async (req) => {
+      const { user, principal } = await ctx.authenticateInteractive(req);
+      const res = await db
+        .update(sessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(sessions.userId, user.id), sql`${sessions.revokedAt} IS NULL`, ne(sessions.id, principal.sessionId)))
+        .returning({ id: sessions.id });
+      await ctx.audit("session.revoked_others", req, user.id, null, { count: res.length });
+      return { revoked: res.length };
     });
 
     r.delete("/v1/me/sessions/:id", async (req, reply) => {

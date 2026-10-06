@@ -1,7 +1,7 @@
 "use client";
 
 import { ArchiveIcon } from "@ultimyr/ui-icons";
-import { BookOpen, Download, FileQuestion, Layers, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Download, FileQuestion, Layers, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -15,13 +15,13 @@ import { ResourcesPanel } from "@/components/roadmap/resources-panel";
 import { RoadmapPanel } from "@/components/roadmap/roadmap-panel";
 import { Button, Field, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
-import { AUTO_ICON, IconPicker } from "@/components/icon-picker";
+import { ArchiveEditForm } from "@/components/archive-edit-form";
 import { iconFor } from "@/lib/icons";
 import { useNaming } from "@/lib/naming";
 import { canEdit, type Archive, type ItemSummary } from "@/lib/types";
 
 const KIND_ICON = { guide: BookOpen, deck: Layers, quiz: FileQuestion } as const;
-const TABS = ["material", "roadmap", "resources", "coverage"] as const;
+const TABS = ["roadmap", "material", "resources", "coverage"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function ArchivePage() {
@@ -34,16 +34,22 @@ export default function ArchivePage() {
   const [adding, setAdding] = useState<ItemSummary["kind"] | null>(null);
   const [editing, setEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [details, setDetails] = useState(false);
   const [tab, setTabState] = useState<Tab>("material");
 
-  // The tab lives in the address (#roadmap) so a link can open straight onto it.
+  // The tab lives in the address (#roadmap) so a link can open straight onto it. With no tab named,
+  // an archive that has a roadmap opens on it: the path is the front door, the material list is the shelf.
   useEffect(() => {
     const h = window.location.hash.slice(1) as Tab;
-    if (TABS.includes(h)) setTabState(h);
-  }, []);
+    if (TABS.includes(h)) return setTabState(h);
+    if (state.status !== "authenticated") return;
+    void api<{ exists: boolean; stages: unknown[] }>("GET", `archives/${id}/roadmap`)
+      .then((r) => r.exists && r.stages.length > 0 && setTabState("roadmap"))
+      .catch(() => {});
+  }, [api, id, state.status]);
   const setTab = (next: Tab) => {
     setTabState(next);
-    history.replaceState(null, "", next === "material" ? window.location.pathname : `#${next}`);
+    history.replaceState(null, "", `#${next}`);
   };
 
   const load = useCallback(async () => {
@@ -69,50 +75,6 @@ export default function ArchivePage() {
     } catch {
       setError("Could not add that.");
     }
-  }
-
-  async function save(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const links = String(f.get("link") ?? "").trim();
-    try {
-      await api("PATCH", `archives/${id}`, {
-        title: String(f.get("title")).trim(),
-        overview: String(f.get("overview")),
-        vendor: String(f.get("vendor")).trim() || null,
-        ...(f.get("icon") === AUTO_ICON ? { iconName: null } : f.get("icon") ? { iconName: String(f.get("icon")) } : {}),
-        validityMonths: Number(f.get("validity")) || null,
-        quickStats: {
-          ...(String(f.get("passing")).trim() ? { passingScore: String(f.get("passing")).trim() } : {}),
-          ...(Number(f.get("duration")) ? { durationMinutes: Number(f.get("duration")) } : {}),
-          ...(Number(f.get("questions")) ? { questionCount: Number(f.get("questions")) } : {}),
-          ...(Number(f.get("cost")) ? { costUsd: Number(f.get("cost")) } : {}),
-          ...(f.get("difficulty") ? { difficulty: String(f.get("difficulty")) } : {}),
-        },
-        purchaseLinks: links ? [{ label: "Buy or schedule", url: links }] : [],
-      });
-      setEditing(false);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? (err.issues[0] ?? err.code.replaceAll("_", " ")) : "Could not save.");
-    }
-  }
-
-  async function uploadIcon(file: File) {
-    setError(null);
-    const res = await fetch(`/api/v1/archives/${id}/icon`, {
-      method: "POST",
-      headers: { "content-type": "image/png", authorization: `Bearer ${state.status === "authenticated" ? state.accessToken : ""}` },
-      body: file,
-    });
-    if (!res.ok) {
-      const code = ((await res.json().catch(() => ({}))) as { error?: string }).error;
-      setError(
-        code === "icon_needs_transparency" ? "Icons must be PNGs with a transparent background." : code === "icon_bad_dimensions" ? "Icons must be between 16 and 1024 pixels." : code === "icon_too_large" ? "That file is over 512 KB." : "That is not a usable PNG.",
-      );
-      return;
-    }
-    await load();
   }
 
   async function download(path: string, name: string) {
@@ -184,86 +146,55 @@ export default function ArchivePage() {
             </p>
           )}
 
+          {(() => {
+            const bits = [stats.durationMinutes && `${stats.durationMinutes} min`, stats.questionCount && `${stats.questionCount} questions`, stats.passingScore && `pass ${stats.passingScore}`, stats.difficulty].filter(Boolean).join(" · ");
+            const hasDetails = !!(a.overview || bits || a.validityMonths || stats.costUsd !== undefined || a.purchaseLinks.length);
+            return hasDetails ? (
+              <div className="space-y-4">
+                <button type="button" aria-expanded={details} onClick={() => setDetails(!details)} className="flex w-full items-center gap-2 text-left text-sm text-muted hover:text-ink">
+                  {details ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                  <span className="truncate">{details ? "Hide details" : bits ? `About this ${t("archive").toLowerCase()} · ${bits}` : `About this ${t("archive").toLowerCase()}`}</span>
+                </button>
+                {details && (
+                  <>
           {a.overview && <p className="max-w-prose whitespace-pre-line text-ink/90">{a.overview}</p>}
 
-          {(stats.passingScore || stats.durationMinutes || stats.questionCount || stats.costUsd !== undefined || stats.difficulty || a.validityMonths) && (
-            <dl className="grid grid-cols-2 gap-3 rounded-md border border-line p-4 text-sm sm:grid-cols-3">
-              {stats.passingScore && <Stat k="Passing score" v={stats.passingScore} />}
-              {stats.durationMinutes && <Stat k="Duration" v={`${stats.durationMinutes} min`} />}
-              {stats.questionCount && <Stat k="Questions" v={String(stats.questionCount)} />}
-              {stats.costUsd !== undefined && <Stat k="Cost" v={`$${stats.costUsd}`} />}
-              {stats.difficulty && <Stat k="Difficulty" v={stats.difficulty} />}
-              {a.validityMonths && <Stat k="Valid for" v={`${a.validityMonths} months`} />}
-            </dl>
-          )}
-          {a.purchaseLinks.length > 0 && (
-            <p className="text-sm">
-              {a.purchaseLinks.map((l) => (
-                <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="mr-4 text-accent underline">
-                  {l.label}
-                </a>
-              ))}
-            </p>
-          )}
-
-          {editing && (
-            <form onSubmit={save} className="space-y-3 rounded-md border border-line p-4">
-              <Field id="e-title" name="title" label="Name" defaultValue={a.title} required maxLength={120} />
-              <Field id="e-vendor" name="vendor" label="Vendor" defaultValue={a.vendor ?? ""} maxLength={120} />
-              <div className="space-y-1">
-                <label htmlFor="e-overview" className="text-sm text-muted">
-                  Overview
-                </label>
-                <textarea id="e-overview" name="overview" defaultValue={a.overview} rows={4} maxLength={10000} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field id="e-passing" name="passing" label="Passing score" defaultValue={stats.passingScore ?? ""} />
-                <Field id="e-duration" name="duration" type="number" min={1} label="Minutes" defaultValue={stats.durationMinutes ?? ""} />
-                <Field id="e-questions" name="questions" type="number" min={1} label="Questions" defaultValue={stats.questionCount ?? ""} />
-                <Field id="e-cost" name="cost" type="number" min={0} step="0.01" label="Cost (USD)" defaultValue={stats.costUsd ?? ""} />
-                <Field id="e-validity" name="validity" type="number" min={1} label="Valid for (months)" defaultValue={a.validityMonths ?? ""} />
-                <div className="space-y-1">
-                  <label htmlFor="e-difficulty" className="text-sm text-muted">
-                    Difficulty
-                  </label>
-                  <select id="e-difficulty" name="difficulty" defaultValue={stats.difficulty ?? ""} className="w-full rounded-md border border-line bg-surface px-3 py-2 text-ink">
-                    <option value="">Not set</option>
-                    {["beginner", "intermediate", "advanced", "expert"].map((d) => (
-                      <option key={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <Field id="e-link" name="link" type="url" label="Purchase or scheduling link" defaultValue={a.purchaseLinks[0]?.url ?? ""} />
-              <fieldset className="space-y-2">
-                <legend className="text-sm text-muted">Icon</legend>
-                <IconPicker archiveId={id} icon={a.icon} />
-                <label className="block text-sm text-muted">
-                  Or upload a PNG with a transparent background (16 to 1024 px, up to 512 KB)
-                  <input type="file" accept="image/png" className="mt-1 block text-ink" onChange={(e) => e.target.files?.[0] && uploadIcon(e.target.files[0])} />
-                </label>
-              </fieldset>
-              <div className="flex gap-2">
-                <Button type="submit">Save</Button>
-                <Button type="button" variant="quiet" onClick={() => setEditing(false)}>
-                  Cancel
-                </Button>
-                {a.relation === "owner" && (
-                  <Button
-                    type="button"
-                    variant="quiet"
-                    className="ml-auto text-danger"
-                    onClick={async () => {
-                      if (!confirm(copy("deleteConfirm"))) return;
-                      await api("DELETE", `archives/${id}`);
-                      router.push("/reading-room");
-                    }}
-                  >
-                    <Trash2 size={16} /> Delete
-                  </Button>
+                    {(stats.passingScore || stats.durationMinutes || stats.questionCount || stats.costUsd !== undefined || stats.difficulty || a.validityMonths) && (
+                      <dl className="grid grid-cols-2 gap-3 rounded-md border border-line p-4 text-sm sm:grid-cols-3">
+                        {stats.passingScore && <Stat k="Passing score" v={stats.passingScore} />}
+                        {stats.durationMinutes && <Stat k="Duration" v={`${stats.durationMinutes} min`} />}
+                        {stats.questionCount && <Stat k="Questions" v={String(stats.questionCount)} />}
+                        {stats.costUsd !== undefined && <Stat k="Cost" v={`$${stats.costUsd}`} />}
+                        {stats.difficulty && <Stat k="Difficulty" v={stats.difficulty} />}
+                        {a.validityMonths && <Stat k="Valid for" v={`${a.validityMonths} months`} />}
+                      </dl>
+                    )}
+                    {a.purchaseLinks.length > 0 && (
+                      <p className="text-sm">
+                        {a.purchaseLinks.map((l) => (
+                          <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="mr-4 text-accent underline">
+                            {l.label}
+                          </a>
+                        ))}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
-            </form>
+            ) : null;
+          })()}
+
+          {editing && (
+            <ArchiveEditForm
+              archive={a}
+              onSaved={async () => {
+                setEditing(false);
+                await load();
+              }}
+              onCancel={() => setEditing(false)}
+              onError={setError}
+              onChanged={load}
+            />
           )}
 
           <div role="tablist" aria-label="Sections" className="flex gap-1 overflow-x-auto border-b border-line">

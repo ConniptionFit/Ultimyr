@@ -1,12 +1,13 @@
 "use client";
 
 import { ArchiveIcon } from "@ultimyr/ui-icons";
-import { Library, Plus } from "lucide-react";
+import { ArrowRight, Library, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AlertsBanner } from "@/components/credentials/alerts-banner";
 import { Loading } from "@/components/loading";
+import { TodayStrip } from "@/components/today-strip";
 import { Header } from "@/components/header";
 import { Button, Field, Shell } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -28,6 +29,7 @@ export default function ReadingRoom() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [paths, setPaths] = useState<RoadmapSummary[]>([]);
+  const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -83,6 +85,7 @@ export default function ReadingRoom() {
     }
   }
 
+  const shownArchives = (archives ?? []).filter((a) => `${a.title} ${a.vendor ?? ""}`.toLowerCase().includes(filter.trim().toLowerCase()));
   return (
     <>
       <Header />
@@ -122,6 +125,19 @@ export default function ReadingRoom() {
               </p>
             )}
             <AlertsBanner />
+            <TodayStrip />
+            {(() => {
+              const go = paths.find((p) => p.started && p.next) ?? paths.find((p) => p.next);
+              return go?.next ? (
+                <Link href={`/archives/${go.archiveId}?step=${go.next.stepId}#roadmap`} className="flex items-center justify-between gap-3 rounded-md border border-accent p-4 hover:bg-surface">
+                  <span className="min-w-0">
+                    <span className="block text-sm text-muted">{go.started ? "Continue where you left off" : "Start here"} · {go.title}</span>
+                    <span className="block truncate font-serif text-lg">{go.next.title}</span>
+                  </span>
+                  <ArrowRight size={20} className="shrink-0 text-accent" aria-hidden />
+                </Link>
+              ) : null;
+            })()}
             {paths.length > 0 && (
               <section aria-labelledby="paths-h">
                 <h2 id="paths-h" className="mb-3 text-xl">
@@ -149,7 +165,19 @@ export default function ReadingRoom() {
               </section>
             )}
             <section>
-              <h2 className="mb-3 text-xl">{t("archives")}</h2>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-xl">{t("archives")}</h2>
+                {archives.length > 6 && (
+                  <input
+                    type="search"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder={`Filter ${t("archives").toLowerCase()}`}
+                    aria-label={`Filter ${t("archives").toLowerCase()} by name`}
+                    className="w-48 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink"
+                  />
+                )}
+              </div>
               {archives.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-line p-10 text-center">
                   <div className="mx-auto mb-4 flex justify-center text-muted">
@@ -164,7 +192,8 @@ export default function ReadingRoom() {
                 </div>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  {archives.map((a) => (
+                  {shownArchives.length === 0 && <li className="text-muted">Nothing matches “{filter.trim()}”.</li>}
+                  {shownArchives.map((a) => (
                     <li key={a.id}>
                       <Link href={`/archives/${a.id}`} className="flex h-full gap-3 rounded-md border border-line p-4 hover:bg-surface">
                         <span className="mt-0.5 text-accent">

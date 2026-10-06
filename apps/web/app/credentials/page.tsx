@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CalendarPlus, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { CredentialCard } from "@/components/credentials/credential-card";
 import { CredentialForm } from "@/components/credentials/credential-form";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui";
 import { useNaming } from "@/lib/naming";
 import { useAuth } from "@/lib/auth";
 import type { Alert, Credential } from "@/lib/certs";
+import { buildIcs, credentialEvents } from "@/lib/ics";
 import type { Archive } from "@/lib/types";
 
 function Credentials() {
@@ -33,9 +34,20 @@ function Credentials() {
   useEffect(() => void load(), [load]);
 
   if (list === null) return <Loading />;
+  const hasDates = list.some((c) => credentialEvents(c).length > 0);
+  const downloadCalendar = () => {
+    const url = URL.createObjectURL(new Blob([buildIcs(list)], { type: "text/calendar;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ultimyr-credentials.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  // Soonest date first within a group; undated ones last.
+  const soonest = (key: "examDate" | "expiresOn") => (a: Credential, b: Credential) => (a[key] ?? "9999-12-31").localeCompare(b[key] ?? "9999-12-31");
   const groups: { title: string; items: Credential[] }[] = [
-    { title: "Working toward", items: list.filter((c) => c.status === "planned" || c.status === "scheduled") },
-    { title: "Earned", items: list.filter((c) => c.status === "earned") },
+    { title: "Working toward", items: list.filter((c) => c.status === "planned" || c.status === "scheduled").sort(soonest("examDate")) },
+    { title: "Earned", items: list.filter((c) => c.status === "earned").sort(soonest("expiresOn")) },
     { title: "Retired", items: list.filter((c) => c.status === "retired") },
   ].filter((g) => g.items.length);
 
@@ -47,9 +59,16 @@ function Credentials() {
           <p className="text-sm text-muted">Exam dates, vouchers, renewals and continuing education hours, kept private to you.</p>
         </div>
         {!adding && (
-          <Button onClick={() => setAdding(true)}>
-            <Plus size={16} aria-hidden /> Add
-          </Button>
+          <div className="flex gap-2">
+            {hasDates && (
+              <Button variant="quiet" onClick={downloadCalendar} title="Download exam, voucher and renewal dates as a calendar file (voucher codes are left out)">
+                <CalendarPlus size={16} aria-hidden /> Add to calendar
+              </Button>
+            )}
+            <Button onClick={() => setAdding(true)}>
+              <Plus size={16} aria-hidden /> Add
+            </Button>
+          </div>
         )}
       </div>
       {error && (

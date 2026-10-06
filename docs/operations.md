@@ -70,3 +70,6 @@ The `migrate` container runs first and applies new migrations once. Migrations a
 | AI features say "not set up" | `vault_kek` is missing. Run `scripts/init-secrets.sh` and restart `ai-gateway`. |
 | 429 on login or MFA | Rate limit (10 per minute per client, session refresh has its own 300 per minute limit) or TOTP lockout after repeated bad codes. Wait and retry. |
 | Locked out of TOTP with no recovery codes | An admin cannot reset it through the API yet. As a last resort delete the row from `auth.totp_factors` for that user in SQL. |
+
+## Error page
+A page that throws while rendering shows a short error screen with Try again, a link home and the Next.js error digest, which also appears in the web container log.

@@ -4,7 +4,8 @@ import { BarChart3, BookOpen, CalendarClock, Dumbbell, Layers, LogOut, Menu, Set
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useDialog } from "@/lib/focus-trap";
 import { useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 
@@ -14,15 +15,14 @@ export function MobileNav() {
   const { t } = useNaming();
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  useDialog(sheet, open, () => setOpen(false));
 
   useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
   }, [open]);
@@ -48,7 +48,7 @@ export function MobileNav() {
         <UIcon icon={Menu} size={20} />
       </button>
       {open && (
-        <div role="dialog" aria-modal="true" aria-label="Menu" className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-bg">
+        <div ref={sheet} role="dialog" aria-modal="true" aria-label="Menu" className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-bg">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-ink">{user.displayName}</p>
@@ -60,7 +60,7 @@ export function MobileNav() {
           </div>
           <nav aria-label="Main" className="divide-y divide-line">
             {links.map((l) => (
-              <Link key={l.href} href={l.href} className={row}>
+              <Link key={l.href} href={l.href} aria-current={path === l.href || path.startsWith(`${l.href}/`) ? "page" : undefined} className={`${row} aria-[current=page]:bg-surface`}>
                 <UIcon icon={l.icon} size={18} /> {l.label}
               </Link>
             ))}

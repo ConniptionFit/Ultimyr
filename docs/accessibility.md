@@ -14,6 +14,8 @@ Ultimyr aims to be comfortable to study with for a long time, including for peop
 
 Settings are stored in a small cookie (`ultimyr_display`, no personal data) and applied on the server, so the page never flashes the wrong theme or size. Calm mode also turns on automatically when the device asks for reduced motion.
 
+**Background.** The welcome and sign in pages (and only those, so it never distracts while you study) sit on a quiet grid of small dots in which eight Lucide shapes (code, book, brain, bot, sparkle, graduation cap, briefcase and list), each tilted at a dutch angle, slowly float; the dots under a shape grow and take its colour. It is decoration only, hidden from screen readers and never takes clicks. With Calm mode or reduced motion it is drawn once and stands still, and it pauses while the tab is hidden. If the icon shapes cannot load you see the plain dot grid. The look is set in one block, `DOT_GRID` in `apps/web/lib/dot-grid.ts` (spacing, dot sizes, opacity, speed, tilt, colours).
+
 ## Focus mode
 A **Focus** button on the study page and the exam page hides the header and everything that is not the card or question. Press it again (or Escape) to leave.
 
@@ -22,7 +24,9 @@ When starting a timed or exam-style quiz, a learner can **declare** extra time: 
 
 ## Keyboard and screen readers
 - A "Skip to content" link is the first stop on every page. The main region is `#main`.
+- Every page has its own title in the tab and history (for example "Progress | Ultimyr"), which screen readers also announce when you move between pages.
 - Every control works with a keyboard. Flashcards: Space shows the answer, 1 to 4 rate it. Matching questions use drop-down lists instead of dragging.
+- Dialogs (the phone menu, the shortcuts list) trap Tab, close with Escape and return focus to the button that opened them. The current page is exposed with `aria-current="page"`. In forced-colours (Windows high contrast) mode focus rings and form borders use system colours.
 - Status changes (saved, checked, time warnings) use live regions.
 - Automated check: axe-core reported no violations on the main pages (sign in, reading room, archive, study, quiz, attempt, progress, settings) in light and dark themes.
 - Lighthouse (mobile profile, local build): accessibility, best practices and SEO scores in the 90s, with good first paint.
@@ -54,3 +58,8 @@ The reading room has an **Add a small example** button. It imports a tiny CompTI
 
 ## Gentler wording
 Empty states, saved messages and streaks use encouraging copy ("Nothing due, enjoy the break"). Missing a day never shows a broken-streak warning.
+
+## Keyboard shortcuts
+Press **?** anywhere (outside a text box) for the full list.
+
+Press **/** to jump to search.

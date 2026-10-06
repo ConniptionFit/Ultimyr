@@ -98,6 +98,13 @@ describe.skipIf(!testDbUrl)("notes service", () => {
     expect(list.steps).toEqual({}); // nothing written by the person yet
   });
 
+  it("returns only the caller's own note text for an archive", async () => {
+    const mine = json(await call(alice, "GET", `/v1/notes/archives/${archive}/text`));
+    expect(Array.isArray(mine.notes)).toBe(true);
+    const theirs = json(await call(bob, "GET", `/v1/notes/archives/${archive}/text`));
+    for (const n of theirs.notes) expect(mine.notes.map((x: { stepId: string }) => x.stepId)).not.toContain(n.stepId);
+  });
+
   it("hides archives the caller cannot read", async () => {
     expect((await call(bob, "POST", `/v1/notes/archives/${archive}/scaffold`)).statusCode).toBe(409); // not connected
     await call(bob, "PUT", "/v1/notes/connection", { token: h.fake.state.token, vault: "Study" });

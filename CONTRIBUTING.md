@@ -14,6 +14,7 @@ CI runs the same, then builds the Docker images and validates every compose comb
 - **Services are separate.** Each owns its Postgres schema and never reads another's tables. Share code through `packages/*`, not by importing across services.
 - **Migrations** are forward-only SQL in `services/<name>/migrations`, named `NNNN_description.sql`. Never edit one that has shipped; add a new one.
 - **Plain names in APIs.** Themed (Archive) names appear only as UI labels, and each needs a plain equivalent in `packages/lore`.
+- **Themed names follow Dota 2 lore.** Every new themed name must come from researched Dota 2 lore and make the element's function obvious, with its source recorded in `termLore`. Follow [docs/naming.md](docs/naming.md); do not invent names.
 - **No new secrets in code or env defaults.** Production secrets come from Docker secrets (`_FILE`).
 - **Security-sensitive changes** (auth, crypto, SSO, SCIM) need tests for the failure cases, not just the happy path. See `services/auth/test`.
 - Decisions that change the design get an ADR in `docs/adr`.

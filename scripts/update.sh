@@ -12,14 +12,11 @@ fi
 
 git pull --ff-only
 ./scripts/init-secrets.sh
-# The bundled database runs only when you ask for it: set COMPOSE_PROFILES=bundled-db in .env (or pass --profile).
-# This script never turns it on by itself, because starting it against an existing install would create an empty database
-# next to your real one. If your data lives in another Postgres, point PG_HOST / DATABASE_URL at it instead.
+# The bundled database only runs with its profile. If .env points at the host "postgres" (the bundled one),
+# keep it in the update, otherwise services fail with "getaddrinfo ENOTFOUND postgres".
 PROFILE=()
-if [ "${ULTIMYR_BUNDLED_DB:-}" = "true" ]; then PROFILE=(--profile bundled-db); fi
-if grep -Eq '^PG_HOST=postgres[[:space:]]*$' .env 2>/dev/null && [ -z "${COMPOSE_PROFILES:-}" ] && ! grep -q '^COMPOSE_PROFILES=.*bundled-db' .env 2>/dev/null && [ "${ULTIMYR_BUNDLED_DB:-}" != "true" ]; then
-  echo "Note: .env uses PG_HOST=postgres. If that is an external Postgres on a shared Docker network, make sure it is running and reachable."
-  echo "      If you use the bundled database, run: ULTIMYR_BUNDLED_DB=true ./scripts/update.sh"
+if grep -Eq '^PG_HOST=postgres[[:space:]]*$' .env 2>/dev/null || docker compose ps -a --services 2>/dev/null | grep -qx postgres; then
+  PROFILE=(--profile bundled-db)
 fi
 docker compose "${PROFILE[@]}" up -d --build
 

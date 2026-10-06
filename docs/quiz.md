@@ -1,6 +1,6 @@
 # Quizzes, questions and scoring
 
-The quiz service owns the questions inside a quiz, the settings for taking it, scoring profiles, and every attempt. The quiz itself (its title, sharing and trash) is an item in the [content service](content.md), which also decides who may attempt or edit it. In the UI the themed name for a quiz is a Trial; the API always says quiz.
+The quiz service owns the questions inside a quiz, the settings for taking it, scoring profiles, and every attempt. The quiz itself (its title, sharing and trash) is an item in the [content service](content.md), which also decides who may attempt or edit it. In the UI the themed name for a quiz is a Duel; the API always says quiz.
 
 ## Question types
 | Type | Learner does | Answer key |
@@ -60,3 +60,9 @@ It is checked by hand-computed **golden vectors** (`packages/scoring/test/golden
 
 ## Limits
 Question text 10,000 characters; 12 options; 20 blanks; 100 assertions per scenario; 200 questions per bulk request; a saved answer up to 50 KB; 500 questions per attempt.
+
+## Keyboard
+During an attempt: **1 to 9** pick or untick that option (single and multiple choice), **N** next, **P** previous, **F** flag. Shortcuts are ignored while you type in a text box or hold Ctrl, Alt or Cmd.
+
+## After you finish
+The results card lists the questions you missed (wrong, partly right or blank) as numbers you can click to read the answer and explanation, and offers a weak-area drill for the course.

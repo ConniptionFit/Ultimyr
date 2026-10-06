@@ -215,7 +215,14 @@ export function SecurityPanel() {
         </form>
       </Section>
 
-      <Section title="Signed-in devices">
+      <Section title="Signed-in devices" hint="Lost a phone or used a shared computer? Sign out everywhere else and keep this device.">
+        {sessions.some((s) => !s.current) && (
+          <div>
+            <Button variant="quiet" onClick={run(() => api("DELETE", "me/sessions"))}>
+              Sign out all other devices
+            </Button>
+          </div>
+        )}
         <ul className="divide-y divide-line rounded-md border border-line text-sm">
           {sessions.map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-3 p-3">

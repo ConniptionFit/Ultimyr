@@ -36,7 +36,7 @@ Browser sessions get a rotating httpOnly refresh cookie (`ultimyr_rt`, 30 days).
 | POST | `/me/mfa/recovery-codes/regenerate` | Replaces all codes. |
 | GET, POST, DELETE | `/me/passkeys`, `/me/passkeys/register/options`, `/me/passkeys/register/verify`, `/me/passkeys/:id` | Cannot remove your last sign-in method. |
 | GET, POST, DELETE | `/me/api-keys`, `/me/api-keys/:id` | Create takes `{ name, scopes[], expiresInDays? }`. The full key is returned once. Max active keys per user is enforced (409 `too_many_keys`). |
-| GET, DELETE | `/me/sessions`, `/me/sessions/:id` | List and revoke devices. |
+| GET, DELETE | `/me/sessions`, `/me/sessions/:id` | List and revoke devices. `DELETE /me/sessions` signs out every device except the one asking and returns `{ revoked }`. |
 | GET | `/me/groups`, `/me/identities` | Group memberships, linked SSO identities. |
 
 Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:write`, `ai:use`, `notes:use`.
@@ -45,16 +45,18 @@ Scopes: `content:read`, `content:write`, `content:share`, `quiz:read`, `quiz:wri
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/admin/overview` | Counts, deployment details and the settings below. |
+| GET | `/admin/services` | Admin only. Whether each service answers `/readyz` (auth is always listed): `[{ name, ok, ms, problem? }]`. The addresses come from the auth service's `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL` and `NOTES_URL`, never from the request; unset ones are skipped. Two second timeout each. |
 | GET | `/admin/about` | Running version and commit, latest GitHub release, commits behind main, and the matching changelog section. `?refresh=1` re-checks (at most every 30 seconds). Returns `status: "unknown"` when GitHub is unreachable and `"disabled"` when `ULTIMYR_UPDATE_CHECK=false`. |
 | GET, PATCH | `/admin/settings` | PATCH `{ registrationOpen?: boolean or null, localUsersDisabled?: boolean }`. `registrationOpen: null` removes the override and uses `AUTH_REGISTRATION`. `localUsersDisabled: true` returns 409 `no_identity_provider` unless a provider is enabled. |
 | POST | `/admin/users` | Create a local account: `{ email, displayName, roles?, method: "invite" or "password", password? }`. `invite` (default) returns a one-time `inviteUrl` valid 7 days. `password` returns a `temporaryPassword` (generated unless you pass one, 12 or more characters) that must be changed at first sign-in. Both are shown once. 409 `email_taken`, or `local_users_disabled`. |
 | POST | `/admin/users/:id/invite` | New one-time link for a local account. Older links stop working. 409 `not_local_account` for SSO and SCIM users. |
-| GET, PATCH | `/admin/users`, `/admin/users/:id` | PATCH `{ status: active or suspended, roles[] }`. Suspending revokes sessions. The last active admin cannot be removed. |
+| GET, PATCH | `/admin/users`, `/admin/users/:id` | GET takes `?q=`, `?limit=` (1 to 200, up to 10000 with `format=csv`), `?offset=` and `?format=csv` (email, name, status, created_via, roles, created; no secrets; formula-looking cells are neutralised). PATCH `{ status: active or suspended, roles[] }`. Suspending revokes sessions. The last active admin cannot be removed. |
 | GET, POST, DELETE | `/admin/groups`, `/admin/groups/:id` | |
 | GET, POST, DELETE | `/admin/groups/:id/members`, `/admin/groups/:id/members/:userId` | |
 | GET, POST, PATCH, DELETE | `/admin/idp-providers`, `/admin/idp-providers/:id` | See [identity.md](identity.md). `clientSecret` is write-only. |
 | GET, POST, DELETE | `/admin/scim-tokens`, `/admin/scim-tokens/:id` | Token shown once on create. |
-| GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions. |
+| GET | `/admin/audit` | Sign-ins, MFA changes, key use, admin actions, newest first. `?limit=` (1 to 500, up to 5000 with `format=csv`), `?action=`, `?before=<id>` for the next page, `?format=csv` for a spreadsheet download (cells that start with `=`, `+`, `-` or `@` are prefixed so they are never run as formulas). |
+| GET | `/admin/audit/actions` | Every action name in the log, for filters. |
 
 Roles: `platform_admin`, `org_admin`, `author`, `learner`, `access_delegate` (manages group access for the courses delegated to it, nothing else).
 
@@ -266,6 +268,7 @@ A person's step notes, kept in Ultimyr (schema `notes`) and optionally mirrored 
 | DELETE | `/notes/connection` | Removes the connection. Notes stay in Ultimyr and in the vault. |
 | GET, PUT | `/notes/preferences` | `{ rootFolder }` (the vault folder, default `Ultimyr`). `editor` and `pane` are accepted for older clients and ignored. |
 | GET | `/notes/folders` | Existing vault folders (three levels) to suggest as the root. |
+| GET | `/notes/archives/:id/text` | `{ notes: [{ stepId, content }] }`: your own non-empty note text for the archive (newest first, up to 400), used for note search and the stage digest. |
 | GET | `/notes/archives/:id/preview?root=` | The vault files a full sync would write. Writes nothing. |
 | POST | `/notes/archives/:id/scaffold` | Creates empty template notes for every step in the vault (create only). Not needed for normal use. |
 
@@ -277,6 +280,8 @@ Scopes: reads `content:read`, reviews and settings `content:write`. Only publish
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/study/queue?archive=&deck=&limit=` | Due cards first, then new cards up to today's allowance. Each card carries `next`: what every rating would schedule. |
-| POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns the new `state`, `due` and `scheduledDays`. |
+| POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns `reviewId`, the new `state`, `due` and `scheduledDays`. |
+| POST | `/study/review/undo` | `{ reviewId }`. Restores the schedule the review replaced (or makes a first review new again) and removes it from your history. 404 if it is not your review, 409 `cannot_undo` if the card was reviewed again since or the review predates undo. |
+| GET | `/study/export` | Your own review history as CSV (`reviewed_at, course, deck, card, rating, was_new, scheduled_days, seconds`), newest first, up to 100,000 rows. Cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them. |
 | GET | `/study/stats?archive=` | `learning`, `review`, `dueNow`, `reviewedToday`, `retentionBp`, `forecast` (7 days). |
 | GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99) and `newPerDay` (0 to 500). |

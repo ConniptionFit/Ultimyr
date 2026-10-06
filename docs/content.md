@@ -1,6 +1,6 @@
 # Content: archives, guides, decks and sharing
 
-The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Codex and Folio, which you can switch to plain names in Your settings. The API always uses the plain names.
+The content service owns everything a person studies. All routes are under `/api/v1` (see [api.md](api.md)). In the UI the themed names are Archive, Tome (study guide) and Grimoire (flashcard deck), which you can switch to plain names in Your settings. The API always uses the plain names.
 
 ## Model
 | Thing | What it is |
@@ -12,7 +12,7 @@ The content service owns everything a person studies. All routes are under `/api
 | **Card** | A deck entry: front, back, optional hint and tags. Up to 5,000 per deck. |
 
 ## Roadmaps and external resources
-An archive can carry a **roadmap** (themed name: Path) and a library of **resources** (themed name: References). Open them from the tabs on the archive page.
+An archive can carry a **roadmap** (themed name: Labyrinth) and a library of **resources** (themed name: Secret Shop). Open them from the tabs on the archive page.
 
 | Thing | What it is |
 |---|---|
@@ -24,6 +24,22 @@ An archive can carry a **roadmap** (themed name: Path) and a library of **resour
 Ultimyr **never opens the links you save on the server**. It does not fetch titles, thumbnails or videos, so a link cannot make the server call another host. Links open in a new tab. The provider name (YouTube, Anthropic, and so on) is worked out from the address.
 
 ### Watching videos in the app
+
+### Following the roadmap (guided path)
+An archive that has a roadmap opens on it. In **Guided** view (the default) the step you are on, the first required step not yet done, is marked **You are here** and opens in place: a video plays under the row, a guide is read inline, a deck is studied inline (**Study here**), a quiz starts from the step (**Take it here**) and returns you to the roadmap afterwards, and your note opens beneath. **Done, next step** ticks it and scrolls to the next one, which opens in turn. Other steps open with the same buttons whenever you like. **Compact** shows the plain checklist; the choice is stored in your browser (`ultimyr_path_view`). Articles and other sites still open in a new tab because they cannot be shown inside Ultimyr.
+
+**More on the path**
+- **Continue** (Reading Room) jumps straight to your current step.
+- **Keys:** `J` next step, `K` previous step, `D` mark done and move on (not while typing).
+- **Finished that?** After you open an article or other site from a step and come back to the tab, the step asks whether to tick it.
+- **Ticks itself:** a video ticks its step when it ends (YouTube, Vimeo and direct video files report this; Loom and other embeds cannot), a deck when its queue is caught up, a quiz once you have passed it. Videos remember where you stopped (kept in this browser).
+- **Today's session** (Off, 20, 45 or 90 minutes) marks the next required steps that fit with a **Today** badge. Steps with no minutes count as 10.
+- **Stage bar** along the top jumps between stages and shows progress for each.
+- **Deck steps** use the real spaced-repetition queue with the four ratings, so path study and the Study page feed the same schedule.
+- **Streak and readiness** (your quiz days in a row, readiness estimate, weakest area with a Drill link) show above the steps; the streak is hidden in Calm mode.
+- **Notes:** search your notes for the archive, and **My notes** on a stage shows all of that stage's notes in order.
+- **Offline copies:** **Keep for offline reading** under a guide or deck saves a copy in this browser only (removed when you sign out). If the server cannot be reached the copy is shown. Course and item pages keep a copy of their empty page shell for the same reason; no account data is cached.
+- **Copy from another course** (editors, in the roadmap toolbar) pulls another course's roadmap into this one as an unsaved draft. Links come across; guides, decks and quizzes become checkpoints with the same title because they belong to the other course. To share a path read-only, use Share on the course.
 
 A link that is a video (kind `video` or `playlist`, or tagged `content-type:video`) gets a play button in place of its icon, on the Resources tab and on roadmap steps. Press it and a player drops down under the row; press it again, or **Close**, to fold it away. **Nothing loads from another site until you press play.**
 
@@ -117,3 +133,6 @@ Deleting archives and items is a soft delete. They appear in `GET /api/v1/trash`
 
 ## Limits
 Markdown 500,000 characters, 5,000 cards per deck, 200 items per import, 500 grants per object, 20 tags per archive.
+
+## Search filters
+When results span several kinds, filter chips with counts appear above the list (All, courses, material, guide sections, flashcards, links). Filtering happens in the page, so it is instant.

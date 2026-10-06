@@ -4,6 +4,7 @@ import { ExternalLink, Layers, NotebookPen } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/markdown";
+import { NoteToolbar, noteKeyDown } from "./note-toolbar";
 import { Button } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { notesMessage, type MirrorState, type StepNote } from "@/lib/notes";
@@ -22,9 +23,9 @@ const MIRROR_TEXT: Record<MirrorState, string> = {
  * Your note for one step, directly under the step (and its video). It is kept in Ultimyr; if you connect Obsidian it is
  * mirrored both ways and this looks exactly the same. Saves by itself a moment after you stop typing.
  */
-export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChange }: { archiveId: string; stepId: string; title: string; hasNote: boolean; obsidian: boolean; onChange: (has: boolean) => void }) {
+export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChange, defaultOpen = false }: { archiveId: string; stepId: string; title: string; hasNote: boolean; obsidian: boolean; onChange: (has: boolean) => void; defaultOpen?: boolean }) {
   const { api } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [note, setNote] = useState<StepNote | null>(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState("");
@@ -35,6 +36,7 @@ export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChang
   const [remote, setRemote] = useState<string | null>(null);
   const [deck, setDeck] = useState<{ id: string; count: number } | null>(null);
   const [deckMsg, setDeckMsg] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
   const latest = useRef({ text, saved, note, busy });
   latest.current = { text, saved, note, busy };
   const dirty = text !== saved;
@@ -173,12 +175,16 @@ export function StepNotes({ archiveId, stepId, title, hasNote, obsidian, onChang
               )}
               {mode === "write" ? (
                 <>
+                  <NoteToolbar target={box} controls={`${panel}-text`} setText={setText} />
                   <textarea
+                    ref={box}
+                    id={`${panel}-text`}
+                    onKeyDown={(e) => noteKeyDown(e, setText)}
                     aria-label={`Note text for ${title} (Markdown)`}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onBlur={() => void save()}
-                    placeholder="Write what you want to remember. Markdown works."
+                    placeholder="Write what you want to remember. Use the buttons above, or type Markdown."
                     spellCheck
                     rows={Math.min(18, Math.max(6, text.split("\n").length + 1))}
                     className="w-full resize-y rounded-md border border-line bg-surface p-3 text-base text-ink sm:text-sm"

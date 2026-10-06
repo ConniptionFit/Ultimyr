@@ -113,4 +113,24 @@ describe.skipIf(!testDbUrl)("API keys and sessions", () => {
     expect((await h.app.inject({ url: "/v1/me", headers: bearer(t1) })).statusCode).toBe(200);
     expect(cookieOf(login)).toBeTruthy();
   });
+
+  it("signs out every other device and keeps this one", async () => {
+    const reg = await register(h.app, "c@example.com");
+    const t1 = reg.json().accessToken as string;
+    const tokens: string[] = [];
+    for (let n = 0; n < 2; n++) {
+      const login = await h.app.inject({ method: "POST", url: "/v1/auth/login", payload: { email: "c@example.com", password: "correct horse battery" } });
+      tokens.push(login.json().accessToken as string);
+    }
+    const res = await h.app.inject({ method: "DELETE", url: "/v1/me/sessions", headers: bearer(t1) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ revoked: 2 });
+    for (const t of tokens) expect((await h.app.inject({ url: "/v1/me", headers: bearer(t) })).statusCode).toBe(401);
+    expect((await h.app.inject({ url: "/v1/me", headers: bearer(t1) })).statusCode).toBe(200);
+    expect((await h.app.inject({ method: "DELETE", url: "/v1/me/sessions", headers: bearer(t1) })).json()).toEqual({ revoked: 0 });
+    // Someone else's sessions are untouched.
+    const other = await register(h.app, "d@example.com");
+    await h.app.inject({ method: "DELETE", url: "/v1/me/sessions", headers: bearer(t1) });
+    expect((await h.app.inject({ url: "/v1/me", headers: bearer(other.json().accessToken) })).statusCode).toBe(200);
+  });
 });

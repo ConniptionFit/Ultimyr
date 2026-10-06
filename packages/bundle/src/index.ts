@@ -315,9 +315,165 @@ export const FORMAT_RULES = [
   "Start with: ultimyr-bundle v1, then archive:, vendor: and overview: lines.",
   'Write blocks that open with "=== kind: Title ===" and close with "=== end ===". Kinds: objectives, roadmap, guide, deck, quiz. The objectives and roadmap blocks take no title.',
   "objectives: an outline. '## 1.0 Domain name (15%)' for a domain with its exam weight, then '- 1.1 Objective' lines. Only objectives from the vendor's published exam guide.",
-  "roadmap: '## Week 1: Title' stages, then '- [[Guide title]]' lines that name a guide, deck or quiz you wrote, '- [Title](https://link) 20m' for links you were given, and '- Text (optional)' for checkpoints.",
+  "roadmap: '## Week 1: Title' stages, then '- [[Guide title]]' lines that name a guide, deck or quiz you wrote, '- [Title](https://link) 20m' for links you opened (YouTube and Vimeo videos play inside Ultimyr), and '- Text (optional)' for checkpoints.",
   "guide: optional 'objectives: 1.1, 1.2' and 'summary:' lines, a blank line, then Markdown.",
   "deck: optional 'objectives:' line, then one card per line as 'Question :: Answer'.",
   "quiz: questions start with 'Q mcq', 'Q multi' or 'Q fib', then an optional objective code and difficulty (d1 to d5). Options are 'a) text' and the correct ones end with ' *'. Fill-in questions use ___ for each blank and one 'Answer: one | another' line per blank. Add 'Why:' for the explanation.",
   "Put the objective code (such as 1.1) on every question and list the objectives on every guide and deck.",
 ] as const;
+
+/** What "done" means per objective at each depth. Mirrors @ultimyr/coverage's DEPTH (a test keeps them equal). */
+export const DEPTH_TARGETS = {
+  quick: { cards: 5, questions: 3 },
+  standard: { cards: 10, questions: 6 },
+  deep: { cards: 20, questions: 12 },
+} as const;
+export type BundleDepth = keyof typeof DEPTH_TARGETS;
+
+/** Objective codes in an outline ("- 1.1 Explain ports"), in order. */
+export function objectiveCodes(outline: string | null): string[] {
+  const seen: string[] = [];
+  for (const line of (outline ?? "").split("\n")) {
+    const m = /^\s*[-*]\s+(\d[\w.\-]*)\b/.exec(line);
+    if (m && !seen.includes(m[1]!)) seen.push(m[1]!);
+  }
+  return seen;
+}
+
+export interface Gap {
+  code: string;
+  guide: boolean;
+  cardsMissing: number;
+  questionsMissing: number;
+}
+export interface Check {
+  objectives: number;
+  complete: number;
+  gaps: Gap[];
+  /** Codes used on guides, decks or questions that no objective declares (usually a typo). */
+  unknownCodes: string[];
+  /** Questions with no objective code, which can never count toward coverage. */
+  untaggedQuestions: number;
+}
+
+/**
+ * Compare what was written with what the depth asks for, per objective. Pass every parsed chunk (or one merged
+ * Bundle). A later chunk may declare objectives, so declared codes are pooled across all of them.
+ */
+export function checkBundles(bundles: Bundle[], depth: BundleDepth): Check {
+  const want = DEPTH_TARGETS[depth];
+  const declared = [...new Set(bundles.flatMap((b) => objectiveCodes(b.objectives)))];
+  const guides = new Set<string>();
+  const cards = new Map<string, number>();
+  const questions = new Map<string, number>();
+  const used = new Set<string>();
+  let untaggedQuestions = 0;
+  for (const b of bundles) {
+    for (const g of b.guides) for (const c of g.objectiveCodes) (guides.add(c), used.add(c));
+    for (const d of b.decks) {
+      // A deck that lists several objectives cannot say which card belongs to which, so split its cards evenly.
+      const share = d.objectiveCodes.length ? d.cards.length / d.objectiveCodes.length : 0;
+      for (const c of d.objectiveCodes) (cards.set(c, (cards.get(c) ?? 0) + share), used.add(c));
+    }
+    for (const q of b.quizzes)
+      for (const x of q.questions) {
+        if (!x.objectiveCode) untaggedQuestions++;
+        else (questions.set(x.objectiveCode, (questions.get(x.objectiveCode) ?? 0) + 1), used.add(x.objectiveCode));
+      }
+  }
+  const gaps: Gap[] = [];
+  for (const code of declared) {
+    const gap: Gap = {
+      code,
+      guide: !guides.has(code),
+      cardsMissing: Math.max(0, want.cards - Math.floor(cards.get(code) ?? 0)),
+      questionsMissing: Math.max(0, want.questions - (questions.get(code) ?? 0)),
+    };
+    if (gap.guide || gap.cardsMissing || gap.questionsMissing) gaps.push(gap);
+  }
+  return {
+    objectives: declared.length,
+    complete: declared.length - gaps.length,
+    gaps,
+    unknownCodes: declared.length ? [...used].filter((c) => !declared.includes(c)) : [],
+    untaggedQuestions,
+  };
+}
+
+/**
+ * The fixed way a chat builds a certification, so two runs (or two chats, or a Claude Skill and a pasted prompt) end up with
+ * the same structure. The prompt, the skill and the docs all read these lists; change them here only.
+ */
+
+/** Passes run in this order. Each ends with a finished chunk the person pastes before saying "next". */
+export const PASSES = [
+  { id: "R", name: "Research", what: "Search the web and open sources yourself. Do not wait for me. Report a short research summary with every source you used, then continue to pass A." },
+  { id: "A", name: "Objectives and roadmap", what: "Header, the objectives block (every domain with its weight, every objective with its code) and the roadmap block. No guides yet." },
+  { id: "B", name: "One domain at a time", what: "For ONE exam domain: one guide per objective group, one deck, one quiz. Never more than one domain per reply." },
+  { id: "C", name: "Gap fill", what: "Only the objectives Ultimyr reported as short. Same block titles as before so nothing duplicates." },
+] as const;
+
+/** Content standards that make runs comparable. */
+export const STANDARDS = {
+  research: [
+    "Find and open: (1) the official exam guide or objectives page with domains, weights and numbering, (2) the exam facts (format, number and types of questions, time, passing score, price, retake policy, delivery, current version and retirement date), (3) the vendor's own training, free courses, docs, demos and sample questions, (4) the suggested study order, (5) the most recommended community guides, courses and videos, (6) what people who passed report about format, difficulty and which topics matter most.",
+    "Trust order: official vendor pages, then vendor docs, then established training sites and instructors, then forums and posts. A single anecdote is not a fact: only use a community claim when several sources agree, and say it is community reported.",
+    "Finish research with a short summary: exam facts with their sources, the source list (title, link, what it is for), the order you will teach in, and anything you could not confirm.",
+  ],
+  coursework: [
+    "The vendor guide is the skeleton, not the text. Teach the same objectives in your own words and add what a vendor guide lacks: worked examples, scenarios, comparisons, common mistakes and community-reported tips. Never copy vendor text or copyrighted course material.",
+    "If the vendor guide is broad, weave practice into the course: end each guide with its 'Check yourself' prompts, and place the matching flashcard deck and a short quiz right after it in the roadmap, so the learner reads, recalls, then tests.",
+    "Practice tests and flashcards come from the same objectives and the same research, so they align with the guides, but they are never copies of them or of real exam questions. Mirror the real exam's reported format (question types, scenario style, length, difficulty mix) and stress the topics people report as heavily tested.",
+  ],
+  videos: [
+    "Add real videos and playlists you opened (official demos and the best-regarded community courses) as roadmap links, '- [Title](https://youtu.be/...) 25m', placed at the step they support. YouTube and Vimeo links play inside Ultimyr. Only use a link you actually opened; never guess one.",
+  ],
+  guide: [
+    "Teach only what is tested. Leave out FAQs, welcome and introduction pages, course overviews, instructor bios, marketing, registration and policy pages, and anything else that is not learning material for the exam objectives. Every sentence in a guide, card or question must serve an objective.",
+    "One guide per objective group (2 to 5 related objectives), titled for what the learner can do, such as 'Configure and troubleshoot DNS'.",
+    "Always this shape: '# Title', then '## Why it matters' (2 sentences), '## Key ideas' (bullets, each a fact), '## How it shows up on the exam' (what is tested and how, without quoting questions), '## Watch out' (3 or more common mix-ups), '## Check yourself' (3 recall prompts without answers).",
+    "Name the objective codes covered in the 'objectives:' line. Keep each guide under about 1,200 words.",
+  ],
+  deck: [
+    "One deck per domain, titled '<Domain> flashcards'. One idea per card, front is a question or cue, back is the shortest correct answer (one line).",
+    "No card may depend on another card. No yes/no cards. No trick wording.",
+    "List the objective codes on the deck. Cards for several objectives are fine; spread them evenly.",
+  ],
+  quiz: [
+    "One quiz per domain, titled '<Domain> quiz'. Tag every question with its objective code and a difficulty d1 to d5.",
+    "Spread difficulty: about 30% d1 to d2, 50% d3, 20% d4 to d5. Mix types: mostly mcq, some multi, a few fib.",
+    "mcq has exactly one correct option and 3 or 4 options. Wrong options must be plausible and similar in length. No 'all of the above' or 'none of the above'.",
+    "Every question has a 'Why:' line explaining the right answer and, where useful, why the best wrong option is wrong.",
+    "Write new questions in your own words. Never reproduce real exam questions or braindumps.",
+  ],
+  roadmap: [
+    "Roadmap steps and saved links are learning material only: no FAQs, welcome or introduction pages, overviews or marketing pages. Skip a source that does not teach an objective.",
+    "Stages by week, in a sensible learning order. Required steps first, then '(optional)' extras. Each stage ends with its domain quiz.",
+    "Link guides, decks and quizzes with [[Exact Title]]. Add outside links only if the person gave them or you opened them.",
+  ],
+  truth: [
+    "Objectives, weights, passing score, price, question counts, time limit and dates come from sources you opened this session, with the official exam guide above all. Name the source for each in the research summary. If sources disagree, say so and prefer the official one. If a fact is unconfirmed, label it 'unconfirmed' or leave it out. Never invent a link.",
+    "Only if you cannot browse, or cannot find the official objectives after a real search, say so once and ask me to paste them. Never stop to ask for anything you can look up.",
+  ],
+} as const;
+
+/** Per-objective counts as a sentence. */
+export function depthWords(depth: BundleDepth): string {
+  const t = DEPTH_TARGETS[depth];
+  return `at least ${t.cards} flashcards and ${t.questions} questions per objective`;
+}
+
+/** The rules as plain lines, shared by the pasted prompt and the skill. */
+export function standardsLines(): string[] {
+  const block = (h: string, l: readonly string[]) => [`${h}:`, ...l.map((x) => `- ${x}`), ""];
+  return [
+    ...block("Truth", STANDARDS.truth),
+    ...block("Research", STANDARDS.research),
+    ...block("Coursework", STANDARDS.coursework),
+    ...block("Videos", STANDARDS.videos),
+    ...block("Guides", STANDARDS.guide),
+    ...block("Flashcards", STANDARDS.deck),
+    ...block("Quiz questions", STANDARDS.quiz),
+    ...block("Roadmap", STANDARDS.roadmap),
+  ];
+}

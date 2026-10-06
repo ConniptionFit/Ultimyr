@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ARCHIVE_REL, ITEM_GRANT, RANK, loadItem } from "../access.js";
 import type { Ctx } from "../ctx.js";
+import { csvField } from "../markdown.js";
 
 const queueQuery = z.object({
   archive: z.uuid().optional(),
@@ -15,6 +16,7 @@ const reviewBody = z.object({
   rating: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   durationMs: z.number().int().min(0).max(3_600_000).default(0),
 });
+const undoBody = z.object({ reviewId: z.uuid() });
 const settingsBody = z.object({
   desiredRetention: z.number().min(0.7).max(0.99).optional(),
   newPerDay: z.number().int().min(0).max(500).optional(),
@@ -138,11 +140,66 @@ export function studyRoutes(ctx: Ctx) {
          ON CONFLICT (user_id, card_id) DO UPDATE SET state = $5, stability = $6, difficulty = $7, reps = $8, lapses = $9, last_review = $10, due = $11`,
         [a.userId, card.id, card.deck_id, card.archive_id, n.state, n.stability, n.difficulty, n.reps, n.lapses, new Date(nowMs), new Date(n.due)],
       );
+      const reviewId = uuidv7();
       await pool.query(
-        "INSERT INTO content.srs_reviews (id, user_id, card_id, archive_id, rating, state_before, elapsed_days, scheduled_days, duration_ms, reviewed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-        [uuidv7(), a.userId, card.id, card.archive_id, body.rating, before.state, before.lastReview === null ? null : (nowMs - before.lastReview) / 86_400_000, out.scheduledDays, body.durationMs, now],
+        "INSERT INTO content.srs_reviews (id, user_id, card_id, archive_id, rating, state_before, elapsed_days, scheduled_days, duration_ms, reviewed_at, prev_state) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+        [reviewId, a.userId, card.id, card.archive_id, body.rating, before.state, before.lastReview === null ? null : (nowMs - before.lastReview) / 86_400_000, out.scheduledDays, body.durationMs, now, cur[0] ? JSON.stringify(before) : null],
       );
-      return { state: n.state, due: new Date(n.due).toISOString(), scheduledDays: out.scheduledDays, reps: n.reps, lapses: n.lapses };
+      return { reviewId, state: n.state, due: new Date(n.due).toISOString(), scheduledDays: out.scheduledDays, reps: n.reps, lapses: n.lapses };
+    });
+
+    /** Undo your most recent review of a card: restores the schedule it replaced and removes the log row. */
+    r.post("/v1/study/review/undo", async (req) => {
+      const a = await ctx.actor(req, "content:write");
+      const body = parse(undoBody, req.body);
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const { rows } = await client.query("SELECT * FROM content.srs_reviews WHERE id = $1 AND user_id = $2 FOR UPDATE", [body.reviewId, a.userId]);
+        const rev = rows[0];
+        if (!rev) throw new HttpError(404, "not_found");
+        const { rows: newer } = await client.query("SELECT 1 FROM content.srs_reviews WHERE user_id = $1 AND card_id = $2 AND reviewed_at > $3 LIMIT 1", [a.userId, rev.card_id, rev.reviewed_at]);
+        if (newer.length) throw new HttpError(409, "cannot_undo", { reason: "The card has been reviewed again since." });
+        // A first review has no earlier schedule (prev_state is null); an older review without one cannot be restored.
+        if (!rev.prev_state && rev.state_before !== 0) throw new HttpError(409, "cannot_undo", { reason: "This review was made before undo existed." });
+        if (rev.prev_state) {
+          const p = rev.prev_state as CardState;
+          await client.query("UPDATE content.srs_state SET state = $3, stability = $4, difficulty = $5, reps = $6, lapses = $7, last_review = $8, due = $9 WHERE user_id = $1 AND card_id = $2", [
+            a.userId, rev.card_id, p.state, p.stability, p.difficulty, p.reps, p.lapses, p.lastReview === null ? null : new Date(p.lastReview), new Date(p.due),
+          ]);
+        } else {
+          await client.query("DELETE FROM content.srs_state WHERE user_id = $1 AND card_id = $2", [a.userId, rev.card_id]);
+        }
+        await client.query("DELETE FROM content.srs_reviews WHERE id = $1", [rev.id]);
+        await client.query("COMMIT");
+        return { undone: true, cardId: rev.card_id };
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw e;
+      } finally {
+        client.release();
+      }
+    });
+
+    /** Your own review history as CSV, newest first (capped at 100,000 rows). */
+    r.get("/v1/study/export", async (req, reply) => {
+      const a = await ctx.actor(req, "content:read");
+      const { rows } = await pool.query(
+        `SELECT v.reviewed_at, v.rating, v.state_before, v.scheduled_days, v.duration_ms, c.front, d.title AS deck, m.title AS course
+           FROM content.srs_reviews v
+           LEFT JOIN content.cards c ON c.id = v.card_id
+           LEFT JOIN content.sub_items d ON d.id = c.deck_id
+           LEFT JOIN content.master_items m ON m.id = v.archive_id
+          WHERE v.user_id = $1 ORDER BY v.reviewed_at DESC LIMIT 100000`,
+        [a.userId],
+      );
+      // A cell starting with = + - or @ would run as a formula in a spreadsheet, so it gets a leading apostrophe.
+      const safe = (v: string) => csvField(/^[=+\-@]/.test(v) ? `'${v}` : v);
+      const head = "reviewed_at,course,deck,card,rating,was_new,scheduled_days,seconds";
+      const lines = rows.map((x) =>
+        [new Date(x.reviewed_at).toISOString(), safe(x.course ?? ""), safe(x.deck ?? ""), safe(x.front ?? ""), x.rating, x.state_before === 0 ? "yes" : "no", Math.round(x.scheduled_days * 100) / 100, Math.round(x.duration_ms / 100) / 10].join(","),
+      );
+      return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", 'attachment; filename="ultimyr-review-history.csv"').send([head, ...lines].join("\n") + "\n");
     });
 
     /** Counts, retention and a seven day forecast for the progress page. */

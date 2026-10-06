@@ -5,6 +5,7 @@ import { Badge, ErrorLine } from "@/components/admin/bits";
 import { Button, Field } from "@/components/ui";
 import { message, when } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
+import { downloadApi } from "@/lib/download";
 
 interface Row { id: string; email: string; displayName: string; status: "active" | "suspended"; createdVia: string; mustChangePassword?: boolean; createdAt: string; roles: string[] }
 const ROLES: Array<[string, string]> = [
@@ -173,10 +174,20 @@ export default function Users() {
     }
   }
 
+  async function exportCsv() {
+    if (state.status !== "authenticated") return;
+    if (!(await downloadApi(state.accessToken, `admin/users?format=csv${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`, "ultimyr-users.csv"))) setError("Export failed.");
+  }
+
   return (
     <div className="space-y-5">
       <h2 className="text-2xl">Users</h2>
       <AddPerson disabled={localOff} onCreated={() => void load(q)} />
+      <div>
+        <Button variant="quiet" onClick={exportCsv}>
+          Export people as CSV
+        </Button>
+      </div>
       <form
         role="search"
         className="flex gap-2"
