@@ -10,6 +10,7 @@ import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { clozeSides } from "@/lib/cloze";
 import { useDisplay } from "@/lib/display";
+import { checkTyped, expectedAnswer } from "@/lib/typed-answer";
 import { useNaming } from "@/lib/naming";
 import { formatNext, isLeech, sessionSummary, type ReviewNote, type StudyCard, type StudyQueue } from "@/lib/progress";
 
@@ -35,6 +36,20 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
+  // "Type the answer" is a per-browser choice: it asks you to recall before you peek.
+  const [typing, setTyping] = useState(false);
+  const [typed, setTyped] = useState("");
+  useEffect(() => {
+    try {
+      setTyping(localStorage.getItem("ulti.typeAnswers") === "1");
+    } catch {}
+  }, []);
+  const toggleTyping = (on: boolean) => {
+    setTyping(on);
+    try {
+      localStorage.setItem("ulti.typeAnswers", on ? "1" : "0");
+    } catch {}
+  };
 
   const load = useCallback(async () => {
     const qs = [archive && `archive=${archive}`, deck && `deck=${deck}`].filter(Boolean).join("&");
@@ -55,7 +70,11 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   }, [state.status, router, load]);
 
   const card = queue?.[0];
+  useEffect(() => {
+    setTyped("");
+  }, [card?.id]);
   const sides = card ? clozeSides(card.front, card.back) : null;
+  const verdict = card && shown && typing ? checkTyped(typed, expectedAnswer(card.front, card.back)) : null;
 
   const rate = useCallback(
     async (rating: 1 | 2 | 3 | 4) => {
@@ -213,6 +232,28 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                   <Markdown>{sides!.front}</Markdown>
                 </div>
                 {card.hint && !shown && <p className="text-sm text-muted">Hint: {card.hint}</p>}
+                {typing && !shown && (
+                  <textarea
+                    aria-label="Type your answer"
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        setShown(true);
+                      }
+                    }}
+                    rows={2}
+                    placeholder="Type your answer, then press Enter"
+                    className="w-full rounded-md border border-line bg-bg p-2 text-base"
+                  />
+                )}
+                {verdict && verdict !== "empty" && (
+                  <p role="status" className={`text-sm ${verdict === "different" ? "text-danger" : "text-muted"}`}>
+                    You typed: <span className="font-mono">{typed}</span>.{" "}
+                    {verdict === "match" ? "That matches. Good is a fair rating." : verdict === "close" ? "Very close, likely a typo. Good is a fair rating." : "That does not match, so Again or Hard may fit. You are the judge."}
+                  </p>
+                )}
                 {shown && (
                   <div className="border-t border-line pt-4" aria-live="polite">
                     <Markdown>{sides!.back}</Markdown>
@@ -245,7 +286,10 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                   </div>
                 </div>
               )}
-              <p className="flex gap-4 text-xs text-muted">
+              <p className="flex flex-wrap gap-4 text-xs text-muted">
+                <label className="flex items-center gap-1">
+                  <input type="checkbox" checked={typing} onChange={(e) => toggleTyping(e.target.checked)} /> Type the answer
+                </label>
                 <button onClick={() => hide("bury")} className="underline">
                   Bury until tomorrow
                 </button>
