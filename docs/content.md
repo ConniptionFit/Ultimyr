@@ -90,6 +90,9 @@ Roadmaps and resources follow the same draft rule as guides. Writes from MCP or 
 
 Editing a roadmap keeps people's ticks on every step whose id is kept. Removing a step, or deleting a resource, also removes its ticks. Limits: 30 stages, 60 steps per level, 1,000 steps and 1,500 resources per archive.
 
+## Glossary
+Each course has a **Glossary** tab (themed: Compendium): the terms and acronyms the exam expects, each with an optional expansion ("AES, Advanced Encryption Standard") and a short definition. Anyone who can read the course can search it. Editors can add one term, paste many at once (one per line: `AES (Advanced Encryption Standard): a symmetric cipher`, or `SYN - starts a handshake`), delete terms and press **Make a flashcard deck** to turn every published term into a card. Terms written by an AI assistant or MCP are drafts that only editors see until **Publish drafts**. A term name is unique per course, ignoring case, and saving it again updates it. Adds migration `0011_glossary` (content). MCP: `get_glossary`, `set_glossary`.
+
 ## Drafts
 Material written by AI or through MCP lands as a **draft**: only editors can see it. Publishing it (a person clicking Publish, or `PATCH status=published`) marks it `reviewed`. Human and import writes publish immediately.
 

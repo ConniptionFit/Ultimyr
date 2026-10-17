@@ -302,6 +302,12 @@ export function buildServer(deps: Deps, auth: Authed): McpServer {
     const cov = buildCoverage(tree, stats);
     return { summary: cov.summary, biggestGaps: topGaps(cov, 8).map((r) => ({ id: r.id, code: r.code, title: r.title, status: r.status, missing: r.missing })), rows: cov.rows, note: `coverageBp and accuracyBp are basis points: 8000 means 80%. ${stats ? "" : "Question counts are missing because this connection cannot read quizzes."}`.trim() };
   });
+  tool("get_glossary", "content:read", "read", { title: "Get the glossary", description: "The course glossary: terms and acronyms with their definitions. Check it before adding terms so you do not repeat any.", input: { archiveId: id, query: z.string().max(100).optional() } }, async (a) =>
+    get("content", `/v1/archives/${a.archiveId}/glossary`, { q: a.query }),
+  );
+  tool("set_glossary", "content:write", "write", { title: "Add glossary terms", description: "Add or update glossary terms for a course (up to 200 per call). Case does not matter; a term already there is updated. Only terms and acronyms the exam expects, each with an expansion for acronyms and a short definition in your own words. Saved as drafts until the person publishes them.", input: { archiveId: id, terms: z.array(z.object({ term: z.string().min(1).max(100), expansion: z.string().max(200).optional(), definition: z.string().min(1).max(2000) })).min(1).max(200) } }, async (a) =>
+    send("content", `/v1/archives/${a.archiveId}/glossary`, { terms: a.terms, source: "mcp" }, "PUT"),
+  );
   tool("get_build_queue", "content:read", "read", { title: "Get the build queue", description: "The to-do list for building an archive out from its exam objectives: the next few concrete tasks (write a guide for a domain, add N flashcards or N practice questions for an objective), the decks and quizzes that already exist, and overall progress. Work the tasks, then call it again until done is true. Set objectives first with set_objectives. Depth: quick, standard (default) or deep.", input: { archiveId: id, depth: z.enum(["quick", "standard", "deep"]).default("standard"), batch: z.number().int().min(1).max(10).default(4) } }, async (a) => {
     const [tree, arch] = await Promise.all([get("content", `/v1/archives/${a.archiveId}/objectives`), get("content", `/v1/archives/${a.archiveId}`)]);
     if (!tree.objectives?.length) return { done: false, tasks: [], note: "This archive has no exam objectives yet. Ask the person for the exam guide or objective list, add it with set_objectives, then call this again." };

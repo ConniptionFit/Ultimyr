@@ -37,6 +37,8 @@ Everything runs **as you**, with only the scopes you approved. The MCP server ho
 | `set_roadmap` | `content:write` | Replace the roadmap: stages of steps that are guides, decks, quizzes, links or milestones, each able to hold steps of its own. Saved as a draft. Call `get_roadmap` first and keep step ids so nobody loses progress |
 | `get_step_note`, `get_step_flashcards` | `notes:use` | Read your note for a roadmap step (kept in Ultimyr, mirrored to Obsidian if connected), and the `Question :: Answer` lines in it (hand them to `create_deck`). Pass `archiveId` the first time |
 | `append_step_note` | `notes:use` | Add text to the END of a step note. Never edits or removes what you wrote |
+| `get_glossary` | `content:read` | The course glossary (terms, acronym expansions, definitions) |
+| `set_glossary` | `content:write` | Add or update glossary terms by name. Saved as drafts until published |
 | `get_objectives` | `content:read` | The exam objectives (domains and topics with weights) and what is linked to each |
 | `set_objectives` | `content:write` | Add or update objectives from an outline. Merges by code or title, never deletes |
 | `link_objectives` | `content:write` | Link guides, decks, cards or resources to objectives |

@@ -67,7 +67,7 @@ describe("MCP server", () => {
     await boot();
     const names = async (scopes: string[]) => (await (await connect(await issuer.token({ scopes }))).listTools()).tools.map((t) => t.name).sort();
     const reader = await names(["content:read"]);
-    expect(reader).toEqual(["get_archive", "get_build_queue", "get_coverage", "get_credentials", "get_deck", "get_guide", "get_objectives", "get_roadmap", "get_tag_vocabulary", "get_tags", "list_archives", "list_resources", "search_icons", "search_materials", "suggest_icons"]);
+    expect(reader).toEqual(["get_archive", "get_build_queue", "get_coverage", "get_credentials", "get_deck", "get_glossary", "get_guide", "get_objectives", "get_roadmap", "get_tag_vocabulary", "get_tags", "list_archives", "list_resources", "search_icons", "search_materials", "suggest_icons"]);
     const full = await names(["content:read", "content:write", "quiz:read", "quiz:write"]);
     expect(full).toContain("create_quiz_questions");
     expect(full).toContain("get_progress");
