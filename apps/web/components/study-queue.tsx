@@ -8,6 +8,7 @@ import { FocusButton } from "@/components/focus-button";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { clozeSides } from "@/lib/cloze";
 import { useDisplay } from "@/lib/display";
 import { useNaming } from "@/lib/naming";
 import { formatNext, isLeech, sessionSummary, type ReviewNote, type StudyCard, type StudyQueue } from "@/lib/progress";
@@ -32,6 +33,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [notes, setNotes] = useState<ReviewNote[]>([]);
   const [last, setLast] = useState<{ card: StudyCard; reviewId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
 
   const load = useCallback(async () => {
@@ -53,13 +55,15 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   }, [state.status, router, load]);
 
   const card = queue?.[0];
+  const sides = card ? clozeSides(card.front, card.back) : null;
 
   const rate = useCallback(
     async (rating: 1 | 2 | 3 | 4) => {
       if (!card) return;
       try {
-        const res = await api<{ reviewId?: string }>("POST", "study/review", { cardId: card.id, rating, durationMs: Date.now() - shownAt.current });
+        const res = await api<{ reviewId?: string; leech?: boolean; suspended?: boolean }>("POST", "study/review", { cardId: card.id, rating, durationMs: Date.now() - shownAt.current });
         setLast(res.reviewId ? { card, reviewId: res.reviewId } : null);
+        setNotice(res.suspended ? "That card keeps slipping, so it is suspended. Find it in Your settings > Flashcards." : null);
       } catch {
         return setError("Could not save that review. Try again.");
       }
@@ -70,6 +74,25 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
       // Cards you missed come back in a minute or ten: keep them in this session.
       const again = rating <= 2 && card.next[String(rating) as "1" | "2"].days === 0;
       setQueue((q) => (q ? [...q.slice(1), ...(again ? [{ ...card, state: 1 }] : [])] : q));
+      setShown(false);
+      shownAt.current = Date.now();
+    },
+    [api, card],
+  );
+
+  /** Take the current card out of today's queue (bury) or out of rotation until you bring it back (suspend). */
+  const hide = useCallback(
+    async (how: "bury" | "suspend") => {
+      if (!card) return;
+      try {
+        await api("POST", `study/cards/${card.id}/${how}`, how === "suspend" ? { suspended: true } : { tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      } catch {
+        return setError("Could not do that. Try again.");
+      }
+      setError(null);
+      setNotice(how === "bury" ? "Buried until tomorrow." : "Suspended. You can bring it back in Your settings > Flashcards.");
+      setQueue((q) => (q ? q.filter((c) => c.id !== card.id) : q));
+      setLast(null);
       setShown(false);
       shownAt.current = Date.now();
     },
@@ -146,6 +169,11 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
               {error}
             </p>
           )}
+          {notice && (
+            <p role="status" className="text-sm text-muted">
+              {notice}
+            </p>
+          )}
           {last && (
             <p className="text-sm">
               <button onClick={undo} className="text-accent underline">
@@ -182,12 +210,12 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
               </p>
               <div key={`${card.id}:${shown}`} className={`min-h-40 space-y-4 rounded-md border border-line p-6${display.flip && shown ? " ulti-flip" : ""}`}>
                 <div className="text-xl">
-                  <Markdown>{card.front}</Markdown>
+                  <Markdown>{sides!.front}</Markdown>
                 </div>
                 {card.hint && !shown && <p className="text-sm text-muted">Hint: {card.hint}</p>}
                 {shown && (
                   <div className="border-t border-line pt-4" aria-live="polite">
-                    <Markdown>{card.back}</Markdown>
+                    <Markdown>{sides!.back}</Markdown>
                   </div>
                 )}
                 {shown && isLeech(card) && (
@@ -217,6 +245,14 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                   </div>
                 </div>
               )}
+              <p className="flex gap-4 text-xs text-muted">
+                <button onClick={() => hide("bury")} className="underline">
+                  Bury until tomorrow
+                </button>
+                <button onClick={() => hide("suspend")} className="underline">
+                  Suspend this card
+                </button>
+              </p>
             </section>
           )}
     </div>

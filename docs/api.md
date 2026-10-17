@@ -278,11 +278,14 @@ Scopes: reads `content:read`, reviews and settings `content:write`. Only publish
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/study/queue?archive=&deck=&limit=` | Due cards first, then new cards up to today's allowance. Each card carries `next`: what every rating would schedule. |
-| POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns `reviewId`, the new `state`, `due` and `scheduledDays`. |
+| POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns `reviewId`, the new `state`, `due`, `scheduledDays`, `lapses`, `leech` (this was the 8th or later lapse) and `suspended` (it was suspended because of that). |
 | POST | `/study/review/undo` | `{ reviewId }`. Restores the schedule the review replaced (or makes a first review new again) and removes it from your history. 404 if it is not your review, 409 `cannot_undo` if the card was reviewed again since or the review predates undo. |
 | GET | `/study/export` | Your own review history as CSV (`reviewed_at, course, deck, card, rating, was_new, scheduled_days, seconds`), newest first, up to 100,000 rows. Cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them. |
 | | `tz` | Every read that counts days (`/study/queue`, `/study/stats`, `/study/activity`, `/analytics`) takes an optional IANA time zone, for example `tz=America/Chicago`, so "today", streaks and the daily new-card limit follow the person's own calendar. Missing or unknown means UTC. |
 | GET | `/study/due` | Cards due now per course, `byCourse: {archiveId: n}`, courses with none left out. |
 | GET | `/study/activity?archive=&days=` | Flashcard reviews per UTC day, `activity: [{date, reviews}]`, days with none left out (default 84 days, 7 to 366). |
 | GET | `/study/stats?archive=&deck=` | `learning`, `review`, `dueNow`, `reviewedToday`, `retentionBp`, `forecast` (7 days). |
-| GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99) and `newPerDay` (0 to 500). |
+| GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99), `newPerDay` (0 to 500) and `leechSuspend` (suspend a card for you after you forget it 8 times, default false). |
+| POST | `/study/cards/:id/suspend` | `{ suspended: boolean }`. Hides the card from your queue, due counts and forecast until you bring it back. Only you are affected. 404 if you cannot read the card. |
+| POST | `/study/cards/:id/bury` | `{ tz? }`. Hides the card until the start of tomorrow in that time zone. |
+| GET | `/study/suspended` | Your suspended cards (`id, front, deckId, deck, course, lapses`), up to 500. |

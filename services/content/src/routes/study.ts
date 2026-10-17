@@ -22,7 +22,12 @@ const undoBody = z.object({ reviewId: z.uuid() });
 const settingsBody = z.object({
   desiredRetention: z.number().min(0.7).max(0.99).optional(),
   newPerDay: z.number().int().min(0).max(500).optional(),
+  leechSuspend: z.boolean().optional(),
 });
+/** A card forgotten this many times is a leech. */
+const LEECH_LAPSES = 8;
+const suspendBody = z.object({ suspended: z.boolean() });
+const buryBody = z.object({ tz: z.string().max(64).optional() });
 
 type Row = Record<string, any>;
 const toState = (r: Row): CardState => ({
@@ -40,7 +45,7 @@ export function studyRoutes(ctx: Ctx) {
 
   async function settings(userId: string) {
     const { rows } = await pool.query("SELECT * FROM content.study_settings WHERE user_id = $1", [userId]);
-    return { desiredRetention: rows[0]?.desired_retention ?? 0.9, newPerDay: rows[0]?.new_per_day ?? 20 };
+    return { desiredRetention: rows[0]?.desired_retention ?? 0.9, newPerDay: rows[0]?.new_per_day ?? 20, leechSuspend: rows[0]?.leech_suspend ?? false };
   }
   const params = (s: { desiredRetention: number }): Params => ({ w: DEFAULT_W, desiredRetention: s.desiredRetention });
 
@@ -60,6 +65,9 @@ export function studyRoutes(ctx: Ctx) {
     next: Object.fromEntries(Object.entries(preview(st, now, p)).map(([g, v]) => [g, { due: new Date(v.due).toISOString(), days: v.scheduledDays }])),
   });
 
+  /** Not suspended or buried for the person in $1 at the time in $5. */
+  const AWAKE = (card: string, user = "$1", now = "$5") => `NOT EXISTS (SELECT 1 FROM content.card_flags f WHERE f.user_id = ${user} AND f.card_id = ${card} AND (f.suspended OR f.buried_until > ${now}))`;
+
   /** Cards the caller may study: published decks they can read, optionally narrowed to one archive or deck. $1 user, $2 groups, $3 archive, $4 deck. */
   const READABLE = `
     SELECT c.*, s.master_item_id AS archive_id, s.title AS deck_title
@@ -72,6 +80,23 @@ export function studyRoutes(ctx: Ctx) {
      WHERE s.irel >= ${RANK.viewer} AND (s.status = 'published' OR s.irel >= ${RANK.editor})`;
   const ACC = `acc AS (SELECT m.id, ${ARCHIVE_REL} AS rel FROM content.master_items m WHERE m.deleted_at IS NULL AND ($3::uuid IS NULL OR m.id = $3))`;
 
+  async function setFlag(userId: string, cardId: string, archiveId: string, f: { suspended?: boolean; buriedUntil?: Date | null }) {
+    await pool.query(
+      `INSERT INTO content.card_flags (user_id, card_id, archive_id, suspended, buried_until) VALUES ($1,$2,$3,COALESCE($4,false),$5)
+       ON CONFLICT (user_id, card_id) DO UPDATE SET suspended = COALESCE($4, content.card_flags.suspended), buried_until = CASE WHEN $6 THEN $5 ELSE content.card_flags.buried_until END`,
+      [userId, cardId, archiveId, f.suspended ?? null, f.buriedUntil ?? null, f.buriedUntil !== undefined],
+    );
+  }
+  /** A card the caller may study, with its course id; 404 when it cannot be read (same rule as reviewing it). */
+  async function readableCard(a: Parameters<typeof loadItem>[1], id: string) {
+    const { rows } = await pool.query("SELECT c.id, c.front, c.deck_id, s.master_item_id AS archive_id, s.title AS deck_title FROM content.cards c JOIN content.sub_items s ON s.id = c.deck_id WHERE c.id = $1", [id]);
+    const card = rows[0];
+    if (!card) throw new HttpError(404, "not_found");
+    const { rel } = await loadItem(pool, a, card.deck_id);
+    if (rel < RANK.viewer) throw new HttpError(404, "not_found");
+    return card;
+  }
+
   return async (r: FastifyInstance) => {
     r.get("/v1/study/settings", async (req) => settings((await ctx.actor(req, "content:read")).userId));
 
@@ -79,11 +104,11 @@ export function studyRoutes(ctx: Ctx) {
       const a = await ctx.actor(req, "content:write");
       const body = parse(settingsBody, req.body);
       const cur = await settings(a.userId);
-      const next = { desiredRetention: body.desiredRetention ?? cur.desiredRetention, newPerDay: body.newPerDay ?? cur.newPerDay };
+      const next = { desiredRetention: body.desiredRetention ?? cur.desiredRetention, newPerDay: body.newPerDay ?? cur.newPerDay, leechSuspend: body.leechSuspend ?? cur.leechSuspend };
       await pool.query(
-        `INSERT INTO content.study_settings (user_id, desired_retention, new_per_day) VALUES ($1,$2,$3)
-         ON CONFLICT (user_id) DO UPDATE SET desired_retention = $2, new_per_day = $3, updated_at = now()`,
-        [a.userId, next.desiredRetention, next.newPerDay],
+        `INSERT INTO content.study_settings (user_id, desired_retention, new_per_day, leech_suspend) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (user_id) DO UPDATE SET desired_retention = $2, new_per_day = $3, leech_suspend = $4, updated_at = now()`,
+        [a.userId, next.desiredRetention, next.newPerDay, next.leechSuspend],
       );
       return next;
     });
@@ -95,13 +120,14 @@ export function studyRoutes(ctx: Ctx) {
       const s = await settings(a.userId);
       const p = params(s);
       const now = ctx.now();
-      const base = [a.userId, a.groups, q.archive ?? null, q.deck ?? null];
+      const nowDate = now;
+      const base = [a.userId, a.groups, q.archive ?? null, q.deck ?? null, nowDate];
       const { rows: due } = await pool.query(
         `WITH ${ACC}, readable AS (${READABLE})
          SELECT r.*, st.state, st.stability, st.difficulty, st.reps, st.lapses, st.last_review, st.due
            FROM readable r JOIN content.srs_state st ON st.card_id = r.id AND st.user_id = $1
-          WHERE st.due <= $5 ORDER BY st.due LIMIT $6`,
-        [...base, now, q.limit],
+          WHERE st.due <= $5 AND ${AWAKE("r.id")} ORDER BY st.due LIMIT $6`,
+        [...base, q.limit],
       );
       const zone = await resolveZone(pool, q.tz);
       const { rows: today } = await pool.query("SELECT count(*)::int AS n FROM content.srs_reviews WHERE user_id = $1 AND state_before = 0 AND reviewed_at >= date_trunc('day', $2::timestamptz AT TIME ZONE $3) AT TIME ZONE $3", [a.userId, now, zone]);
@@ -109,8 +135,8 @@ export function studyRoutes(ctx: Ctx) {
       const { rows: fresh } = room
         ? await pool.query(
             `WITH ${ACC}, readable AS (${READABLE})
-             SELECT r.* FROM readable r WHERE NOT EXISTS (SELECT 1 FROM content.srs_state st WHERE st.card_id = r.id AND st.user_id = $1)
-              ORDER BY r.deck_id, r.ord, r.created_at LIMIT $5`,
+             SELECT r.* FROM readable r WHERE NOT EXISTS (SELECT 1 FROM content.srs_state st WHERE st.card_id = r.id AND st.user_id = $1) AND ${AWAKE("r.id")}
+              ORDER BY r.deck_id, r.ord, r.created_at LIMIT $6`,
             [...base, room],
           )
         : { rows: [] as Row[] };
@@ -149,7 +175,49 @@ export function studyRoutes(ctx: Ctx) {
         "INSERT INTO content.srs_reviews (id, user_id, card_id, archive_id, rating, state_before, elapsed_days, scheduled_days, duration_ms, reviewed_at, prev_state) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
         [reviewId, a.userId, card.id, card.archive_id, body.rating, before.state, before.lastReview === null ? null : (nowMs - before.lastReview) / 86_400_000, out.scheduledDays, body.durationMs, now, cur[0] ? JSON.stringify(before) : null],
       );
-      return { reviewId, state: n.state, due: new Date(n.due).toISOString(), scheduledDays: out.scheduledDays, reps: n.reps, lapses: n.lapses };
+      // A leech is suspended for you when you have asked for that; the review itself is still recorded.
+      const leech = body.rating === 1 && n.lapses >= LEECH_LAPSES;
+      const suspended = leech && s.leechSuspend;
+      if (suspended) await setFlag(a.userId, card.id, card.archive_id, { suspended: true });
+      return { reviewId, state: n.state, due: new Date(n.due).toISOString(), scheduledDays: out.scheduledDays, reps: n.reps, lapses: n.lapses, leech, suspended };
+    });
+
+    /** Suspend a card so it stops appearing for you, or bring it back. Other people are not affected. */
+    r.post("/v1/study/cards/:id/suspend", async (req) => {
+      const a = await ctx.actor(req, "content:write");
+      const { id } = parse(z.object({ id: z.uuid() }), req.params);
+      const body = parse(suspendBody, req.body);
+      const card = await readableCard(a, id);
+      await setFlag(a.userId, card.id, card.archive_id, { suspended: body.suspended });
+      return { cardId: card.id, suspended: body.suspended };
+    });
+
+    /** Hide a card until the start of tomorrow (your time zone), for a card you cannot face today. */
+    r.post("/v1/study/cards/:id/bury", async (req) => {
+      const a = await ctx.actor(req, "content:write");
+      const { id } = parse(z.object({ id: z.uuid() }), req.params);
+      const body = parse(buryBody, req.body ?? {});
+      const card = await readableCard(a, id);
+      const zone = await resolveZone(pool, body.tz);
+      const { rows } = await pool.query("SELECT ((date_trunc('day', $1::timestamptz AT TIME ZONE $2) + interval '1 day') AT TIME ZONE $2) AS until", [ctx.now(), zone]);
+      await setFlag(a.userId, card.id, card.archive_id, { buriedUntil: rows[0].until });
+      return { cardId: card.id, buriedUntil: new Date(rows[0].until).toISOString() };
+    });
+
+    /** Your suspended cards, so you can bring them back. */
+    r.get("/v1/study/suspended", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const { rows } = await pool.query(
+        `SELECT c.id, c.front, d.title AS deck, d.id AS deck_id, m.title AS course, COALESCE(st.lapses, 0) AS lapses
+           FROM content.card_flags f
+           JOIN content.cards c ON c.id = f.card_id
+           JOIN content.sub_items d ON d.id = c.deck_id AND d.deleted_at IS NULL
+           JOIN content.master_items m ON m.id = f.archive_id AND m.deleted_at IS NULL
+           LEFT JOIN content.srs_state st ON st.user_id = f.user_id AND st.card_id = c.id
+          WHERE f.user_id = $1 AND f.suspended ORDER BY m.title, d.title, c.ord LIMIT 500`,
+        [a.userId],
+      );
+      return { cards: rows.map((x) => ({ id: x.id, front: x.front, deckId: x.deck_id, deck: x.deck, course: x.course, lapses: x.lapses })) };
     });
 
     /** Undo your most recent review of a card: restores the schedule it replaced and removes the log row. */
@@ -209,7 +277,7 @@ export function studyRoutes(ctx: Ctx) {
     /** Cards due now, counted per course, for the dashboard. Courses with nothing due are left out. */
     r.get("/v1/study/due", async (req) => {
       const a = await ctx.actor(req, "content:read");
-      const { rows } = await pool.query("SELECT archive_id, count(*)::int AS due FROM content.srs_state WHERE user_id = $1 AND due <= $2 GROUP BY archive_id", [a.userId, ctx.now()]);
+      const { rows } = await pool.query(`SELECT archive_id, count(*)::int AS due FROM content.srs_state st WHERE user_id = $1 AND due <= $2 AND ${AWAKE("st.card_id", "$1", "$2")} GROUP BY archive_id`, [a.userId, ctx.now()]);
       return { byCourse: Object.fromEntries(rows.map((x) => [x.archive_id, x.due])) };
     });
 
@@ -239,8 +307,8 @@ export function studyRoutes(ctx: Ctx) {
       // `deck` narrows the card counts only (learning, review, due now); reviews and the forecast stay per course.
       const { rows: st } = await pool.query(
         `SELECT count(*) FILTER (WHERE state = 1 OR state = 3)::int AS learning, count(*) FILTER (WHERE state = 2)::int AS review,
-                count(*) FILTER (WHERE due <= $3)::int AS due_now
-           FROM content.srs_state WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND ($4::uuid IS NULL OR deck_id = $4)`,
+                count(*) FILTER (WHERE due <= $3 AND NOT EXISTS (SELECT 1 FROM content.card_flags f WHERE f.user_id = $1 AND f.card_id = st.card_id AND (f.suspended OR f.buried_until > $3)))::int AS due_now
+           FROM content.srs_state st WHERE user_id = $1 AND ($2::uuid IS NULL OR archive_id = $2) AND ($4::uuid IS NULL OR deck_id = $4)`,
         [a.userId, archive ?? null, now, deck ?? null],
       );
       const { rows: rv } = await pool.query(

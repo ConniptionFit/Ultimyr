@@ -61,7 +61,7 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
   it("limits new cards per day and lets people change the limit and retention", async () => {
     at("2026-11-01T09:00:00Z");
     const { archive, cards } = await deckWith(5);
-    expect(json(await call(alice, "PUT", "/v1/study/settings", { newPerDay: 2 }))).toEqual({ desiredRetention: 0.9, newPerDay: 2 });
+    expect(json(await call(alice, "PUT", "/v1/study/settings", { newPerDay: 2 }))).toEqual({ desiredRetention: 0.9, newPerDay: 2, leechSuspend: false });
     expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`)).cards).toHaveLength(2);
     await call(alice, "POST", "/v1/study/review", { cardId: cards[0]!.id, rating: 3 });
     await call(alice, "POST", "/v1/study/review", { cardId: cards[1]!.id, rating: 3 });
@@ -71,7 +71,7 @@ describe.skipIf(!testDbUrl)("spaced repetition", () => {
     at("2026-11-02T09:00:00Z"); // a new day
     expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`)).cards.length).toBe(2);
     expect(json(await call(alice, "PUT", "/v1/study/settings", { desiredRetention: 0.8 })).desiredRetention).toBe(0.8);
-    expect(json(await call(alice, "GET", "/v1/study/settings"))).toEqual({ desiredRetention: 0.8, newPerDay: 2 });
+    expect(json(await call(alice, "GET", "/v1/study/settings"))).toEqual({ desiredRetention: 0.8, newPerDay: 2, leechSuspend: false });
     expect((await call(alice, "PUT", "/v1/study/settings", { desiredRetention: 0.2 })).statusCode).toBe(400);
     expect((await call(alice, "PUT", "/v1/study/settings", { newPerDay: 9999 })).statusCode).toBe(400);
     await call(alice, "PUT", "/v1/study/settings", { desiredRetention: 0.9, newPerDay: 20 });

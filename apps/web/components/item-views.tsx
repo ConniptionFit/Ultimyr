@@ -1,5 +1,6 @@
 "use client";
 
+import { clozeSides } from "@/lib/cloze";
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui";
@@ -104,7 +105,7 @@ export function Study({ cards, onDone, onFinished }: { cards: Card[]; onDone: ()
         className="flex min-h-48 w-full items-center justify-center rounded-lg border border-line bg-surface p-8 text-center font-serif text-2xl"
         aria-live="polite"
       >
-        <span className="whitespace-pre-line">{flipped ? c.back : c.front}</span>
+        <span className="whitespace-pre-line">{flipped ? clozeSides(c.front, c.back, true).back : clozeSides(c.front, c.back, true).front}</span>
       </button>
       <div className="flex justify-between">
         <Button variant="quiet" onClick={onDone}>
