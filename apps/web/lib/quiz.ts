@@ -45,6 +45,8 @@ export interface PlayQuestion {
   /** Your own bookmark and private note on this question; they follow you across attempts. */
   bookmarked?: boolean;
   note?: string;
+  /** 1 guessing, 2 not sure, 3 sure: what you said when answering. */
+  confidence?: 1 | 2 | 3 | null;
   timeMs: number;
   feedback?: { outcome: Outcome; earned: number; max: number; detail: any; explanation: string; key: any };
 }
@@ -166,4 +168,32 @@ export function paceSummary(times: number[]): string | null {
   const slowest = times.indexOf(Math.max(...times));
   const avg = `About ${formatSpent(total / times.length)} per question.`;
   return times.length > 1 ? `${avg} Slowest was question ${slowest + 1} (${formatSpent(times[slowest]!)}).` : avg;
+}
+
+export interface Calibration {
+  rated: number;
+  /** Per confidence level (1 guess, 2 not sure, 3 sure): how many answers and how many were fully right. */
+  levels: Record<1 | 2 | 3, { n: number; right: number }>;
+  /** Right but guessed: these deserve another look. Question numbers are 1-based. */
+  lucky: number[];
+  /** Sure but wrong: the dangerous ones. 1-based. */
+  overconfident: number[];
+}
+
+/** How well your confidence matched your results, or null when you rated nothing. Only graded questions count. */
+export function calibration(qs: Array<{ confidence?: 1 | 2 | 3 | null; feedback?: { outcome: Outcome } }>): Calibration | null {
+  const levels: Calibration["levels"] = { 1: { n: 0, right: 0 }, 2: { n: 0, right: 0 }, 3: { n: 0, right: 0 } };
+  const lucky: number[] = [];
+  const overconfident: number[] = [];
+  let rated = 0;
+  qs.forEach((q, i) => {
+    const o = q.feedback?.outcome;
+    if (!q.confidence || !o || o === "excluded" || o === "unanswered") return;
+    rated++;
+    levels[q.confidence].n++;
+    if (o === "correct") levels[q.confidence].right++;
+    if (q.confidence === 1 && o === "correct") lucky.push(i + 1);
+    if (q.confidence === 3 && o === "incorrect") overconfident.push(i + 1);
+  });
+  return rated ? { rated, levels, lucky, overconfident } : null;
 }

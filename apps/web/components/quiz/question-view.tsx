@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { useState } from "react";
 import { Markdown } from "@/components/markdown";
 import { pathGet, pathSet, type Outcome, type PbqField, type PlayQuestion } from "@/lib/quiz";
 
@@ -12,6 +13,14 @@ const outcomeText: Record<Outcome, string> = { correct: "Correct", partial: "Par
 export function QuestionView({ q, onChange, disabled }: { q: PlayQuestion; onChange: (r: unknown) => void; disabled: boolean }) {
   const r = q.response;
   const name = `q-${q.id}`;
+  // Options you have ruled out. Only a visual aid on this page: it is never saved or graded.
+  const [struck, setStruck] = useState<string[]>([]);
+  const strike = (id: string) => setStruck((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]));
+  const rule = (id: string) => (
+    <button type="button" onClick={() => strike(id)} aria-pressed={struck.includes(id)} className="ml-auto shrink-0 text-xs text-muted underline">
+      {struck.includes(id) ? "Restore" : "Rule out"}
+    </button>
+  );
   return (
     <fieldset disabled={disabled} className="space-y-4 border-0 p-0">
       <legend className="mb-3 text-lg">
@@ -22,7 +31,8 @@ export function QuestionView({ q, onChange, disabled }: { q: PlayQuestion; onCha
           {q.payload.options.map((o: { id: string; text: string }) => (
             <label key={o.id} className="flex cursor-pointer items-start gap-3 rounded-md border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-surface">
               <input type="radio" name={name} checked={r?.choice === o.id} onChange={() => onChange({ choice: o.id })} className="mt-1" />
-              <span>{o.text}</span>
+              <span className={struck.includes(o.id) ? "text-muted line-through" : ""}>{o.text}</span>
+              {!disabled && rule(o.id)}
             </label>
           ))}
         </div>
@@ -40,7 +50,8 @@ export function QuestionView({ q, onChange, disabled }: { q: PlayQuestion; onCha
                   onChange={(e) => onChange({ choices: e.target.checked ? [...chosen, o.id] : chosen.filter((c) => c !== o.id) })}
                   className="mt-1"
                 />
-                <span>{o.text}</span>
+                <span className={struck.includes(o.id) ? "text-muted line-through" : ""}>{o.text}</span>
+                {!disabled && rule(o.id)}
               </label>
             );
           })}
