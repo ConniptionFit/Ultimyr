@@ -34,6 +34,10 @@ COPY . .
 
 # ---- auth service ----
 FROM source AS auth-build
+# Set by CI for published images (the build context has no .git). Shown in Admin > About.
+ARG ULTIMYR_COMMIT=""
+ARG ULTIMYR_VERSION=""
+ENV ULTIMYR_COMMIT=$ULTIMYR_COMMIT ULTIMYR_VERSION=$ULTIMYR_VERSION
 RUN pnpm --filter @ultimyr/auth build \
  && pnpm --filter @ultimyr/auth deploy --prod /out/auth
 

@@ -26,6 +26,12 @@ x-hardening: &hardening
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
 
+# Published images. Override ULTIMYR_REGISTRY for a fork and ULTIMYR_TAG to pin a release (for example v1.2.0).
+# Every service also keeps its `build:` block, so `docker compose up -d --build` still builds from source.
+x-labels: &labels
+  labels:
+    com.centurylinklabs.watchtower.enable: "true"
+
 services:
 
   # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
@@ -47,7 +53,8 @@ services:
     restart: unless-stopped
 
   migrate:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-migrate:${ULTIMYR_TAG:-latest}
     build: { context: ., target: migrate }
     environment:
       <<: *db-env
@@ -59,7 +66,8 @@ services:
     restart: "no"
 
   auth:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-auth:${ULTIMYR_TAG:-latest}
     build: { context: ., target: auth }
     environment:
       <<: *db-env
@@ -90,7 +98,8 @@ services:
     restart: unless-stopped
 
   content:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-content:${ULTIMYR_TAG:-latest}
     build: { context: ., target: content }
     environment:
       <<: *db-env
@@ -107,7 +116,8 @@ services:
     restart: unless-stopped
 
   quiz:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-quiz:${ULTIMYR_TAG:-latest}
     build: { context: ., target: quiz }
     environment:
       <<: *db-env
@@ -126,7 +136,8 @@ services:
     restart: unless-stopped
 
   ai-gateway:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-ai-gateway:${ULTIMYR_TAG:-latest}
     build: { context: ., target: ai-gateway }
     environment:
       <<: *db-env
@@ -151,7 +162,8 @@ services:
     restart: unless-stopped
 
   notes:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-notes:${ULTIMYR_TAG:-latest}
     build: { context: ., target: notes }
     environment:
       <<: *db-env
@@ -176,7 +188,8 @@ services:
     restart: unless-stopped
 
   mcp:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-mcp:${ULTIMYR_TAG:-latest}
     build: { context: ., target: mcp }
     environment:
       # Verifies tokens (JWKS) at auth and calls content and quiz as the signed in person. No database, no secrets.
@@ -197,7 +210,8 @@ services:
     restart: unless-stopped
 
   web:
-    <<: *hardening
+    <<: [*hardening, *labels]
+    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-web:${ULTIMYR_TAG:-latest}
     build:
       context: .
       target: web
