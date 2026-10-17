@@ -37,6 +37,11 @@ The **clock belongs to the server** and is streamed to the page (see [study.md](
 
 One attempt per quiz is open at a time per person; starting again resumes it unless you choose "start over".
 
+## Confidence, ruling out options and the scratchpad
+- **How sure are you?** Under each open question, **Guessing**, **Not sure** or **Sure** records your confidence (press the same one again to clear it). On the results page, when you rated anything, you see how often you were right at each level, **Sure but wrong** (fix these first) and **Right but guessing** (revisit these), each a link to that question. It is stored on the attempt (`PUT /attempts/:id/items/:qid` takes `confidence`: 1, 2, 3 or null) and is never graded.
+- **Rule out** beside each option of a single or multiple choice question strikes it through, like crossing out an answer on paper. It is only a visual aid on that page and is not saved or graded.
+- **Scratchpad** (open attempts) is a small box for working. It is not saved or graded and disappears when you leave the page.
+
 ## Scoring profiles
 A profile is a small JSON document. Profiles are **immutable**: saving under the same name creates the next version, and each attempt keeps its own copy. Built in:
 

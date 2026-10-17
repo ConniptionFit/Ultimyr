@@ -14,7 +14,7 @@ import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
 import { REASON_LABEL } from "@/lib/certs";
-import { FIDELITY_LABEL, MODE_LABEL, formatClock, paceSummary, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
+import { FIDELITY_LABEL, MODE_LABEL, calibration, formatClock, paceSummary, pct, timeNotice, type Attempt, type PlayQuestion } from "@/lib/quiz";
 
 const answered = (q: PlayQuestion) => q.response !== null && q.response !== undefined && JSON.stringify(q.response) !== "{}";
 
@@ -26,6 +26,7 @@ export default function AttemptPage() {
   const [at, setAt] = useState<Attempt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
+  const [scratch, setScratch] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const skew = useRef(0);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -323,6 +324,25 @@ export default function AttemptPage() {
                   </p>
                 ) : null;
               })()}
+              {(() => {
+                const c = calibration(qs);
+                if (!c) return null;
+                const jump = (list: number[]) =>
+                  list.map((n) => (
+                    <button key={n} className="mr-2 text-accent underline" onClick={() => { go(n - 1); document.getElementById("question-area")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                      {n}
+                    </button>
+                  ));
+                return (
+                  <div className="space-y-1 text-sm">
+                    <p className="text-muted">
+                      How sure you were: sure {c.levels[3].right} of {c.levels[3].n} right, not sure {c.levels[2].right} of {c.levels[2].n}, guessing {c.levels[1].right} of {c.levels[1].n}.
+                    </p>
+                    {c.overconfident.length > 0 && <p>Sure but wrong (the ones to fix first): {jump(c.overconfident)}</p>}
+                    {c.lucky.length > 0 && <p>Right but guessing (revisit these): {jump(c.lucky)}</p>}
+                  </div>
+                );
+              })()}
               <AssistantPanel context={{ type: "attempt", id }} label="Explain my mistakes" />
               <div className="flex gap-2">
                 <Button onClick={() => router.push(home)}>Done</Button>
@@ -379,6 +399,16 @@ export default function AttemptPage() {
             })}
           </nav>
 
+          {open && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted">Scratchpad</summary>
+              <label className="sr-only" htmlFor="scratchpad">
+                Scratchpad
+              </label>
+              <textarea id="scratchpad" value={scratch} onChange={(e) => setScratch(e.target.value)} rows={4} className="mt-2 w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-ink" placeholder="Working space for this attempt. It is not saved or graded." />
+            </details>
+          )}
+
           {q && (
             <section id="question-area" className="scroll-mt-20" aria-label={`Question ${idx + 1} of ${qs.length}`}>
               <p className="mb-2 text-sm text-muted">
@@ -386,6 +416,26 @@ export default function AttemptPage() {
               </p>
               {drill && q.drillReason && REASON_LABEL[q.drillReason] && <p className="mb-2 text-xs text-muted">{REASON_LABEL[q.drillReason]}</p>}
               {open && <p className="mb-2 hidden text-xs text-muted md:block">Keys: 1 to 9 pick an option, N next, P previous, F flag{at.mode === "practice" ? ", C check the answer" : ""}.</p>}
+              {open && !q.feedback && (
+                <div role="group" aria-label="How sure are you?" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted">How sure are you?</span>
+                  {([[1, "Guessing"], [2, "Not sure"], [3, "Sure"]] as const).map(([n, label]) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={q.confidence === n}
+                      className={`rounded-full border px-3 py-1 ${q.confidence === n ? "border-accent bg-surface" : "border-line"}`}
+                      onClick={() => {
+                        const next = q.confidence === n ? null : n;
+                        patchLocal(q.id, { confidence: next });
+                        void save(q.id, { confidence: next });
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">

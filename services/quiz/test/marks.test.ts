@@ -74,3 +74,26 @@ describe.skipIf(!testDbUrl)("bookmarks, notes and drill filters", () => {
     expect((await call(uuid(), "GET", `/v1/drill-topics?archive=${archive}`)).statusCode).toBe(404);
   });
 });
+
+describe.skipIf(!testDbUrl)("confidence", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+  it("stores how sure you were and returns it with the attempt", async () => {
+    const u = uuid();
+    const archive = uuid();
+    const item = uuid();
+    h.access.set(`${u}:${item}`, { kind: "quiz", archiveId: archive, status: "published", canAttempt: true, canWrite: true });
+    const call = async (method: string, url: string, payload?: unknown) => h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId: u }), ...(payload !== undefined ? { payload: payload as any } : {}) });
+    await call("POST", `/v1/quizzes/${item}/questions`, mcq("Only", "D"));
+    const at = JSON.parse((await call("POST", `/v1/quizzes/${item}/attempts`, {})).body);
+    const qid = at.questions[0].id;
+    expect(at.questions[0].confidence).toBeNull();
+    expect(JSON.parse((await call("PUT", `/v1/attempts/${at.id}/items/${qid}`, { confidence: 1 })).body)).toMatchObject({ saved: true, confidence: 1 });
+    expect(JSON.parse((await call("GET", `/v1/attempts/${at.id}`)).body).questions[0].confidence).toBe(1);
+    expect((await call("PUT", `/v1/attempts/${at.id}/items/${qid}`, { confidence: 4 })).statusCode).toBe(400);
+    expect(JSON.parse((await call("PUT", `/v1/attempts/${at.id}/items/${qid}`, { confidence: null })).body).confidence).toBeNull();
+  });
+});

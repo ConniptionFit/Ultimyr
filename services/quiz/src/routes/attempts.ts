@@ -34,6 +34,8 @@ const MAX_DRILL_POOL = 5000;
 const saveBody = z.object({
   response: z.unknown().optional(),
   flagged: z.boolean().optional(),
+  /** 1 guessing, 2 not sure, 3 sure; null clears it. */
+  confidence: z.union([z.literal(1), z.literal(2), z.literal(3), z.null()]).optional(),
   timeMs: z.number().int().min(0).max(86_400_000).optional(),
 });
 const MAX_RESPONSE_BYTES = 50_000;
@@ -123,6 +125,7 @@ export function attemptRoutes(ctx: Ctx) {
         ...(i.presented as object),
         response: i.response,
         flagged: i.flagged,
+        confidence: i.confidence,
         bookmarked: markOf.get(i.question_id)?.bookmarked ?? false,
         note: markOf.get(i.question_id)?.note ?? "",
         timeMs: i.time_ms,
@@ -273,16 +276,17 @@ export function attemptRoutes(ctx: Ctx) {
       const vals: unknown[] = [att.id, qid];
       if (body.response !== undefined) sets.push(`response = $${vals.push(body.response)}`);
       if (body.flagged !== undefined) sets.push(`flagged = $${vals.push(body.flagged)}`);
+      if (body.confidence !== undefined) sets.push(`confidence = $${vals.push(body.confidence)}`);
       if (body.timeMs !== undefined) sets.push(`time_ms = GREATEST(time_ms, $${vals.push(body.timeMs)})`);
       if (!sets.length) throw new HttpError(400, "invalid_request", { issues: ["nothing to save"] });
       // A revealed practice answer is final: it can no longer be changed.
-      const { rows } = await pool.query(`UPDATE quiz.attempt_items SET ${sets.join(", ")} WHERE attempt_id = $1 AND question_id = $2 AND NOT (revealed AND $${vals.push(body.response !== undefined)}::boolean) RETURNING question_id, flagged, time_ms`, vals);
+      const { rows } = await pool.query(`UPDATE quiz.attempt_items SET ${sets.join(", ")} WHERE attempt_id = $1 AND question_id = $2 AND NOT (revealed AND $${vals.push(body.response !== undefined)}::boolean) RETURNING question_id, flagged, time_ms, confidence`, vals);
       if (!rows[0]) {
         const { rows: ex } = await pool.query("SELECT revealed FROM quiz.attempt_items WHERE attempt_id = $1 AND question_id = $2", [att.id, qid]);
         if (ex[0]?.revealed) throw new HttpError(409, "already_revealed");
         throw new HttpError(404, "not_found");
       }
-      return { saved: true, flagged: rows[0].flagged, timeMs: rows[0].time_ms, serverTime: ctx.now().toISOString() };
+      return { saved: true, flagged: rows[0].flagged, confidence: rows[0].confidence, timeMs: rows[0].time_ms, serverTime: ctx.now().toISOString() };
     });
 
     /** Practice mode only: grade one question now and show the answer and explanation. */
