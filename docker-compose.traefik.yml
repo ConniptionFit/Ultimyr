@@ -33,7 +33,7 @@ services:
   quiz:
     labels:
       - traefik.enable=true
-      - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`) || PathPrefix(`/api/v1/analytics`) || PathPrefix(`/api/v1/goals`) || PathPrefix(`/api/v1/drills`) || PathPrefix(`/api/v1/drill-topics`) || PathPrefix(`/api/v1/marks`) || PathPrefix(`/api/v1/reports`) || PathPrefix(`/api/v1/plan`)
+      - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`) || PathPrefix(`/api/v1/analytics`) || PathPrefix(`/api/v1/goals`) || PathPrefix(`/api/v1/drills`) || PathPrefix(`/api/v1/drill-topics`) || PathPrefix(`/api/v1/mock-exams`) || PathPrefix(`/api/v1/marks`) || PathPrefix(`/api/v1/reports`) || PathPrefix(`/api/v1/plan`)
       - traefik.http.routers.quiz.priority=100
       - traefik.http.services.quiz.loadbalancer.server.port=4003
 

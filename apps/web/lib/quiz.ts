@@ -71,7 +71,7 @@ export interface Attempt {
   /** For a weak-area drill this is the archive id. */
   itemId: string;
   archiveId: string;
-  kind?: "quiz" | "drill";
+  kind?: "quiz" | "drill" | "mock";
   mode: Mode;
   status: "in_progress" | "submitted" | "expired";
   startedAt: string;

@@ -228,6 +228,7 @@ export default function AttemptPage() {
   const qs = at.questions;
   const low = remaining !== null && remaining < 60_000;
   const drill = at.kind === "drill";
+  const mock = at.kind === "mock";
   // A quiz opened from the path comes back to the path (same-site addresses only).
   const back = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("back");
   const fromPath = back && back.startsWith("/") && !back.startsWith("//") && !back.includes("\\") ? back : null;
@@ -241,7 +242,7 @@ export default function AttemptPage() {
       setError("Could not start a drill of your missed questions.");
     }
   }
-  const home = fromPath ?? (drill ? `/archives/${at.archiveId}` : `/items/${at.itemId}`);
+  const home = fromPath ?? (drill || mock ? `/archives/${at.archiveId}` : `/items/${at.itemId}`);
 
   return (
     <>
@@ -249,11 +250,11 @@ export default function AttemptPage() {
       <Shell>
         <div className="ulti-fade space-y-6">
           <Link href={home} className="text-sm text-muted hover:text-ink">
-            ← Back to the {fromPath ? t("roadmap").toLowerCase() : drill ? t("archive").toLowerCase() : t("quiz").toLowerCase()}
+            ← Back to the {fromPath ? t("roadmap").toLowerCase() : drill || mock ? t("archive").toLowerCase() : t("quiz").toLowerCase()}
           </Link>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl">
-              {drill ? "Weak-area drill" : MODE_LABEL[at.mode]}
+              {drill ? "Weak-area drill" : mock ? t("mockExam") : MODE_LABEL[at.mode]}
               {closed ? " results" : ""}
             </h1>
             <div className="flex items-center gap-3">

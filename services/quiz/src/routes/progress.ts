@@ -38,7 +38,7 @@ export function progressRoutes(ctx: Ctx) {
   /** Recency weighted average of the latest quiz attempts (drills are aimed at weak spots, so they would skew it). An estimate of readiness, never a prediction of the real exam. */
   async function readiness(userId: string, archive: string) {
     const { rows } = await pool.query(
-      "SELECT raw_bp FROM quiz.attempts WHERE user_id = $1 AND archive_id = $2 AND kind = 'quiz' AND status <> 'in_progress' AND raw_max > 0 ORDER BY started_at DESC LIMIT 10",
+      "SELECT raw_bp FROM quiz.attempts WHERE user_id = $1 AND archive_id = $2 AND kind IN ('quiz', 'mock') AND status <> 'in_progress' AND raw_max > 0 ORDER BY started_at DESC LIMIT 10",
       [userId, archive],
     );
     if (rows.length < 3) return { bp: null, basedOn: rows.length };

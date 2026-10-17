@@ -32,6 +32,7 @@ export default function QuickJumpDialog({ onClose }: { onClose: () => void }) {
       { id: "p-study", label: t("queue"), hint: "Page", href: "/study", keywords: "flashcards review due" },
       { id: "p-progress", label: "Progress", hint: "Page", href: "/progress", keywords: "stats streak" },
       { id: "p-cred", label: t("credentials"), hint: t("prep"), href: "/credentials", keywords: "voucher renewal certificate" },
+      { id: "p-mock", label: t("mockExam"), hint: t("prep"), href: "/mock-exam", keywords: "practice exam full timed blueprint" },
       { id: "p-drills", label: t("drills"), hint: t("prep"), href: "/drills", keywords: "practice weak" },
       { id: "p-exam", label: t("countdown"), hint: t("prep"), href: "/exam-day", keywords: "plan date schedule" },
       { id: "p-build", label: t("build"), hint: t("prep"), href: "/build", keywords: "create import ai" },
