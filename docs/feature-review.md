@@ -38,11 +38,18 @@ Ultimyr is reviewed against how people actually prepare for certifications elsew
 - **Adaptive (computer adaptive) exams:** few vendors publish how theirs work, so any imitation would be a guess. Mock exams follow published domain weights instead.
 - **Cloud labs and sandboxes:** these need provider accounts and spend. Labs are tracked as roadmap steps (a link plus `content-type:lab`) and logged in Study time.
 - **Peer percentiles and leaderboards:** one learner per install by design, and rankings would pressure people more than help them.
+- **Pausing a timed exam:** real proctored exams do not allow it, and Mock exam is meant to rehearse them. Use Practice mode for untimed work.
+- **Push reminders and webhooks:** the calendar export already puts exam, voucher and renewal dates in your own calendar, and the browser tab shows due cards. Outbound notifications would add a server-side request surface to a single-learner install for little gain.
+- **Assignments with due dates for groups:** Ultimyr is single-tenant and groups exist to share material, so tracking other people's progress would need a privacy design nobody asked for. Revisit if an install is used by a team.
+- **Reverse and image-occlusion cards:** these need per-direction scheduling and an image editor. Cloze cards, typed answers and picture links in Markdown cover the same recall.
 - **Official score reports:** vendors rarely publish the formula, so scoring profiles say how far each one can be trusted (see quiz.md).
 
 ## Batches
 1. **Flashcards and practice depth:** cloze deletion, suspend, bury, leeches; bookmarks, private notes, topic drills; confidence, rule-out, scratchpad; glossary.
 2. **Question quality and exam realism:** reports and item analysis, diagnostic drill, study time log, calculator, blueprint-weighted mock exam.
-3. **Next:** assignments with due dates for groups, study reminders, then another research pass.
+3. **Recall and wrap-up:** type-the-answer cards, then a second research pass. Offline use, flags for review, calendar export and CSV deck import were already built; the remaining gaps are listed above with reasons.
+
+## Verdict
+After three batches the platform covers the full cycle on a single install: learn (roadmaps, guides, videos, glossary), memorise (FSRS flashcards with cloze, typing, suspend and bury), practise (every question format, drills, diagnostic, confidence, reports), rehearse (blueprint-weighted mock exams, calculator, extra time), track (readiness, coverage, study hours, credentials and renewals) and plan the exam day. It does not depend on one vendor's exam style, so the same flow works for cloud, security, project management, networking, IT and other certifications. The feature add task is considered complete; new ideas go through the same review.
 
 Everything above is described in the CHANGELOG with the migrations it adds.
