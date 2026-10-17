@@ -40,7 +40,7 @@ Restore: put the same secrets back first, then run the restore script. Practise 
 | Disk filling | Check the `pgdata` volume and Docker logs (`docker system df`). Set log rotation in Docker's `daemon.json`. |
 
 ## Upgrading
-CI builds every service on each merge to `main` and on each release tag (`v*`) and publishes the images to GitHub's container registry (`ghcr.io/conniptionfit/ultimyr-<service>`), for amd64 and arm64. Nothing compiles on your server. One step: `./scripts/update.sh` (saves local edits to a git stash so `git pull` is never blocked, pulls the repo files, adds new secrets, pulls the images, restarts what changed, waits for health and prints the version). Or by hand:
+CI builds every service on each merge to `main` and on each release tag (`v*`) and publishes the images to the Forgejo container registry at `git.pwrs.dev/powers/ultimyr-<service>` (the default) and to GitHub's (`ghcr.io/conniptionfit/ultimyr-<service>`, amd64 and arm64). The Forgejo images are built by `.forgejo/workflows/image.yml` for the Docker host's own architecture. Nothing compiles on your server. One step: `./scripts/update.sh` (saves local edits to a git stash so `git pull` is never blocked, pulls the repo files, adds new secrets, pulls the images, restarts what changed, waits for health and prints the version). Or by hand:
 ```sh
 git pull                          # only needed when docker-compose.yml, .env.example or scripts changed
 ./scripts/init-secrets.sh        # adds any new secret files, keeps existing ones
@@ -54,10 +54,12 @@ If you only want the newest app and never touch the compose files, `docker compo
 | A release | `ULTIMYR_TAG=v1.2.0` in `.env` (`1.2` and `1` also work) |
 | Roll back | `ULTIMYR_TAG=sha-<7 chars>` of an earlier commit (Admin > About shows the running commit), then `docker compose pull && docker compose up -d`. Check [ROLLBACK.md](ROLLBACK.md) first when the newer version added migrations. |
 | Build from source | `ULTIMYR_BUILD=1 ./scripts/update.sh`, or `docker compose up -d --build` |
-| A fork or mirror | `ULTIMYR_REGISTRY=ghcr.io/<you>` (or `git.pwrs.dev/powers`) in `.env` |
+| A fork or other registry | `ULTIMYR_REGISTRY=ghcr.io/conniptionfit` (GitHub images) or `ghcr.io/<you>` in `.env`. The default is `git.pwrs.dev/powers`. |
 | Automatic | Every service carries the label `com.centurylinklabs.watchtower.enable=true`, so Watchtower (label-enable mode), Komodo and similar tools update the stack on their own. |
 
-**First time only (maintainer):** GitHub creates each package as private. After the first CI publish, open each `ultimyr-*` package under the account's Packages and set its visibility to Public (or run `docker login ghcr.io` with a token on the server). To also push to a self-hosted registry such as Forgejo, add the repo secret `REGISTRY_TOKEN` and the variables `MIRROR_REGISTRY` (for example `git.pwrs.dev/powers`) and `MIRROR_USER`.
+**First time only (maintainer, Forgejo):** the repo is public, so its packages are too. In the repo's Actions settings add the secret `REGISTRY_TOKEN` (an access token with `write:package`, only needed if the built-in token cannot push), and either a runner with Docker or the `DOCKER_SSH_KEY` secret and `DOCKER_SSH_HOST` variable (see the header of `.forgejo/workflows/image.yml`). Run the workflow once from the Actions tab. The source of truth is `https://git.pwrs.dev/powers/ultimyr`.
+
+**GitHub images (optional):** GitHub creates each package as private. After the first CI publish, open each `ultimyr-*` package under the account's Packages and set its visibility to Public (or run `docker login ghcr.io` with a token on the server). To also push to a self-hosted registry such as Forgejo, add the repo secret `REGISTRY_TOKEN` and the variables `MIRROR_REGISTRY` (for example `git.pwrs.dev/powers`) and `MIRROR_USER`.
 
 **Releasing:** bump `version` in the root `package.json`, merge, then `git tag v1.2.0 && git push origin v1.2.0`. The tag build is stamped with that version, which Admin > About compares with the latest GitHub release.
 

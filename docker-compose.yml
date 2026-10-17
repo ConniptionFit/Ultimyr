@@ -26,7 +26,7 @@ x-hardening: &hardening
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
 
-# Published images. Override ULTIMYR_REGISTRY for a fork and ULTIMYR_TAG to pin a release (for example v1.2.0).
+# Published images (default: this project's Forgejo registry). Override ULTIMYR_REGISTRY for a fork and ULTIMYR_TAG to pin a release (for example v1.2.0).
 # Every service also keeps its `build:` block, so `docker compose up -d --build` still builds from source.
 x-labels: &labels
   labels:
@@ -54,7 +54,7 @@ services:
 
   migrate:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-migrate:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-migrate:${ULTIMYR_TAG:-latest}
     build: { context: ., target: migrate }
     environment:
       <<: *db-env
@@ -67,7 +67,7 @@ services:
 
   auth:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-auth:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-auth:${ULTIMYR_TAG:-latest}
     build: { context: ., target: auth }
     environment:
       <<: *db-env
@@ -99,7 +99,7 @@ services:
 
   content:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-content:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-content:${ULTIMYR_TAG:-latest}
     build: { context: ., target: content }
     environment:
       <<: *db-env
@@ -117,7 +117,7 @@ services:
 
   quiz:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-quiz:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-quiz:${ULTIMYR_TAG:-latest}
     build: { context: ., target: quiz }
     environment:
       <<: *db-env
@@ -137,7 +137,7 @@ services:
 
   ai-gateway:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-ai-gateway:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-ai-gateway:${ULTIMYR_TAG:-latest}
     build: { context: ., target: ai-gateway }
     environment:
       <<: *db-env
@@ -163,7 +163,7 @@ services:
 
   notes:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-notes:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-notes:${ULTIMYR_TAG:-latest}
     build: { context: ., target: notes }
     environment:
       <<: *db-env
@@ -189,7 +189,7 @@ services:
 
   mcp:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-mcp:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-mcp:${ULTIMYR_TAG:-latest}
     build: { context: ., target: mcp }
     environment:
       # Verifies tokens (JWKS) at auth and calls content and quiz as the signed in person. No database, no secrets.
@@ -211,7 +211,7 @@ services:
 
   web:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-ghcr.io/conniptionfit}/ultimyr-web:${ULTIMYR_TAG:-latest}
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-web:${ULTIMYR_TAG:-latest}
     build:
       context: .
       target: web

@@ -1,0 +1,100 @@
+name: Images
+
+# Builds every Ultimyr service image and pushes it to this Forgejo's container registry,
+# so servers update by pulling (docker compose pull, Watchtower, Komodo) instead of building.
+#   git.pwrs.dev/powers/ultimyr-<service>:latest     newest build from main
+#   git.pwrs.dev/powers/ultimyr-<service>:sha-<7>    one per commit, to pin or roll back
+#   git.pwrs.dev/powers/ultimyr-<service>:v1.2.3     one per release tag
+# Runs on every push to main, on v* tags, or from the Actions tab (Run workflow).
+#
+# Where it builds: with the runner's own Docker if it has one, otherwise on a Docker host over SSH
+# (only ssh is needed on the runner). For SSH, set these in the repo's Actions settings:
+#   secret   DOCKER_SSH_KEY    private key whose .pub is in the Docker host's ~/.ssh/authorized_keys
+#   variable DOCKER_SSH_HOST   user@host of the Docker host (default powers@docker)
+# Images are built for the Docker host's own architecture.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  images:
+    # Same host runner as lastly.
+    runs-on: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find Docker
+        env:
+          SSH_KEY: ${{ secrets.DOCKER_SSH_KEY }}
+          SSH_HOST: ${{ vars.DOCKER_SSH_HOST || 'powers@docker' }}
+        run: |
+          if docker version >/dev/null 2>&1; then
+            echo "Using the runner's own Docker"
+            echo "DOCKER_RUN=docker" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if [ -z "$SSH_KEY" ]; then
+            echo "The runner has no Docker, and the DOCKER_SSH_KEY secret is not set."
+            echo "Create a key pair, add the .pub to ~/.ssh/authorized_keys on the Docker host,"
+            echo "and save the private key as the repo secret DOCKER_SSH_KEY."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          KEY=~/.ssh/ultimyr_image_key
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$KEY" && chmod 600 "$KEY"
+          SSH="ssh -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 $SSH_HOST"
+          if ! $SSH docker info --format '{{.ServerVersion}}'; then
+            echo "Could not run docker on $SSH_HOST over SSH. Check the key, the host name"
+            echo "(set the DOCKER_SSH_HOST variable to user@ip if 'docker' doesn't resolve) and that"
+            echo "the user can run docker there."
+            exit 1
+          fi
+          echo "DOCKER_RUN=$SSH docker" >> "$GITHUB_ENV"
+
+      - name: Log in to the registry
+        env:
+          # The built-in token may not be allowed to write packages; set REGISTRY_TOKEN
+          # (a Forgejo access token with package write scope) if the push is refused.
+          TOKEN: ${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          REGISTRY="${GITHUB_SERVER_URL#https://}"
+          REGISTRY="${REGISTRY#http://}"
+          echo "REGISTRY=$REGISTRY" >> "$GITHUB_ENV"
+          printf '%s' "$TOKEN" | $DOCKER_RUN login "$REGISTRY" -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push
+        run: |
+          OWNER="$(echo "$GITHUB_REPOSITORY" | cut -d/ -f1 | tr '[:upper:]' '[:lower:]')"
+          SHORT="${GITHUB_SHA::7}"
+          VERSION=""
+          [ "${GITHUB_REF_TYPE:-}" = tag ] && VERSION="${GITHUB_REF_NAME#v}"
+          for TARGET in migrate auth content quiz ai-gateway notes mcp web; do
+            IMAGE="$REGISTRY/$OWNER/ultimyr-$TARGET"
+            TAGS=(-t "$IMAGE:sha-$SHORT")
+            if [ "${GITHUB_REF_TYPE:-}" = tag ]; then
+              TAGS+=(-t "$IMAGE:$GITHUB_REF_NAME")
+            else
+              TAGS+=(-t "$IMAGE:latest")
+            fi
+            echo "== $TARGET =="
+            # The build context is sent as a tar on stdin, so it works the same locally and over SSH.
+            git archive --format=tar HEAD | $DOCKER_RUN build --pull --target "$TARGET" \
+              --build-arg "ULTIMYR_COMMIT=$GITHUB_SHA" --build-arg "ULTIMYR_VERSION=$VERSION" \
+              --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              "${TAGS[@]}" -
+            for T in "${TAGS[@]}"; do
+              case "$T" in -t) continue ;; esac
+              $DOCKER_RUN push "$T"
+            done
+          done
+
+      - name: Clean up
+        if: always()
+        run: |
+          [ -n "${DOCKER_RUN:-}" ] || exit 0
+          $DOCKER_RUN logout "$REGISTRY" >/dev/null 2>&1 || true
+          $DOCKER_RUN image prune -f >/dev/null || true
+          rm -f ~/.ssh/ultimyr_image_key
