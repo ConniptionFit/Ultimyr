@@ -12,6 +12,7 @@ Ultimyr is reviewed against how people actually prepare for certifications elsew
 | Study guides, videos, links | Guides, Resources, in-app video player | Built |
 | Flashcards with spaced repetition | FSRS daily review, undo, deck CSV (Anki, Quizlet text) import and export | Built |
 | Cloze cards, suspend, bury, leeches | Daily review | Added in batch 1 |
+| Typed-answer recall | Daily review, Type the answer | Added in batch 3 |
 | Glossary and acronyms | Glossary tab | Added in batch 1 |
 | Practice questions in every exam format | Single, multiple, fill-in, drag and drop, scenario | Built |
 | Practice, timed and exam modes with a server clock | Quiz settings, attempts | Built |

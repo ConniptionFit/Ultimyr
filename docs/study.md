@@ -22,6 +22,7 @@ The scheduler is a pure function (`packages/fsrs`): the same history always prod
 
 ## Cloze cards, suspend and bury
 - **Cloze deletion.** Write a card's front as `The {{c1::SYN}} flag starts the handshake` (or `{{c1::answer::hint}}`). The review shows `The [...] flag starts...`, and the answer side shows the full sentence with the hidden words in bold, then the card's back as extra notes. Every deletion in a card is hidden together and the card is rated once. The back can stay empty.
+- **Type the answer** (a checkbox under each card, remembered in your browser) shows a box on the front. Press Enter to reveal the answer and see whether what you typed matches, ignoring case, punctuation and small typos; for a cloze card it compares with the hidden words. It only suggests a rating, and typed text is never sent to the server.
 - **Bury until tomorrow** and **Suspend this card** sit under each card in the daily review. A buried card returns at the start of your next day; a suspended one stays out of your queue, due counts and forecast until you press **Bring back** in Settings > Flashcards. Both affect only you.
 - **Leeches.** A card you have forgotten 8 times is a leech. By default you get a warning on the card (from 6 lapses); set **Cards you keep forgetting** to **Suspend it** and the 8th lapse suspends it for you automatically. Adds migration `0010_card_flags` (content).
 
