@@ -3,7 +3,7 @@
 # Attaches Ultimyr to the Docker network your NPM container is on, under stable aliases:
 #   ultimyr-web:3000   the whole site (it forwards /api/v1 to auth itself)
 #   ultimyr-auth:4001  only needed for headless / API-only setups
-#   ultimyr-quiz:4003     likewise (/api/v1/quizzes, questions, attempts, scoring-profiles, analytics, goals, drills, drill-topics, marks, reports, plan)
+#   ultimyr-quiz:4003     likewise (/api/v1/quizzes, questions, attempts, scoring-profiles, analytics, goals, drills, drill-topics, mock-exams, marks, reports, plan)
 #   ultimyr-ai:4004       likewise (/api/v1/ai)
 #   ultimyr-notes:4006    likewise (/api/v1/notes)
 #   ultimyr-mcp:4005      likewise (/mcp and /.well-known/oauth-protected-resource)

@@ -110,7 +110,7 @@ Everything is under `/api/v1`. The full list, with auth rules, is in [`docs/api.
 | Content | `/archives`, `/items`, `/cards`, `/search`, `/import`, `/trash`, `/assets`, `/access`, `/study`, `/credentials`, `/group-access`, `/tags`, `/icons` |
 | MCP | `/mcp` (Streamable HTTP), `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/me/mcp-connections` |
 | AI | `/ai/status`, `/ai/credentials`, `/ai/generate`, `/ai/jobs`, `/ai/agent/threads` |
-| Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals`, `/drills`, `/drill-topics`, `/marks`, `/reports`, `/plan` |
+| Quizzes | `/quizzes`, `/questions`, `/attempts`, `/scoring-profiles`, `/analytics`, `/goals`, `/drills`, `/drill-topics`, `/mock-exams`, `/marks`, `/reports`, `/plan` |
 | Account | `/me`, `/me/mfa`, `/me/passkeys`, `/me/api-keys`, `/me/sessions`, `/me/groups`, `/me/identities` |
 | Admin | `/admin/users`, `/admin/groups`, `/admin/idp-providers`, `/admin/scim-tokens`, `/admin/audit` |
 | Provisioning | `/scim/v2` (SCIM 2.0, no `/api/v1` prefix) |

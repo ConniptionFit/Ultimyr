@@ -23,6 +23,15 @@ Four tools that help you get to the exam date and stay certified. All are under 
 - Selection favours your weakest areas but caps any one area at 60%, so you do not drill a single topic.
 - Each question shows why it was picked. A drill is an attempt of kind `drill` and is excluded from the readiness estimate.
 
+## Mock exam
+**Where:** Exam prep > Mock exam (themed: Ranked Match), or the practice exam task in your countdown plan.
+
+- Pick a course, a number of questions (10 to 200) and minutes (10 to 480). The exam is drawn from **every quiz in the course**, on the server clock, with no feedback until you submit, like the real thing. Your extra time setting applies.
+- **Domain weights.** If the course has exam objectives with domain weights (Coverage tab), the exam gives each domain its share of the questions (largest remainder, so the total is exact; a domain with too few questions hands its share to the others). Questions on no weighted domain share what is left. Without weights it draws evenly.
+- Questions you have not answered before come first, so repeats are rare until the bank runs out. Unscored pretest and draft questions are never used.
+- A mock exam is an attempt of kind `mock`. **It counts toward your readiness estimate** (drills do not) and appears in Progress. Results include confidence, domain scores and a review of every question.
+- API: `POST /mock-exams` `{ archiveId, count, minutes, blueprint?: [{ objectiveIds, weightBp }], profileId?, extraTimePct?, restart? }`. Adds migration `0009_mock_exams` (quiz). Behind Traefik the quiz router also forwards `/api/v1/mock-exams`; behind Nginx Proxy Manager route that path to the quiz service.
+
 ## Coverage map
 **Where:** the Coverage tab on an archive.
 

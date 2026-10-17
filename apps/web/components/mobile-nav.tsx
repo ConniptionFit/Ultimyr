@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BookOpen, CalendarClock, Dumbbell, Layers, LogOut, Menu, Settings, ShieldCheck, Sparkles, X } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, Dumbbell, Layers, LogOut, Menu, Settings, ShieldCheck, Sparkles, Swords, X } from "lucide-react";
 import { UIcon } from "@ultimyr/ui-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,6 +38,7 @@ export function MobileNav() {
     { href: "/progress", icon: BarChart3, label: "Progress" },
     { href: "/credentials", icon: ShieldCheck, label: t("credentials") },
     { href: "/drills", icon: Dumbbell, label: t("drills") },
+    { href: "/mock-exam", icon: Swords, label: t("mockExam") },
     { href: "/exam-day", icon: CalendarClock, label: t("countdown") },
     { href: "/build", icon: Sparkles, label: t("build") },
   ];

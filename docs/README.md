@@ -13,6 +13,7 @@
 | [study.md](study.md) | Understand the daily review (FSRS), progress, goals and the exam clock |
 | [prep.md](prep.md) | Track credentials and renewals, run weak-area drills, map exam objectives, follow a countdown plan |
 | [bundle.md](bundle.md) | Build a certification with any chat by copy and paste, the repeatable passes and skill, and the text format |
+| [feature-review.md](feature-review.md) | See how Ultimyr compares with other certification tools, what was added and what is left out |
 | [accessibility.md](accessibility.md) | Use display settings, focus mode, extra time, install the app, see the performance budget |
 | [security.md](security.md) | Review how data is protected, run the deployment checklist, see known limits |
 | [mcp.md](mcp.md) | Connect Claude or another MCP app, see the tools, understand the safety rules and OAuth |

@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import type { Actor, Ctx } from "../ctx.js";
+import { allocate } from "../blueprint.js";
 import { selectDrill, type Candidate, type QuestionStats } from "../drill.js";
 import { DEFAULT_PROFILE_NAME } from "../profiles.js";
 import { DEFAULT_CONFIG } from "./questions.js";
@@ -30,6 +31,16 @@ const drillBody = z.object({
   domains: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   restart: z.boolean().default(false),
 });
+const mockBody = z.object({
+  archiveId: z.uuid(),
+  count: z.number().int().min(10).max(200).default(60),
+  minutes: z.number().int().min(10).max(480).default(90),
+  /** The exam's domain weights: each entry is a share (basis points) and the objectives (a domain and its topics) that count toward it. Questions on no listed objective share what is left over. */
+  blueprint: z.array(z.object({ objectiveIds: z.array(z.uuid()).min(1).max(100), weightBp: z.number().int().min(0).max(10_000) })).max(60).optional(),
+  profileId: z.uuid().optional(),
+  extraTimePct: z.union([z.literal(0), z.literal(25), z.literal(50), z.literal(100)]).default(0),
+  restart: z.boolean().default(false),
+});
 const MAX_DRILL_POOL = 5000;
 const saveBody = z.object({
   response: z.unknown().optional(),
@@ -41,6 +52,12 @@ const saveBody = z.object({
 const MAX_RESPONSE_BYTES = 50_000;
 
 type Row = Record<string, any>;
+/** A small stable hash for ordering questions by an exam's seed. */
+function hashKey(seed: string, id: string): number {
+  let h = 2166136261;
+  for (const ch of `${seed}:${id}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
 /** The stored snapshot of a question: scoring fields plus the text the learner reads. */
 type Snap = Question & { stem: string; explanation: string };
 
@@ -89,6 +106,7 @@ export function attemptRoutes(ctx: Ctx) {
     itemId: a.item_id,
     archiveId: a.archive_id,
     kind: a.kind ?? "quiz",
+    ...(a.kind === "mock" ? { mock: { count: a.drill?.count, minutes: a.drill?.minutes, blueprint: !!a.drill?.blueprint } } : {}),
     ...(a.kind === "drill" ? { drill: { focus: a.drill?.focus, count: a.drill?.count, objectiveId: a.drill?.objectiveId ?? null, domains: a.drill?.domains ?? null } } : {}),
     mode: a.mode,
     status: a.status,
@@ -249,6 +267,78 @@ export function attemptRoutes(ctx: Ctx) {
           `INSERT INTO quiz.attempts (id, user_id, item_id, archive_id, mode, kind, drill, profile_id, profile_snapshot, seed, started_at, grace_s, extra_time_pct)
            VALUES ($1,$2,$3,$3,'practice','drill',$4,$5,$6,$7,$8,0,0)`,
           [attemptId, a.userId, body.archiveId, drill, profileRow.id, profile, seed, now],
+        );
+        for (const [ord, q] of chosen.entries()) {
+          const snap: Snap = { id: q.id, type: q.type, weight: q.weight, domain: q.domain, isPretest: false, payload: q.payload, key: q.answer_key, stem: q.stem, explanation: q.explanation } as Snap;
+          const shown = { ...presentQuestion(toQuestion(snap), seed, true), stem: q.stem };
+          delete (shown as Record<string, unknown>).isPretest;
+          await c.query("INSERT INTO quiz.attempt_items (attempt_id, question_id, ord, question, presented) VALUES ($1,$2,$3,$4,$5)", [attemptId, q.id, ord, snap, shown]);
+        }
+      });
+      const { rows } = await pool.query("SELECT * FROM quiz.attempts WHERE id = $1", [attemptId]);
+      return reply.code(201).send(await view(rows[0]));
+    });
+
+    /**
+     * A mock exam: a full, timed attempt with no feedback until the end, drawn from every quiz in an archive you may attempt
+     * so that each domain gets the share of questions the real exam gives it. Questions you have not answered before come first.
+     * Unlike drills, mock exams count toward the readiness estimate.
+     */
+    r.post("/v1/mock-exams", { config: ctx.svc.limit }, async (req, reply) => {
+      const a = await ctx.actor(req, "quiz:write");
+      const body = parse(mockBody, req.body ?? {});
+      const arc = await ctx.archiveAccess(a, body.archiveId);
+
+      const { rows: open } = await pool.query("SELECT * FROM quiz.attempts WHERE user_id = $1 AND item_id = $2 AND kind = 'mock' AND status = 'in_progress'", [a.userId, body.archiveId]);
+      for (const o of open) {
+        if (pastDeadline(o) || body.restart) await tx(pool, (c) => finish(c, o, "expired"));
+        else return reply.code(200).send({ ...(await view(o)), resumed: true });
+      }
+
+      const itemIds = arc.quizzes.filter((q) => q.canAttempt && (q.status === "published" || q.canWrite)).map((q) => q.id);
+      if (!itemIds.length) throw new HttpError(409, "no_questions");
+      const { rows: pool_ } = await pool.query(
+        `SELECT q.*, EXISTS (SELECT 1 FROM quiz.attempt_items ai JOIN quiz.attempts att ON att.id = ai.attempt_id WHERE ai.question_id = q.id AND att.user_id = $1 AND ai.outcome IN ('correct', 'partial', 'incorrect')) AS seen
+           FROM quiz.questions q WHERE q.item_id = ANY($2::uuid[]) AND q.status = 'published' AND NOT q.is_pretest ORDER BY q.created_at LIMIT ${MAX_DRILL_POOL}`,
+        [a.userId, itemIds],
+      );
+      if (!pool_.length) throw new HttpError(409, "no_questions");
+
+      // Bucket each question by the blueprint entry its objective belongs to; the rest share what is left of the exam.
+      const entryOf = new Map<string, number>();
+      (body.blueprint ?? []).forEach((e, i) => e.objectiveIds.forEach((id) => entryOf.has(id) || entryOf.set(id, i)));
+      const bucketOf = (q: Row) => (q.objective_id && entryOf.has(q.objective_id) ? `b${entryOf.get(q.objective_id)}` : "rest");
+      const lists = new Map<string, Row[]>();
+      for (const q of pool_) lists.set(bucketOf(q), [...(lists.get(bucketOf(q)) ?? []), q]);
+      const given = (body.blueprint ?? []).reduce((s, e) => s + e.weightBp, 0);
+      const buckets = [...lists].map(([id, qs]) => ({ id, available: qs.length, weightBp: id === "rest" ? (body.blueprint ? Math.max(0, 10_000 - given) : 1) : body.blueprint![Number(id.slice(1))]!.weightBp }));
+
+      const seed = randomBytes(12).toString("hex");
+      const take = allocate(buckets, body.count);
+      const picked: Row[] = [];
+      for (const [id, n] of take) {
+        // Unseen questions first, then a stable shuffle by this exam's seed.
+        const qs = [...(lists.get(id) ?? [])].sort((x, y) => Number(x.seen) - Number(y.seen) || (hashKey(seed, x.id) - hashKey(seed, y.id)) || x.id.localeCompare(y.id));
+        picked.push(...qs.slice(0, n));
+      }
+      const chosen = selectQuestions(picked as Array<Row & { id: string }>, { count: null, shuffle: true, seed });
+
+      const profileQ = body.profileId
+        ? await pool.query("SELECT * FROM quiz.scoring_profiles WHERE id = $1 AND (is_official OR owner_id = $2)", [body.profileId, a.userId])
+        : await pool.query("SELECT * FROM quiz.scoring_profiles WHERE is_official AND name = $1 ORDER BY version DESC LIMIT 1", [DEFAULT_PROFILE_NAME]);
+      const profileRow = profileQ.rows[0];
+      if (!profileRow) throw new HttpError(body.profileId ? 400 : 500, body.profileId ? "invalid_request" : "internal_error", body.profileId ? { issues: ["profileId: unknown profile"] } : undefined);
+      const profile: ScoringProfile = parseProfile(profileRow.definition);
+      const now = ctx.now();
+      const deadline = new Date(now.getTime() + Math.round((body.minutes * 60 * (100 + body.extraTimePct)) / 100) * 1000);
+      const attemptId = uuidv7();
+      const mock = { count: chosen.length, minutes: body.minutes, blueprint: !!body.blueprint, buckets: Object.fromEntries([...take].map(([k, n]) => [k, n])) };
+
+      await tx(pool, async (c) => {
+        await c.query(
+          `INSERT INTO quiz.attempts (id, user_id, item_id, archive_id, mode, kind, drill, profile_id, profile_snapshot, seed, started_at, deadline_at, grace_s, extra_time_pct)
+           VALUES ($1,$2,$3,$3,'exam_sim','mock',$4,$5,$6,$7,$8,$9,10,$10)`,
+          [attemptId, a.userId, body.archiveId, mock, profileRow.id, profile, seed, now, deadline, body.extraTimePct],
         );
         for (const [ord, q] of chosen.entries()) {
           const snap: Snap = { id: q.id, type: q.type, weight: q.weight, domain: q.domain, isPretest: false, payload: q.payload, key: q.answer_key, stem: q.stem, explanation: q.explanation } as Snap;

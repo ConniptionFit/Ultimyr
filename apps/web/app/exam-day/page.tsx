@@ -260,7 +260,7 @@ function TaskList({ day, archiveId }: { day: PlanDay; archiveId: string }) {
       {day.tasks.map((t) => {
         const Icon = TASK_ICON[t.kind];
         const href =
-          t.kind === "review" || t.kind === "light_review" ? `/study?archive=${archiveId}` : t.kind === "drill" ? `/drills?archive=${archiveId}&focus=${t.focus ?? "mixed"}` : t.kind === "practice_exam" ? `/archives/${archiveId}` : null;
+          t.kind === "review" || t.kind === "light_review" ? `/study?archive=${archiveId}` : t.kind === "drill" ? `/drills?archive=${archiveId}&focus=${t.focus ?? "mixed"}` : t.kind === "practice_exam" ? `/mock-exam?archive=${archiveId}` : null;
         return (
           <li key={t.title} className="flex items-start gap-3 rounded-md border border-line p-3">
             <span className="mt-0.5 text-accent">
@@ -275,7 +275,7 @@ function TaskList({ day, archiveId }: { day: PlanDay; archiveId: string }) {
             </div>
             {href && (
               <Link href={href} className="shrink-0 text-sm text-accent underline">
-                {t.kind === "practice_exam" ? "Open course" : "Start"}
+                {t.kind === "practice_exam" ? "Start mock exam" : "Start"}
               </Link>
             )}
           </li>
