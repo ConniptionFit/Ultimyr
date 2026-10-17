@@ -5,7 +5,7 @@
  * how weak the whole area is (its objective, else its domain), and how long since they last saw it. Questions never seen
  * sit in the middle, so a drill mixes known weak spots with fresh ground rather than only repeating mistakes.
  */
-export type Focus = "mixed" | "weak" | "missed" | "unseen" | "bookmarked";
+export type Focus = "mixed" | "weak" | "missed" | "unseen" | "bookmarked" | "diagnostic";
 
 export interface QuestionStats {
   answered: number;
@@ -62,8 +62,32 @@ export function areaAccuracy(cands: Candidate[]): Map<string | null, number> {
   return new Map([...sums].map(([k, v]) => [k, smooth(v.c, v.n)]));
 }
 
+/**
+ * A diagnostic: the same number of questions from every area, unseen ones first, so the result says where the person
+ * stands across the whole exam instead of where they have already been practising. Round-robin over areas.
+ */
+function selectDiagnostic(cands: Candidate[], opts: DrillOptions): Pick[] {
+  const byArea = new Map<string | null, Candidate[]>();
+  for (const q of cands) byArea.set(q.area, [...(byArea.get(q.area) ?? []), q]);
+  const rank = (q: Candidate) => (q.stats.answered === 0 ? 0 : 1) + jitter(opts.seed, q.id) * 0.5;
+  const lists = [...byArea].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(([area, qs]) => ({ area, qs: [...qs].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id)) }));
+  const picks: Pick[] = [];
+  for (let round = 0; picks.length < opts.count; round++) {
+    let any = false;
+    for (const l of lists) {
+      const q = l.qs[round];
+      if (!q || picks.length >= opts.count) continue;
+      any = true;
+      picks.push({ id: q.id, area: l.area, reason: q.stats.answered === 0 ? "not_seen" : "refresh" });
+    }
+    if (!any) break;
+  }
+  return picks;
+}
+
 export function selectDrill(cands: Candidate[], opts: DrillOptions): Pick[] {
   if (!cands.length || opts.count < 1) return [];
+  if (opts.focus === "diagnostic") return selectDiagnostic(cands, opts);
   const area = areaAccuracy(cands);
   const scored = cands.map((q) => {
     const seen = q.stats.answered > 0;

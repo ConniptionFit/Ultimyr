@@ -26,6 +26,9 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [find, setFind] = useState("");
+  const [analysis, setAnalysis] = useState<Record<string, { answers: number; people: number; correctBp: number; avgMs: number | null }>>({});
+  const [openReports, setOpenReports] = useState<Record<string, number>>({});
+  const [reports, setReports] = useState<{ id: string; questionId: string; stem: string; kind: string; message: string }[]>([]);
   const [area, setArea] = useState("");
 
   const drafts = questions.filter((q) => q.status === "draft");
@@ -53,6 +56,14 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
         const [q, p] = await Promise.all([api<{ questions: EditorQuestion[] }>("GET", `quizzes/${itemId}/questions`), api<{ profiles: Profile[] }>("GET", "scoring-profiles")]);
         setQuestions(q.questions);
         setProfiles(p.profiles);
+        // Quality data is a bonus: the editor still works without it.
+        api<{ questions: { questionId: string; answers: number; people: number; correctBp: number; avgMs: number | null }[]; openReports: Record<string, number> }>("GET", `quizzes/${itemId}/item-analysis`)
+          .then((r) => {
+            setAnalysis(Object.fromEntries(r.questions.map((x) => [x.questionId, x])));
+            setOpenReports(r.openReports);
+          })
+          .catch(() => undefined);
+        api<{ reports: typeof reports }>("GET", `quizzes/${itemId}/reports`).then((r) => setReports(r.reports)).catch(() => undefined);
       }
     } catch (e) {
       fail(e);
@@ -218,6 +229,38 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
                 }}
               />
             )}
+            {reports.length > 0 && (
+              <div className="space-y-2 rounded-md border border-line p-4">
+                <h3 className="text-base">Reported by learners ({reports.length})</h3>
+                <ul className="space-y-2 text-sm">
+                  {reports.map((r) => (
+                    <li key={r.id} className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{r.stem}</span>
+                        <span className="text-muted">
+                          {r.kind.replaceAll("_", " ")}
+                          {r.message ? `: ${r.message}` : ""}
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 gap-3">
+                        <button onClick={() => setEditing(r.questionId)} className="text-accent underline">
+                          Edit question
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await api("POST", `reports/${r.id}/resolve`, {}).catch(fail);
+                            await load();
+                          }}
+                          className="text-accent underline"
+                        >
+                          Resolve
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {drafts.length > 1 && (
               <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
                 {drafts.length} questions are drafts.
@@ -275,6 +318,15 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
                           {q.isPretest ? " · unscored" : ""}
                           {q.status === "draft" ? ` · draft (${q.source})` : ""}
                         </p>
+                        {analysis[q.id] && (
+                          <p className="text-xs text-muted">
+                            {analysis[q.id]!.answers} {analysis[q.id]!.answers === 1 ? "answer" : "answers"} from {analysis[q.id]!.people} {analysis[q.id]!.people === 1 ? "person" : "people"} · {pct(analysis[q.id]!.correctBp)} correct
+                            {analysis[q.id]!.avgMs ? ` · about ${Math.round(analysis[q.id]!.avgMs! / 1000)}s` : ""}
+                            {analysis[q.id]!.answers >= 10 && analysis[q.id]!.correctBp < 3000 ? " · very few get this right, check the key" : ""}
+                            {analysis[q.id]!.answers >= 10 && analysis[q.id]!.correctBp > 9500 ? " · almost everyone gets this right" : ""}
+                          </p>
+                        )}
+                        {openReports[q.id] ? <p className="text-xs text-danger">{openReports[q.id]} open {openReports[q.id] === 1 ? "report" : "reports"}</p> : null}
                       </div>
                       <div className="flex shrink-0 gap-1">
                         {q.status === "draft" && (

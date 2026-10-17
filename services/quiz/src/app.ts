@@ -8,6 +8,7 @@ import { attemptRoutes } from "./routes/attempts.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { progressRoutes } from "./routes/progress.js";
 import { markRoutes } from "./routes/marks.js";
+import { qualityRoutes } from "./routes/quality.js";
 import { questionRoutes } from "./routes/questions.js";
 
 export interface AppDeps {
@@ -23,6 +24,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const svc = await createService({ name: "quiz", pool: deps.pool, keySource: deps.keySource, logger: deps.logger });
   const ctx = createCtx(svc, deps.pool, deps.access, deps.now ?? (() => new Date()));
   await ensureOfficialProfiles(deps.pool);
-  for (const mod of [questionRoutes, profileRoutes, attemptRoutes, progressRoutes, markRoutes]) await svc.mount(mod(ctx));
+  for (const mod of [questionRoutes, profileRoutes, attemptRoutes, progressRoutes, markRoutes, qualityRoutes]) await svc.mount(mod(ctx));
   return svc.app;
 }

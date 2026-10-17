@@ -37,6 +37,11 @@ The **clock belongs to the server** and is streamed to the page (see [study.md](
 
 One attempt per quiz is open at a time per person; starting again resumes it unless you choose "start over".
 
+## Reporting problems and item analysis
+- **Report a problem with this question** (practice attempts and finished attempts) sends the authors a note: the marked answer looks wrong, unclear, a typo, out of date, or something else, with optional details. One open report per person per question; sending again replaces it. Reporters are never identified to editors.
+- Editors see **Reported by learners** at the top of the quiz's question list, with **Edit question** and **Resolve**, and an "open reports" count on each question.
+- Each question in the editor also shows how it performs across everyone's finished answers: answers, people, share correct and average time. A question with at least 10 answers and under 30% correct, or over 95% correct, gets a note (a very low rate often means a wrong key). Partial credit counts as an answer but not as correct. The same numbers, plus how often each option was picked, come from `GET /quizzes/:id/item-analysis`. Adds migration `0007_question_reports` (quiz). Behind Traefik the quiz router also forwards `/api/v1/reports`; behind Nginx Proxy Manager route that path to the quiz service.
+
 ## Confidence, ruling out options and the scratchpad
 - **How sure are you?** Under each open question, **Guessing**, **Not sure** or **Sure** records your confidence (press the same one again to clear it). On the results page, when you rated anything, you see how often you were right at each level, **Sure but wrong** (fix these first) and **Right but guessing** (revisit these), each a link to that question. It is stored on the attempt (`PUT /attempts/:id/items/:qid` takes `confidence`: 1, 2, 3 or null) and is never graded.
 - **Rule out** beside each option of a single or multiple choice question strikes it through, like crossing out an answer on paper. It is only a visual aid on that page and is not saved or graded.

@@ -103,3 +103,23 @@ describe("drill focus: unseen and bookmarked", () => {
     expect(picks.find((p) => p.id === "new2")!.reason).toBe("bookmarked");
   });
 });
+
+describe("diagnostic focus", () => {
+  it("takes the same number from every area, unseen first", () => {
+    const cands = [
+      ...["a1", "a2", "a3", "a4"].map((id) => q(id, "A")),
+      ...["b1", "b2"].map((id) => q(id, "B")),
+      q("c1", "C", { answered: 3, correct: 3, lastOutcome: "correct", lastAt: NOW - DAY }),
+      q("c2", "C"),
+    ];
+    const picks = selectDrill(cands, { ...opts, focus: "diagnostic", count: 6 });
+    const per = (area: string) => picks.filter((p) => p.area === area).length;
+    expect([per("A"), per("B"), per("C")]).toEqual([2, 2, 2]);
+    expect(picks.find((p) => p.area === "C" && p.id === "c2")).toBeTruthy();
+    expect(picks.every((p) => p.reason === "not_seen" || p.id === "c1")).toBe(true);
+  });
+  it("uses everything when asked for more than exists, and does not repeat a question", () => {
+    const picks = selectDrill([q("a1", "A"), q("a2", "A"), q("b1", "B")], { ...opts, focus: "diagnostic", count: 10 });
+    expect(picks.map((p) => p.id).sort()).toEqual(["a1", "a2", "b1"]);
+  });
+});
