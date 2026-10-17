@@ -9,6 +9,7 @@ import { Loading } from "@/components/loading";
 import { FocusButton } from "@/components/focus-button";
 import { Header } from "@/components/header";
 import { FeedbackView, QuestionView } from "@/components/quiz/question-view";
+import { Calculator } from "@/components/quiz/calculator";
 import { QuestionMarks } from "@/components/quiz/question-marks";
 import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
@@ -399,6 +400,14 @@ export default function AttemptPage() {
             })}
           </nav>
 
+          {open && at.calculator && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted">Calculator</summary>
+              <div className="mt-2">
+                <Calculator />
+              </div>
+            </details>
+          )}
           {open && (
             <details className="text-sm">
               <summary className="cursor-pointer text-muted">Scratchpad</summary>

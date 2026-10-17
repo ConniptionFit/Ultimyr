@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { ActivityGrid } from "@/components/activity-grid";
+import { StudyTimePanel } from "@/components/study-time-panel";
 import { BarChart, Meter } from "@/components/charts";
 import { Loading } from "@/components/loading";
 import { Header } from "@/components/header";
@@ -186,6 +187,9 @@ function Progress() {
           )}
 
           <ActivityGrid archive={archive} />
+          <div className="print:hidden">
+            <StudyTimePanel archives={archives} archive={archive} />
+          </div>
 
           <section aria-labelledby="daily-h" className="space-y-2">
             <h2 id="daily-h" className="text-xl">

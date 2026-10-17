@@ -26,6 +26,7 @@ const configBody = z.object({
   shuffleOptions: z.boolean().optional(),
   scoringProfileId: z.uuid().nullable().optional(),
   graceSeconds: z.number().int().min(0).max(300).optional(),
+  calculator: z.boolean().optional(),
 });
 
 function checked(body: unknown): QuestionBody {
@@ -66,9 +67,10 @@ export const configOut = (c: Record<string, any>) => ({
   shuffleOptions: c.shuffle_options,
   scoringProfileId: c.scoring_profile_id,
   graceSeconds: c.grace_s,
+  calculator: c.calculator ?? false,
 });
 
-export const DEFAULT_CONFIG = { mode: "practice", time_limit_s: null, question_count: null, shuffle_questions: true, shuffle_options: true, scoring_profile_id: null, grace_s: 10 };
+export const DEFAULT_CONFIG = { mode: "practice", time_limit_s: null, question_count: null, shuffle_questions: true, shuffle_options: true, scoring_profile_id: null, grace_s: 10, calculator: false };
 
 export function questionRoutes(ctx: Ctx) {
   const { pool } = ctx;
@@ -195,14 +197,15 @@ export function questionRoutes(ctx: Ctx) {
         shuffle_options: body.shuffleOptions ?? base.shuffle_options,
         scoring_profile_id: body.scoringProfileId === undefined ? base.scoring_profile_id : body.scoringProfileId,
         grace_s: body.graceSeconds ?? base.grace_s,
+        calculator: body.calculator ?? base.calculator,
       };
       if (next.mode !== "practice" && !next.time_limit_s) throw new HttpError(400, "invalid_request", { issues: ["timeLimitSeconds: timed and exam modes need a time limit"] });
       const { rows } = await pool.query(
-        `INSERT INTO quiz.quiz_config (item_id, archive_id, mode, time_limit_s, question_count, shuffle_questions, shuffle_options, scoring_profile_id, grace_s)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (item_id) DO UPDATE SET mode = $3, time_limit_s = $4, question_count = $5, shuffle_questions = $6, shuffle_options = $7, scoring_profile_id = $8, grace_s = $9, updated_at = now()
+        `INSERT INTO quiz.quiz_config (item_id, archive_id, mode, time_limit_s, question_count, shuffle_questions, shuffle_options, scoring_profile_id, grace_s, calculator)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (item_id) DO UPDATE SET mode = $3, time_limit_s = $4, question_count = $5, shuffle_questions = $6, shuffle_options = $7, scoring_profile_id = $8, grace_s = $9, calculator = $10, updated_at = now()
          RETURNING *`,
-        [itemId, it.archiveId, next.mode, next.time_limit_s, next.question_count, next.shuffle_questions, next.shuffle_options, next.scoring_profile_id, next.grace_s],
+        [itemId, it.archiveId, next.mode, next.time_limit_s, next.question_count, next.shuffle_questions, next.shuffle_options, next.scoring_profile_id, next.grace_s, next.calculator],
       );
       return configOut(rows[0]);
     });

@@ -93,6 +93,7 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
         questionCount: f.get("count") ? Number(f.get("count")) : null,
         shuffleQuestions: f.get("shuffleQ") === "on",
         shuffleOptions: f.get("shuffleO") === "on",
+        calculator: f.get("calc") === "on",
         scoringProfileId: String(f.get("profile")) || null,
       });
       setSaved(true);
@@ -201,6 +202,9 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="shuffleO" defaultChecked={cfg.shuffleOptions} /> Shuffle answer options
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="calc" defaultChecked={!!cfg.calculator} /> Offer an on-screen calculator
             </label>
             <div className="flex items-center gap-3">
               <Button type="submit">Save settings</Button>

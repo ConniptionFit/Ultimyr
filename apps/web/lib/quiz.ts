@@ -77,6 +77,8 @@ export interface Attempt {
   startedAt: string;
   deadlineAt: string | null;
   extraTimePct?: number;
+  /** This quiz offers an on-screen calculator. */
+  calculator?: boolean;
   submittedAt: string | null;
   serverTime?: string;
   profile: { id: string; name: string; fidelity: "published_formula" | "community_estimate" | "custom" };
@@ -93,6 +95,7 @@ export interface QuizConfig {
   shuffleOptions: boolean;
   scoringProfileId: string | null;
   graceSeconds: number;
+  calculator?: boolean;
   publishedQuestions: number;
   canEdit: boolean;
 }
