@@ -60,7 +60,7 @@ Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker co
 
 Ultimyr connects to a Postgres container you already run (the shared one for your homelab apps) with a dedicated `ultimyr` role that owns an `ultimyr` database. It cannot see your other databases, and each Ultimyr service keeps its tables in its own schema inside it (`auth`, `content`, `quiz`, `ai`, `notes`).
 
-1. **Create the role and database once:** `./scripts/setup-db.sh`. It makes a random password (`secrets/pg_password`), creates the `ultimyr` role and database through the `postgres` container (`PG_CONTAINER` and `PG_ADMIN_USER` override the container name and superuser), and prints the password so you can save it in a password manager. Running it again re-applies the same password.
+1. **Create the role and database once:** `./scripts/setup-db.sh`. It makes a random password (`secrets/pg_password`), creates the `ultimyr` role and database through the `postgres` container (`PG_CONTAINER` and `PG_ADMIN_USER` override the container name and superuser), writes the connection settings and password into `.env` (gitignored), and prints the password so you can save it in a password manager. Running it again re-applies the same password.
 2. **Join the network.** Find the network that container is on with `docker inspect postgres --format '{{json .NetworkSettings.Networks}}'` and set `DB_NETWORK` in `.env` to its name (default `postgres_net`). Set `PG_HOST` to the container name (default `postgres`).
 3. `docker compose up -d`. The api container applies the migrations itself on every start.
 
