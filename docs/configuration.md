@@ -8,13 +8,24 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `COMPOSE_FILE` | `docker-compose.yml:docker-compose.npm.yml` | Which proxy overlay to use. See the README. |
 | `PROXY_NETWORK` | `proxy` | Docker network Nginx Proxy Manager is on (NPM overlay). |
 | `ULTIMYR_HTTP_PORT` | `8080` | Port the bundled Traefik listens on (Traefik overlay). |
-| `ULTIMYR_BIND` | `127.0.0.1` | Interface for published web and auth ports. |
+| `DB_NETWORK` | `postgres` | Existing Docker network your Postgres container is on. The api container joins it. |
+| `ULTIMYR_REGISTRY`, `ULTIMYR_TAG` | `git.pwrs.dev/powers`, `latest` | Where the `ultimyr-api` and `ultimyr-web` images are pulled from, and which release. |
+| `ULTIMYR_BIND` | `127.0.0.1` | Interface for the published web and api ports. |
 | `ULTIMYR_WEB_PORT` | `3000` | Published web port. |
-| `ULTIMYR_AUTH_PORT` | `4001` | Published auth port. |
-| `ULTIMYR_CONTENT_PORT` | `4002` | Published content port. |
-| `ULTIMYR_QUIZ_PORT` | `4003` | Published quiz port. |
-| `ULTIMYR_AI_PORT` | `4004` | Published AI gateway port. |
-| `ULTIMYR_MCP_PORT` | `4005` | Published MCP server port. |
+| `ULTIMYR_AUTH_PORT` | `4001` | Published port of the auth service (api container). |
+| `ULTIMYR_CONTENT_PORT` | `4002` | Published port of the content service (api container). |
+| `ULTIMYR_QUIZ_PORT` | `4003` | Published port of the quiz service (api container). |
+| `ULTIMYR_AI_PORT` | `4004` | Published port of the AI gateway (api container). |
+| `ULTIMYR_MCP_PORT` | `4005` | Published port of the MCP server (api container).
+| `ULTIMYR_NOTES_PORT` | `4006` | Published port of the notes service (api container). | |
+
+## API container
+The `api` container runs the six services. It gives each its own `PORT`, `HOST` and loopback `*_URL` addresses, so those variables are not set in `.env` for it. Everything else in this page is passed through to the services unchanged.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `API_HEALTH_PORT` | `4000` | Port of the container health endpoint (`/healthz`, 200 only when every service answers). |
+| `ULTIMYR_ROOT` | `/app` in the image | Where the launcher finds `services/<name>/dist/main.js` and `services/<name>/migrations`. |
 
 ## Database
 Use either `DATABASE_URL` **or** the `PG_*` parts.
@@ -24,7 +35,7 @@ Use either `DATABASE_URL` **or** the `PG_*` parts.
 | `DATABASE_URL` | none | Full connection URL (**secret**). Wins over the parts below. |
 | `PG_HOST`, `PG_USER`, `PG_DATABASE` | `postgres`, `ultimyr`, `ultimyr` in `.env.example` | Required when no URL is given. |
 | `PG_PORT` | `5432` | |
-| `PG_PASSWORD` | empty | **Secret**. Compose supplies it from `secrets/pg_password`. |
+| `PG_PASSWORD` | empty | **Secret**. Compose supplies it from `secrets/pg_password`: the password of your Postgres `ultimyr` role. |
 | `PG_SSLMODE` | `disable` | `disable`, `require` or `verify-full`. |
 | `PG_CONNECT_TIMEOUT_MS` | `10000` | How long a request waits for a free database connection before failing. |
 | `PG_STATEMENT_TIMEOUT_MS` | `30000` | A query running longer than this is cancelled. `0` turns it off. Migrations always run without it. |
@@ -49,23 +60,23 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT`, `HOST` | `4002`, `0.0.0.0` | Listen address. |
-| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys (`/.well-known/jwks.json`) and group memberships. Compose sets `http://auth:4001`. |
-| `CONTENT_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job instead. |
+| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys (`/.well-known/jwks.json`) and group memberships. The api container sets `http://127.0.0.1:4001` for you. |
+| `CONTENT_AUTO_MIGRATE` | false | Run migrations at start when the service runs alone. The api container applies every service's migrations itself. |
 
 ## Quiz service
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT`, `HOST` | `4003`, `0.0.0.0` | Listen address. |
-| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys. Compose sets `http://auth:4001`. |
-| `CONTENT_URL` | `http://localhost:4002` | Asked, per request, whether the caller may attempt or edit a quiz. If content is down, quiz requests answer 503. Compose sets `http://content:4002`. |
+| `AUTH_URL` | `http://localhost:4001` | Where to fetch the signing keys. The api container sets `http://127.0.0.1:4001` for you. |
+| `CONTENT_URL` | `http://localhost:4002` | Asked, per request, whether the caller may attempt or edit a quiz. If content is down, quiz requests answer 503. The api container sets it to `http://127.0.0.1:4002`. |
 | `QUIZ_SSE_INTERVAL_MS` | `10000` | How often the live exam clock (`/attempts/:id/events`) sends the time. Lower it only for testing. |
-| `QUIZ_AUTO_MIGRATE` | false | Run migrations at start. Compose uses the one-shot `migrate` job. |
+| `QUIZ_AUTO_MIGRATE` | false | Run migrations at start when the service runs alone. The api container applies them itself. |
 
 ## AI gateway
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT`, `HOST` | `4004`, `0.0.0.0` | Listen address. |
-| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | The api container sets loopback addresses (`http://127.0.0.1:4001` and so on) for you. |
 | `ULTIMYR_VAULT_KEK` | none | **Secret.** Master key (`openssl rand -base64 32`). Without it every AI route answers 503. |
 | `ULTIMYR_VAULT_KEK_VERSION` | `1` | Version number of the current master key. |
 | `ULTIMYR_VAULT_KEK_PREVIOUS` | none | Older keys still needed to read data, as `1:<base64>,2:<base64>`. See [ai.md](ai.md). |
@@ -79,17 +90,17 @@ Rate limits are fixed per IP address: 10 per minute on credential endpoints (sig
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT`, `HOST` | `4006`, `0.0.0.0` | Listen address. |
-| `AUTH_URL`, `CONTENT_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`. |
+| `AUTH_URL`, `CONTENT_URL` | localhost ports | The api container sets loopback addresses for you. |
 | `FNS_URL` | none | Address of your Fast Note Sync server (for example `http://fns:9000`). Optional: an administrator can instead set it in Admin panel > Notes (Obsidian). The environment value wins. People cannot change it. See [notes.md](notes.md#sync-with-obsidian). |
 | `ULTIMYR_VAULT_KEK`, `_VERSION`, `_PREVIOUS` | as the AI gateway | The same master key. It seals each person's sync token. Without it notes are off. |
-| `NOTES_AUTO_MIGRATE` | true | The notes service runs its own migrations at start. Set `false` to rely on the `migrate` job only. |
+| `NOTES_AUTO_MIGRATE` | true | The notes service runs its own migrations at start. The api container sets `false` because it already migrated. |
 
 ## MCP server
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT`, `HOST` | `4005`, `0.0.0.0` | Listen address. |
-| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`. |
-| `NOTES_URL` | `http://localhost:4006` | The notes service, for the step note tools. Compose sets `http://notes:4006`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL` | localhost ports | The api container sets loopback addresses (`http://127.0.0.1:4001` and so on) for you. |
+| `NOTES_URL` | `http://localhost:4006` | The notes service, for the step note tools. The api container sets it to `http://127.0.0.1:4006`. |
 | `ULTIMYR_PUBLIC_URL` | `http://localhost:3000` | Names this server in OAuth metadata. Must be the address clients use. Auth uses the same setting as the OAuth issuer. |
 | `MCP_RATE_PER_MINUTE` | `120` | Requests per person per minute. |
 | `MCP_WRITE_PER_MINUTE` | `30` | Write tool calls per person per minute. |
@@ -108,4 +119,4 @@ The AI gateway also uses `ULTIMYR_VAULT_KEK` (`openssl rand -base64 32`). If you
 ## Web app
 | Variable | Where | Purpose |
 |---|---|---|
-| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL` | **Build args** | Where Next.js forwards auth, content, quiz, AI and MCP paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://auth:4001`, `http://content:4002`, `http://quiz:4003`, `http://ai-gateway:4004` and `http://mcp:4005`. |
+| `AUTH_URL`, `CONTENT_URL`, `QUIZ_URL`, `AI_URL`, `MCP_URL` | **Build args** | Where Next.js forwards auth, content, quiz, AI and MCP paths. Rewrites are fixed at build time, so rebuild the web image to change them. Compose sets `http://api:4001`, `http://api:4002`, `http://api:4003`, `http://api:4004` and `http://api:4005` (the api container). |

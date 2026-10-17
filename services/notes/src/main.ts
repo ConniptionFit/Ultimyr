@@ -21,7 +21,7 @@ if (process.env.NOTES_AUTO_MIGRATE !== "false") {
       break;
     } catch (e) {
       const code = (e as { code?: string }).code;
-      const hint = code === "ENOTFOUND" || code === "ECONNREFUSED" ? ` The database host is not reachable from this container. Check PG_HOST / DATABASE_URL in .env, and if you use the bundled database, run: docker compose --profile bundled-db up -d` : "";
+      const hint = code === "ENOTFOUND" || code === "ECONNREFUSED" ? ` The database host is not reachable from this container. Check PG_HOST / DATABASE_URL and DB_NETWORK in .env.` : "";
       console.error(`Notes migration attempt ${attempt} failed: ${e instanceof Error ? e.message : String(e)}.${hint}`);
       if (attempt >= 10) break;
       await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 10000)));

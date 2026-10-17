@@ -43,21 +43,18 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Build images
         run: |
-          docker build --target auth -t ultimyr-auth .
-          docker build --target content -t ultimyr-content .
-          docker build --target quiz -t ultimyr-quiz .
-          docker build --target ai-gateway -t ultimyr-ai .
-          docker build --target mcp -t ultimyr-mcp .
-          docker build --target notes -t ultimyr-notes .
-          docker build --target migrate -t ultimyr-migrate .
+          docker build --target api -t ultimyr-api .
           docker build --target web -t ultimyr-web .
       - name: Validate compose file
         run: |
           mkdir secrets && echo ci > secrets/pg_password && openssl genpkey -algorithm ed25519 -out secrets/jwt_private_key.pem && echo ci > secrets/auth_enc_key && echo ci > secrets/api_key_pepper && echo ci > secrets/vault_kek
           docker compose -f docker-compose.yml config --quiet
           docker network create proxy
+          docker network create postgres
           docker compose -f docker-compose.yml -f docker-compose.npm.yml config --quiet
           docker compose -f docker-compose.yml -f docker-compose.traefik.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.bundled-db.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.notes.yml config --quiet
 
   # Prebuilt images, so servers update with `docker compose pull && docker compose up -d` (no build on the server).
   #   ghcr.io/<owner>/ultimyr-<service>:latest     newest build from main
@@ -75,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [migrate, auth, content, quiz, ai-gateway, notes, mcp, web]
+        target: [api, web]
     env:
       MIRROR_REGISTRY: ${{ vars.MIRROR_REGISTRY }}
       MIRROR_USER: ${{ vars.MIRROR_USER }}

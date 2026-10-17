@@ -1,0 +1,37 @@
+# Optional: a Postgres container just for Ultimyr, for a machine that has no Postgres yet.
+# If you already run a shared Postgres container, skip this file and follow "Using your existing Postgres" in the README.
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.npm.yml:docker-compose.bundled-db.yml
+#   PG_HOST=postgres  (the default)
+#
+# The password comes from secrets/pg_password; the ultimyr role and database are created on first start.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${PG_USER:-ultimyr}
+      POSTGRES_DB: ${PG_DATABASE:-ultimyr}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    networks: [db]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    depends_on:
+      postgres: { condition: service_healthy }
+
+networks:
+  # A private network for this stack instead of an external one.
+  db: !override
+    name: ${COMPOSE_PROJECT_NAME:-ultimyr}_db
+
+volumes:
+  pgdata:

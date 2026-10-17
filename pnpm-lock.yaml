@@ -24,6 +24,61 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@26.6.4)(@vitest/coverage-v8@5.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.23.15))
 
+  apps/api:
+    dependencies:
+      '@fastify/cookie':
+        specifier: ^11.1.2
+        version: 11.1.2
+      '@fastify/formbody':
+        specifier: ^9.0.0
+        version: 9.0.0
+      '@fastify/rate-limit':
+        specifier: ^11.2.0
+        version: 11.2.0
+      '@fastify/sensible':
+        specifier: ^6.0.6
+        version: 6.0.6
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.0
+        version: 1.32.0(zod@4.6.5)
+      '@node-rs/argon2':
+        specifier: ^2.2.1
+        version: 2.2.1
+      '@node-saml/node-saml':
+        specifier: ^5.1.0
+        version: 5.1.0
+      '@simplewebauthn/server':
+        specifier: ^14.0.3
+        version: 14.0.3
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(@types/pg@8.23.1)(pg@8.23.1)
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+      otplib:
+        specifier: ^13.5.0
+        version: 13.5.0
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      '@ultimyr/config':
+        specifier: workspace:^
+        version: link:../../packages/config
+      '@ultimyr/db':
+        specifier: workspace:^
+        version: link:../../packages/db
+
   apps/web:
     dependencies:
       '@simplewebauthn/browser':

@@ -15,19 +15,22 @@ fi
 
 git pull --ff-only
 ./scripts/init-secrets.sh
-# The bundled database only runs with its profile. If .env points at the host "postgres" (the bundled one),
-# keep it in the update, otherwise services fail with "getaddrinfo ENOTFOUND postgres".
-PROFILE=()
-if grep -Eq '^PG_HOST=postgres[[:space:]]*$' .env 2>/dev/null || docker compose ps -a --services 2>/dev/null | grep -qx postgres; then
-  PROFILE=(--profile bundled-db)
+# Version 1.x ran six service containers and a bundled Postgres. Replacing them removes the old containers, so make sure
+# the data has been moved to your own Postgres first (docs/operations.md, "Moving to two containers").
+if docker ps -a --filter label=com.docker.compose.project=ultimyr --filter label=com.docker.compose.service=postgres -q 2>/dev/null | grep -q . \
+   && ! printf '%s' "${COMPOSE_FILE:-}$(grep -s '^COMPOSE_FILE=' .env)" | grep -q bundled-db; then
+  echo "A bundled Postgres container from the old layout still exists, and COMPOSE_FILE does not include docker-compose.bundled-db.yml."
+  echo "Moving its data to your own Postgres is described in docs/operations.md (\"Moving to two containers\")."
+  echo "To keep using the bundled database instead, add :docker-compose.bundled-db.yml to COMPOSE_FILE in .env and run this again."
+  exit 1
 fi
 if [ "${ULTIMYR_BUILD:-0}" = 1 ]; then
-  docker compose "${PROFILE[@]}" up -d --build
-elif docker compose "${PROFILE[@]}" pull --quiet; then
-  docker compose "${PROFILE[@]}" up -d --remove-orphans
+  docker compose up -d --build --remove-orphans
+elif docker compose pull --quiet; then
+  docker compose up -d --remove-orphans
 else
   echo "Could not pull the prebuilt images; building from source instead."
-  docker compose "${PROFILE[@]}" up -d --build
+  docker compose up -d --build --remove-orphans
 fi
 docker image prune -f >/dev/null 2>&1 || true
 
@@ -37,4 +40,4 @@ for _ in $(seq 1 40); do
   sleep 3
 done
 echo "Version: $(git log -1 --oneline)"
-docker compose "${PROFILE[@]}" ps --format 'table {{.Name}}\t{{.Status}}'
+docker compose ps --format 'table {{.Name}}\t{{.Status}}'

@@ -1,13 +1,10 @@
 # Nginx Proxy Manager overlay (default).
 #
 # Attaches Ultimyr to the Docker network your NPM container is on, under stable aliases:
-#   ultimyr-web:3000   the whole site (it forwards /api/v1 to auth itself)
-#   ultimyr-auth:4001  only needed for headless / API-only setups
-#   ultimyr-quiz:4003     likewise (/api/v1/quizzes, questions, attempts, scoring-profiles, analytics, goals, drills, drill-topics, mock-exams, marks, reports, plan)
-#   ultimyr-ai:4004       likewise (/api/v1/ai)
-#   ultimyr-notes:4006    likewise (/api/v1/notes)
-#   ultimyr-mcp:4005      likewise (/mcp and /.well-known/oauth-protected-resource)
-#   ultimyr-content:4002  likewise (headless: route /api/v1/archives, items, search, credentials, group-access, tags, icons... here)
+#   ultimyr-web:3000   the whole site (it forwards /api/v1 to the api container itself)
+#   ultimyr-api:4001..4006  only needed for headless / API-only setups, one port per service:
+#     4001 auth     4002 content   4003 quiz      4004 AI gateway
+#     4005 MCP (/mcp and /.well-known/oauth-protected-resource)         4006 notes
 #
 # One-time: if NPM has no shared network yet, create one and connect NPM to it:
 #   docker network create proxy && docker network connect proxy <your-npm-container>
@@ -19,41 +16,12 @@ services:
       default: {}
       proxy:
         aliases: [ultimyr-web]
-  auth:
+  api:
     networks:
       default: {}
+      db: {}
       proxy:
-        aliases: [ultimyr-auth]
-
-  content:
-    networks:
-      default: {}
-      proxy:
-        aliases: [ultimyr-content]
-
-  quiz:
-    networks:
-      default: {}
-      proxy:
-        aliases: [ultimyr-quiz]
-
-  ai-gateway:
-    networks:
-      default: {}
-      proxy:
-        aliases: [ultimyr-ai]
-
-  notes:
-    networks:
-      default: {}
-      proxy:
-        aliases: [ultimyr-notes]
-
-  mcp:
-    networks:
-      default: {}
-      proxy:
-        aliases: [ultimyr-mcp]
+        aliases: [ultimyr-api]
 
 networks:
   proxy:

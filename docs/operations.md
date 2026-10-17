@@ -3,21 +3,21 @@
 ## First run
 1. `cp .env.example .env`, set `ULTIMYR_PUBLIC_URL`, pick a proxy overlay.
 2. `./scripts/init-secrets.sh`
-3. `docker compose --profile bundled-db up -d --build` (drop the profile for your own Postgres).
+3. Create the `ultimyr` role and database on your Postgres once (`deploy/postgres/setup.sql`, see the README), then `docker compose up -d`. The api container applies the migrations.
 4. Open the site and register. The first account is the platform admin. Then consider `AUTH_REGISTRATION=closed`.
 5. Set `COOKIE_SECURE=true` once HTTPS works.
 
 ## Health
-- `GET /healthz` (process) and `GET /readyz` (database) on the auth service, port 4001. The auth container has a Docker healthcheck on `/healthz`.
-- `docker compose ps` and `docker compose logs -f auth`.
+- `GET :4000/healthz` on the api container returns 200 when all six services answer, otherwise 503 with each service's state and restart count. The api container has a Docker healthcheck on it, and web waits for it. Each service also has its own `/healthz` and `/readyz` on its port (auth 4001 and so on).
+- `docker compose ps` and `docker compose logs -f api`. Every line is prefixed with its service, for example `docker compose logs -f api | grep '^api-1.*\[quiz\]'`.
 - Failed sign-ins, MFA events, key use and admin changes are in the audit log (`GET /api/v1/admin/audit`).
 
 ## Services
-`auth`, `content`, `quiz`, `ai-gateway` and `mcp` each have `/healthz` and `/readyz`. Quiz needs content to authorise requests: while content is unreachable, quiz answers 503 (attempts already in progress are not lost, and their clocks keep running). Content starts without auth, but until auth is reachable it cannot verify new tokens. The AI gateway needs auth, content and quiz to be reachable to verify tokens and save drafts. It starts without a vault key, with AI features answering 503. Deleted archives and items are purged after 30 days by a job inside the content service (every 6 hours).
+`auth`, `content`, `quiz`, `ai-gateway`, `notes` and `mcp` each have `/healthz` and `/readyz`, and run as separate processes inside the api container. If one exits, the launcher restarts it after 1 second, doubling the wait up to 30 seconds, and logs `[supervisor] <service> exited`; the others keep serving. Quiz needs content to authorise requests: while content is unreachable, quiz answers 503 (attempts already in progress are not lost, and their clocks keep running). Content starts without auth, but until auth is reachable it cannot verify new tokens. The AI gateway needs auth, content and quiz to be reachable to verify tokens and save drafts. It starts without a vault key, with AI features answering 503. Deleted archives and items are purged after 30 days by a job inside the content service (every 6 hours).
 
 ## Backups
 Back up two things:
-- **Postgres**: `docker compose exec postgres pg_dump -U ultimyr ultimyr > ultimyr.sql` (bundled DB), or your own server's usual method.
+- **Postgres**: the `ultimyr` database. `./scripts/backup.sh` dumps it through your Postgres container (`PG_CONTAINER`, default the `PG_HOST` name), or use your server's usual method, for example `pg_dump -Fc ultimyr`.
 - **`./secrets`**: especially `auth_enc_key`, `vault_kek` and `jwt_private_key.pem`. A database backup without `auth_enc_key` cannot restore TOTP or IdP secrets, and one without `vault_kek` cannot restore AI keys. Store them separately from the dump.
 
 Or use the scripts, which wrap the commands above:
@@ -40,13 +40,13 @@ Restore: put the same secrets back first, then run the restore script. Practise 
 | Disk filling | Check the `pgdata` volume and Docker logs (`docker system df`). Set log rotation in Docker's `daemon.json`. |
 
 ## Upgrading
-CI builds every service on each merge to `main` and on each release tag (`v*`) and publishes the images to the Forgejo container registry at `git.pwrs.dev/powers/ultimyr-<service>` (the default) and to GitHub's (`ghcr.io/conniptionfit/ultimyr-<service>`, amd64 and arm64). The Forgejo images are built by `.forgejo/workflows/image.yml` for the Docker host's own architecture. Nothing compiles on your server. One step: `./scripts/update.sh` (saves local edits to a git stash so `git pull` is never blocked, pulls the repo files, adds new secrets, pulls the images, restarts what changed, waits for health and prints the version). Or by hand:
+CI builds every service on each merge to `main` and on each release tag (`v*`) and publishes the images to the Forgejo container registry at `git.pwrs.dev/powers/ultimyr-<api|web>` (the default) and to GitHub's (`ghcr.io/conniptionfit/ultimyr-<api|web>`, amd64 and arm64). The Forgejo images are built by `.forgejo/workflows/image.yml` for the Docker host's own architecture. Nothing compiles on your server. One step: `./scripts/update.sh` (saves local edits to a git stash so `git pull` is never blocked, pulls the repo files, adds new secrets, pulls the images, restarts what changed, waits for health and prints the version). Or by hand:
 ```sh
 git pull                          # only needed when docker-compose.yml, .env.example or scripts changed
 ./scripts/init-secrets.sh        # adds any new secret files, keeps existing ones
 docker compose pull && docker compose up -d
 ```
-If you only want the newest app and never touch the compose files, `docker compose pull && docker compose up -d` is enough. Add `--profile bundled-db` when you use the bundled database.
+If you only want the newest app and never touch the compose files, `docker compose pull && docker compose up -d` is enough.
 
 | Want | How |
 |---|---|
@@ -63,7 +63,23 @@ If you only want the newest app and never touch the compose files, `docker compo
 
 **Releasing:** bump `version` in the root `package.json`, merge, then `git tag v1.2.0 && git push origin v1.2.0`. The tag build is stamped with that version, which Admin > About compares with the latest GitHub release.
 
-The `migrate` container runs first and applies new migrations once. Migrations are forward only. Take a backup before upgrading across phases. If a migration fails, auth does not start; fix the cause and rerun `docker compose up -d`.
+The api container applies new migrations once at start, before any service runs. Migrations are forward only. Take a backup before upgrading across phases. If a migration fails, the api container logs `[migrate] ...` and exits (Docker keeps retrying); fix the cause and rerun `docker compose up -d`.
+
+## Moving to two containers
+Versions before this change ran `auth`, `content`, `quiz`, `ai-gateway`, `notes`, `mcp`, a `migrate` job and (optionally) a bundled `postgres`. They are now `web` and `api`, and the database is your own Postgres. Image names change to `ultimyr-api` and `ultimyr-web` (the per-service images are no longer built). No data changes: the same schemas and migrations are used.
+
+If you used the bundled Postgres, move the data first (skip this if you already pointed Ultimyr at your own server):
+```sh
+# 1. In the old layout, dump the database and keep the secrets
+./scripts/backup.sh                       # old script version: docker compose exec postgres pg_dump ...
+# 2. On your shared Postgres: create the role and database
+docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
+# 3. Load the dump into it (--no-owner makes the ultimyr role the owner)
+docker exec -i -e PGPASSWORD="$(cat secrets/pg_password)" postgres pg_restore -U ultimyr -d ultimyr --no-owner < backups/<timestamp>/ultimyr.dump
+# 4. Point .env at it: PG_HOST=postgres, DB_NETWORK=<its network>; keep secrets/pg_password as the ultimyr role's password
+git pull && ./scripts/update.sh
+```
+`update.sh` stops with a message if an old bundled Postgres container is still there, so it can never be removed before its data is moved. Once Ultimyr works against the new database you can delete the old container and its `ultimyr_pgdata` volume. Keep every other secret as it is: the same `auth_enc_key`, `vault_kek` and `jwt_private_key.pem` keep existing sessions, TOTP seeds and AI keys working. To go back, `ULTIMYR_TAG` cannot help across this change, so restore from the backup you took in step 1 on the old checkout.
 
 ## Rotating secrets
 | Secret | Effect and procedure |

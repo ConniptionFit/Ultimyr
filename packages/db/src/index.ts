@@ -2,6 +2,7 @@ import pg from "pg";
 import { loadDatabaseConfig } from "@ultimyr/config";
 
 export { migrate } from "./migrate.js";
+export { MIGRATION_SERVICES, migrateAll, waitForDatabase } from "./migrate-all.js";
 
 /** Reads a whole number of milliseconds from the environment, falling back when it is missing or not a number. */
 function ms(value: string | undefined, fallback: number): number {
