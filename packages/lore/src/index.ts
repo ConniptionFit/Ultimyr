@@ -43,6 +43,7 @@ export const terms = {
   offline: { themed: "Backpack", plain: "Offline copy" },
   copyRoadmap: { themed: "Tempest Double", plain: "Copy" },
   quickJump: { themed: "Boots of Travel", plain: "Quick jump" },
+  glossary: { themed: "Compendium", plain: "Glossary" },
 } as const;
 export type TermKey = keyof typeof terms;
 
@@ -85,6 +86,7 @@ export const termLore: Record<TermKey, { source: string; function: string }> = {
   noteSearch: { source: "Scan, the ability that reveals a chosen area of the map", function: "Search your own notes for a course." },
   offline: { source: "Backpack, items a hero carries without equipping", function: "Keep a copy of a guide or deck to read without a connection." },
   copyRoadmap: { source: "Tempest Double (Arc Warden), a copy that carries the original's items and abilities", function: "Copy a roadmap from another course." },
+  glossary: { source: "The Compendium, Valve's interactive companion and reference book for The International", function: "The terms and acronyms of a course, each with a short definition." },
   quickJump: { source: "Boots of Travel, the item that teleports you to any allied unit or building on the map", function: "Press Ctrl+K (Cmd+K on a Mac) to jump to any page or course by typing part of its name." },
 };
 

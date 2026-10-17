@@ -226,6 +226,9 @@ Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
 ## Objectives and coverage
 | Method | Path | Notes |
 |---|---|---|
+| GET, PUT | `/archives/:id/glossary` | Course glossary. GET (`?q=`) returns `terms: [{id, term, expansion, definition, status}]` and `canEdit`; readers see published terms, editors also see drafts. PUT `{ terms: [{term, expansion?, definition}], source?, status? }` (editors, up to 500 per call, 2,000 per course) adds or updates by term name, ignoring case; terms with source `ai` or `mcp` are saved as drafts. |
+| DELETE | `/archives/:id/glossary/:termId` | Remove one term (editors). |
+| POST | `/archives/:id/glossary/publish` | Publish every draft term (editors). |
 | GET | `/archives/:id/objectives` | Two-level tree (domain, topic) with `weightBp` and linked counts rolled up (distinct material counted once). |
 | PUT | `/archives/:id/objectives` | Replaces the tree (editor). |
 | POST | `/archives/:id/objectives/import` | `{ outline, replace? }`. Outline lines: `## 1.0 Domain (15%)` then bullets. Merges by code or title. |
