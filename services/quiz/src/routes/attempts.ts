@@ -22,8 +22,8 @@ const startBody = z.object({
 const drillBody = z.object({
   archiveId: z.uuid(),
   count: z.number().int().min(3).max(50).default(15),
-  /** mixed: weak spots and fresh questions. weak: the weakest areas only. missed: only what you got wrong last time. unseen: questions you have never answered. bookmarked: questions you bookmarked. */
-  focus: z.enum(["mixed", "weak", "missed", "unseen", "bookmarked"]).default("mixed"),
+  /** mixed: weak spots and fresh questions. weak: the weakest areas only. missed: only what you got wrong last time. unseen: questions you have never answered. bookmarked: questions you bookmarked. diagnostic: an even spread across every topic, to see where you stand. */
+  focus: z.enum(["mixed", "weak", "missed", "unseen", "bookmarked", "diagnostic"]).default("mixed"),
   /** Narrow the drill to one exam objective. */
   objectiveId: z.uuid().optional(),
   /** Narrow the drill to these question domains (topics). */

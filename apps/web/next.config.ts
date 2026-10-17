@@ -40,7 +40,7 @@ const config: NextConfig = {
         { source: `/api/v1/${p}`, destination: `${CONTENT_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${CONTENT_URL}/v1/${p}/:path*` },
       ]),
-      ...["quizzes", "questions", "attempts", "scoring-profiles", "analytics", "goals", "drills", "drill-topics", "marks", "plan"].flatMap((p) => [
+      ...["quizzes", "questions", "attempts", "scoring-profiles", "analytics", "goals", "drills", "drill-topics", "marks", "reports", "plan"].flatMap((p) => [
         { source: `/api/v1/${p}`, destination: `${QUIZ_URL}/v1/${p}` },
         { source: `/api/v1/${p}/:path*`, destination: `${QUIZ_URL}/v1/${p}/:path*` },
       ]),

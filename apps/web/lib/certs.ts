@@ -82,11 +82,12 @@ export const STATUS_WORDS: Record<CoverageStatus, string> = { covered: "Covered"
 export const MASTERY_WORDS: Record<Mastery, string> = { unknown: "", weak: "Weak", ok: "Solid" };
 
 // ---- weak-area drills ----
-export type DrillFocus = "mixed" | "weak" | "missed" | "unseen" | "bookmarked";
+export type DrillFocus = "mixed" | "weak" | "missed" | "unseen" | "bookmarked" | "diagnostic";
 export const FOCUS_LABEL: Record<DrillFocus, { name: string; hint: string }> = {
   mixed: { name: "Mixed", hint: "Weak spots plus questions you have not seen yet." },
   weak: { name: "Weakest topics", hint: "Only the topics where you score lowest." },
   missed: { name: "Redo misses", hint: "Only questions you got wrong last time." },
+  diagnostic: { name: "Diagnostic", hint: "The same number from every topic, to see where you stand across the whole exam." },
   unseen: { name: "New questions", hint: "Only questions you have never answered." },
   bookmarked: { name: "My bookmarks", hint: "Only the questions you bookmarked." },
 };

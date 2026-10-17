@@ -17,7 +17,7 @@ Four tools that help you get to the exam date and stay certified. All are under 
 ## Weak-area drills
 **Where:** Exam prep > Drills, or the button on the Progress page.
 
-- Pick an archive, a size (3 to 50 questions) and a focus: **mixed**, **weak** (low accuracy areas), **missed** (questions you got wrong), **new** (never answered) or **bookmarked** (questions you bookmarked).
+- Pick an archive, a size (3 to 50 questions) and a focus: **mixed**, **weak** (low accuracy areas), **missed** (questions you got wrong), **new** (never answered), **bookmarked** (questions you bookmarked) or **diagnostic** (the same number from every topic, unseen first, so the result by topic shows where you stand across the whole exam; a good first drill on a new course).
 - Tick one or more **topics** to build a custom practice set from just those domains (leave all empty for the whole course).
 - In practice attempts and when reviewing a finished attempt, each question has **Bookmark this question** and a private **My note** (a mnemonic, why you missed it). Both follow you into later attempts and drills and are never shown to anyone else.
 - Selection favours your weakest areas but caps any one area at 60%, so you do not drill a single topic.

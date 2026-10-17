@@ -240,10 +240,14 @@ Private to the owner. Dates are `YYYY-MM-DD`. See [prep.md](prep.md).
 ## Drills and plan (quiz service)
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/drills` | `{ archiveId, count: 3 to 50, focus: mixed\|weak\|missed\|unseen\|bookmarked, objectiveId?, domains?: string[], restart? }`. Resumes an open drill unless `restart`. 409 `no_questions` or `nothing_to_drill`. A drill is an attempt with `kind: "drill"`, so the attempt routes above apply. Drills do not feed the readiness estimate. |
+| POST | `/drills` | `{ archiveId, count: 3 to 50, focus: mixed\|weak\|missed\|unseen\|bookmarked\|diagnostic, objectiveId?, domains?: string[], restart? }`. Resumes an open drill unless `restart`. 409 `no_questions` or `nothing_to_drill`. A drill is an attempt with `kind: "drill"`, so the attempt routes above apply. Drills do not feed the readiness estimate. |
 | GET | `/drill-topics?archive=` | The topics (question domains) of a course you can attempt, `domains: [{domain, questions}]`, plus `unsorted` (questions with no topic). Feeds the topic chips on the Drills page. |
 | PUT | `/questions/:id/mark` | `{ bookmarked?, note? (max 2,000 characters) }`. Your private bookmark and note on a question you were served in one of your own attempts (404 otherwise). Attempt views carry `bookmarked` and `note` on each question. |
 | GET | `/marks?archive=&bookmarked=true` | Your bookmarked or annotated questions (`questionId, archiveId, itemId, stem, domain, bookmarked, note`), newest first, up to 500. |
+| POST | `/questions/:id/report` | `{ kind: wrong_answer\|unclear\|typo\|outdated\|other, message? }`. Tell the authors a question is wrong or unclear; only for questions you were served in your own attempts (404 otherwise). One open report per person per question: sending again replaces it. |
+| GET | `/quizzes/:id/reports?status=open\|resolved` | Editors only. Reports with the question stem; reporters are not identified. |
+| POST | `/reports/:id/resolve` | `{ resolution? }` (editors). |
+| GET | `/quizzes/:id/item-analysis` | Editors only. Per question across everyone's finished answers: `answers`, `people`, `correctBp`, `avgMs` and `picks` (how many chose each option of a single or multiple choice question), plus `openReports` per question. No one is named. |
 | GET | `/plan?archive=&examDate=&minutes=&mode=&today=` | Phases, daily tasks (up to 28 days plus exam day), advice and an exam-day checklist. `today` is the caller's own calendar date (YYYY-MM-DD); it is used only when within a day of the server's UTC date. |
 
 ## AI gateway

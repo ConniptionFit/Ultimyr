@@ -28,7 +28,7 @@ function Drills() {
   const params = useSearchParams();
   const [archives, setArchives] = useState<Archive[] | null>(null);
   const [archive, setArchive] = useState(params.get("archive") ?? "");
-  const [focus, setFocus] = useState<DrillFocus>(() => (["mixed", "weak", "missed", "unseen", "bookmarked"].includes(params.get("focus") ?? "") ? (params.get("focus") as DrillFocus) : "mixed"));
+  const [focus, setFocus] = useState<DrillFocus>(() => (["mixed", "weak", "missed", "unseen", "bookmarked", "diagnostic"].includes(params.get("focus") ?? "") ? (params.get("focus") as DrillFocus) : "mixed"));
   const [count, setCount] = useState(15);
   const [weak, setWeak] = useState<Analytics["weak"]>([]);
   const [topics, setTopics] = useState<{ domain: string; questions: number }[]>([]);
