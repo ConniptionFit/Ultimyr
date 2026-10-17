@@ -25,8 +25,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 ```sh
 cp .env.example .env            # defaults to the Nginx Proxy Manager overlay
 ./scripts/init-secrets.sh
-# one time, on your existing Postgres (see "Using your existing Postgres" below):
-docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
+./scripts/setup-db.sh           # one time: creates the ultimyr role + database on your Postgres, prints the password to save
 docker compose up -d
 ```
 
@@ -61,11 +60,8 @@ Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker co
 
 Ultimyr connects to a Postgres container you already run (the shared one for your homelab apps) with a dedicated `ultimyr` role that owns an `ultimyr` database. It cannot see your other databases, and each Ultimyr service keeps its tables in its own schema inside it (`auth`, `content`, `quiz`, `ai`, `notes`).
 
-1. **Create the role and database once** (set `secrets/pg_password` first, `./scripts/init-secrets.sh` makes a random one):
-   ```sh
-   docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
-   ```
-2. **Join the network.** Find the network that container is on with `docker inspect postgres --format '{{json .NetworkSettings.Networks}}'` and set `DB_NETWORK` in `.env` to its name (default `postgres`). Set `PG_HOST` to the container name (default `postgres`).
+1. **Create the role and database once:** `./scripts/setup-db.sh`. It makes a random password (`secrets/pg_password`), creates the `ultimyr` role and database through the `postgres` container (`PG_CONTAINER` and `PG_ADMIN_USER` override the container name and superuser), and prints the password so you can save it in a password manager. Running it again re-applies the same password.
+2. **Join the network.** Find the network that container is on with `docker inspect postgres --format '{{json .NetworkSettings.Networks}}'` and set `DB_NETWORK` in `.env` to its name (default `postgres_net`). Set `PG_HOST` to the container name (default `postgres`).
 3. `docker compose up -d`. The api container applies the migrations itself on every start.
 
 Another host or a managed database? Set `DATABASE_URL` (or `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_DATABASE`, `PG_SSLMODE`) instead, and point `DB_NETWORK` at any existing Docker network (for example `bridge`). Upgrading from the six-container layout: [Moving to two containers](docs/operations.md#moving-to-two-containers).

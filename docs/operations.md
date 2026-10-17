@@ -3,7 +3,7 @@
 ## First run
 1. `cp .env.example .env`, set `ULTIMYR_PUBLIC_URL`, pick a proxy overlay.
 2. `./scripts/init-secrets.sh`
-3. Create the `ultimyr` role and database on your Postgres once (`deploy/postgres/setup.sql`, see the README), then `docker compose up -d`. The api container applies the migrations.
+3. Create the `ultimyr` role and database on your Postgres once (`./scripts/setup-db.sh`, see the README), then `docker compose up -d`. The api container applies the migrations.
 4. Open the site and register. The first account is the platform admin. Then consider `AUTH_REGISTRATION=closed`.
 5. Set `COOKIE_SECURE=true` once HTTPS works.
 
@@ -73,10 +73,10 @@ If you used the bundled Postgres, move the data first (skip this if you already 
 # 1. In the old layout, dump the database and keep the secrets
 ./scripts/backup.sh                       # old script version: docker compose exec postgres pg_dump ...
 # 2. On your shared Postgres: create the role and database
-docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
+./scripts/setup-db.sh
 # 3. Load the dump into it (--no-owner makes the ultimyr role the owner)
 docker exec -i -e PGPASSWORD="$(cat secrets/pg_password)" postgres pg_restore -U ultimyr -d ultimyr --no-owner < backups/<timestamp>/ultimyr.dump
-# 4. Point .env at it: PG_HOST=postgres, DB_NETWORK=<its network>; keep secrets/pg_password as the ultimyr role's password
+# 4. Point .env at it: PG_HOST=postgres, DB_NETWORK=postgres_net (or your network); keep secrets/pg_password as the ultimyr role's password
 git pull && ./scripts/update.sh
 ```
 `update.sh` stops with a message if an old bundled Postgres container is still there, so it can never be removed before its data is moved. Once Ultimyr works against the new database you can delete the old container and its `ultimyr_pgdata` volume. Keep every other secret as it is: the same `auth_enc_key`, `vault_kek` and `jwt_private_key.pem` keep existing sessions, TOTP seeds and AI keys working. To go back, `ULTIMYR_TAG` cannot help across this change, so restore from the backup you took in step 1 on the old checkout.
