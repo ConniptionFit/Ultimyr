@@ -1,6 +1,6 @@
 name: Images
 
-# Builds every Ultimyr service image and pushes it to this Forgejo's container registry,
+# Builds the two Ultimyr images (api and web) and pushes it to this Forgejo's container registry,
 # so servers update by pulling (docker compose pull, Watchtower, Komodo) instead of building.
 #   git.pwrs.dev/powers/ultimyr-<service>:latest     newest build from main
 #   git.pwrs.dev/powers/ultimyr-<service>:sha-<7>    one per commit, to pin or roll back
@@ -70,7 +70,7 @@ jobs:
           SHORT="${GITHUB_SHA::7}"
           VERSION=""
           [ "${GITHUB_REF_TYPE:-}" = tag ] && VERSION="${GITHUB_REF_NAME#v}"
-          for TARGET in migrate auth content quiz ai-gateway notes mcp web; do
+          for TARGET in api web; do
             IMAGE="$REGISTRY/$OWNER/ultimyr-$TARGET"
             TAGS=(-t "$IMAGE:sha-$SHORT")
             if [ "${GITHUB_REF_TYPE:-}" = tag ]; then

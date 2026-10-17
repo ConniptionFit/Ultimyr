@@ -19,6 +19,7 @@ COPY packages/tagging/package.json packages/tagging/
 COPY packages/bundle/package.json packages/bundle/
 COPY packages/ui-icons/package.json packages/ui-icons/
 COPY packages/service-kit/package.json packages/service-kit/
+COPY apps/api/package.json apps/api/
 COPY services/auth/package.json services/auth/
 COPY services/content/package.json services/content/
 COPY services/quiz/package.json services/quiz/
@@ -32,133 +33,49 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 FROM deps AS source
 COPY . .
 
-# ---- auth service ----
-FROM source AS auth-build
+# ---- api: auth, content, quiz, ai-gateway, notes and mcp in one container ----
+# Each service is still its own package, built to its own bundle (services/<name>/dist/main.js). The api launcher applies
+# every service's migrations, then runs each bundle as a separate process and restarts any that exits.
+FROM source AS api-build
 # Set by CI for published images (the build context has no .git). Shown in Admin > About.
 ARG ULTIMYR_COMMIT=""
 ARG ULTIMYR_VERSION=""
 ENV ULTIMYR_COMMIT=$ULTIMYR_COMMIT ULTIMYR_VERSION=$ULTIMYR_VERSION
-RUN pnpm --filter @ultimyr/auth build \
- && pnpm --filter @ultimyr/auth deploy --prod /out/auth
+RUN pnpm --filter "./services/*" --filter @ultimyr/api build \
+ && pnpm --filter @ultimyr/api deploy --prod /out/api
 
-FROM node:22-slim AS auth
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=auth-build /out/auth/node_modules ./node_modules
-COPY --from=auth-build /repo/services/auth/dist ./dist
-COPY --from=auth-build /repo/services/auth/migrations ./migrations
-USER node
-EXPOSE 4001
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- content service ----
-FROM source AS content-build
-RUN pnpm --filter @ultimyr/content build \
- && pnpm --filter @ultimyr/content deploy --prod /out/content
-
-FROM node:22-slim AS content
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=content-build /out/content/node_modules ./node_modules
-COPY --from=content-build /repo/services/content/dist ./dist
-COPY --from=content-build /repo/services/content/migrations ./migrations
-USER node
-EXPOSE 4002
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4002/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- quiz service ----
-FROM source AS quiz-build
-RUN pnpm --filter @ultimyr/quiz build \
- && pnpm --filter @ultimyr/quiz deploy --prod /out/quiz
-
-FROM node:22-slim AS quiz
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=quiz-build /out/quiz/node_modules ./node_modules
-COPY --from=quiz-build /repo/services/quiz/dist ./dist
-COPY --from=quiz-build /repo/services/quiz/migrations ./migrations
-USER node
-EXPOSE 4003
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4003/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- ai-gateway service ----
-FROM source AS ai-build
-RUN pnpm --filter @ultimyr/ai-gateway build \
- && pnpm --filter @ultimyr/ai-gateway deploy --prod /out/ai
-
-FROM node:22-slim AS ai-gateway
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=ai-build /out/ai/node_modules ./node_modules
-COPY --from=ai-build /repo/services/ai-gateway/dist ./dist
-COPY --from=ai-build /repo/services/ai-gateway/migrations ./migrations
-USER node
-EXPOSE 4004
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4004/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- mcp service (no database, no migrations) ----
-FROM source AS mcp-build
-RUN pnpm --filter @ultimyr/mcp build \
- && pnpm --filter @ultimyr/mcp deploy --prod /out/mcp
-
-FROM node:22-slim AS mcp
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=mcp-build /out/mcp/node_modules ./node_modules
-COPY --from=mcp-build /repo/services/mcp/dist ./dist
-USER node
-EXPOSE 4005
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4005/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- notes service ----
-FROM source AS notes-build
-RUN pnpm --filter @ultimyr/notes build \
- && pnpm --filter @ultimyr/notes deploy --prod /out/notes
-
-FROM node:22-slim AS notes
-ENV NODE_ENV=production
-WORKDIR /app
-COPY --from=notes-build /out/notes/node_modules ./node_modules
-COPY --from=notes-build /repo/services/notes/dist ./dist
-COPY --from=notes-build /repo/services/notes/migrations ./migrations
-USER node
-EXPOSE 4006
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "fetch('http://127.0.0.1:4006/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
-
-# ---- migrate: one-shot job that applies every service's migrations ----
-FROM source AS migrate-build
-RUN pnpm --filter @ultimyr/db build \
- && pnpm --filter @ultimyr/db deploy --prod /out/db
-
-FROM node:22-slim AS migrate
+FROM node:22-slim AS api
 ENV NODE_ENV=production ULTIMYR_ROOT=/app
 WORKDIR /app
-COPY --from=migrate-build /out/db/node_modules ./node_modules
-COPY --from=migrate-build /repo/packages/db/dist ./dist
-COPY --from=migrate-build /repo/services/auth/migrations ./services/auth/migrations
-COPY --from=migrate-build /repo/services/content/migrations ./services/content/migrations
-COPY --from=migrate-build /repo/services/quiz/migrations ./services/quiz/migrations
-COPY --from=migrate-build /repo/services/ai-gateway/migrations ./services/ai-gateway/migrations
-COPY --from=migrate-build /repo/services/notes/migrations ./services/notes/migrations
+COPY --from=api-build /out/api/node_modules ./node_modules
+COPY --from=api-build /repo/apps/api/dist ./dist
+COPY --from=api-build /repo/services/auth/dist ./services/auth/dist
+COPY --from=api-build /repo/services/content/dist ./services/content/dist
+COPY --from=api-build /repo/services/quiz/dist ./services/quiz/dist
+COPY --from=api-build /repo/services/ai-gateway/dist ./services/ai-gateway/dist
+COPY --from=api-build /repo/services/notes/dist ./services/notes/dist
+COPY --from=api-build /repo/services/mcp/dist ./services/mcp/dist
+COPY --from=api-build /repo/services/auth/migrations ./services/auth/migrations
+COPY --from=api-build /repo/services/content/migrations ./services/content/migrations
+COPY --from=api-build /repo/services/quiz/migrations ./services/quiz/migrations
+COPY --from=api-build /repo/services/ai-gateway/migrations ./services/ai-gateway/migrations
+COPY --from=api-build /repo/services/notes/migrations ./services/notes/migrations
 USER node
-CMD ["node", "dist/migrate-cli.js"]
+EXPOSE 4000 4001 4002 4003 4004 4005 4006
+# Healthy only when every service answers (the launcher reports 503 with each service's state otherwise).
+HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=5 CMD node -e "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
 
 # ---- web ----
 FROM source AS web-build
 ENV NEXT_TELEMETRY_DISABLED=1
 # next.config rewrites are fixed at build time: this is where the web app forwards /api/v1.
-ARG AUTH_URL=http://auth:4001
-ARG CONTENT_URL=http://content:4002
-ARG QUIZ_URL=http://quiz:4003
-ARG AI_URL=http://ai-gateway:4004
-ARG MCP_URL=http://mcp:4005
-ARG NOTES_URL=http://notes:4006
+ARG AUTH_URL=http://api:4001
+ARG CONTENT_URL=http://api:4002
+ARG QUIZ_URL=http://api:4003
+ARG AI_URL=http://api:4004
+ARG MCP_URL=http://api:4005
+ARG NOTES_URL=http://api:4006
 ENV AUTH_URL=$AUTH_URL CONTENT_URL=$CONTENT_URL QUIZ_URL=$QUIZ_URL AI_URL=$AI_URL MCP_URL=$MCP_URL NOTES_URL=$NOTES_URL
 RUN pnpm --filter @ultimyr/web build
 

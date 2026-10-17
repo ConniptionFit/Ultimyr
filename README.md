@@ -17,7 +17,7 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 - Phase 8 polish: themes, text size, easy-read font, calm and focus modes, declared extra time on timed quizzes, an installable app with an offline page, a small example archive, and a CI performance budget. See [`docs/accessibility.md`](docs/accessibility.md).
 - Phase 9 hardening: security headers, a written security review and deployment checklist, backup and restore scripts, a load check and runbooks. See [`docs/security.md`](docs/security.md) and [`docs/operations.md`](docs/operations.md).
 - Exam prep: a credential tracker (exam dates, vouchers, renewals, CEU hours), adaptive weak-area drills, an exam objective coverage map and an exam-day countdown plan. See [`docs/prep.md`](docs/prep.md).
-- Docker Compose with a bundled Postgres **or** your own external Postgres, and a choice of Nginx Proxy Manager (default) or Traefik.
+- Docker Compose with two containers (web and api) that use your existing Postgres (a bundled one is optional), and a choice of Nginx Proxy Manager (default) or Traefik.
 - Shared packages: `config`, `db` (migrations), `authz` (token verification), `lore` (naming and copy), `ui-icons` (Lucide helpers: spin, pulse, draw-on, bounce, status and composed icons).
 
 ## Run with Docker
@@ -25,8 +25,12 @@ An AI-first learning and certification platform: study guides, flashcards and ex
 ```sh
 cp .env.example .env            # defaults to the Nginx Proxy Manager overlay
 ./scripts/init-secrets.sh
-docker compose --profile bundled-db up -d --build    # bundled Postgres
+# one time, on your existing Postgres (see "Using your existing Postgres" below):
+docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
+docker compose up -d
 ```
+
+Two containers run: **web** (the Next.js UI) and **api** (auth, content, quiz, AI gateway, notes and MCP as separate processes). No Postgres is bundled: Ultimyr uses the one you already run, with its own `ultimyr` role and database. No Postgres at all yet? Add `docker-compose.bundled-db.yml` to `COMPOSE_FILE`.
 
 Set `ULTIMYR_PUBLIC_URL` in `.env` to the address you browse to (needed for passkeys and SSO). The first account you create becomes the admin. Ultimyr needs a reverse proxy for HTTPS and a hostname. Pick one with `COMPOSE_FILE` in `.env`:
 
@@ -41,21 +45,30 @@ Set `ULTIMYR_PUBLIC_URL` in `.env` to the address you browse to (needed for pass
 ### Nginx Proxy Manager setup (default)
 
 1. Put NPM and Ultimyr on one network. If you have no shared network yet: `docker network create proxy && docker network connect proxy <your-npm-container>`. If NPM already uses a network, set `PROXY_NETWORK` to its name.
-2. `docker compose up -d` (add `--profile bundled-db` for the bundled database).
+2. `docker compose up -d`.
 3. In NPM, add a **Proxy Host**: your domain, scheme `http`, forward host `ultimyr-web`, port `3000`, enable **Websockets Support** and **Block Common Exploits**, then request an SSL certificate.
 4. Set `COOKIE_SECURE=true` in `.env` and run `docker compose up -d` again.
 
-That is the whole setup: the web container forwards `/api/v1/*` to the auth service itself, so you need no custom locations. NPM on a different host? Use the published port instead: forward to `<docker-host-ip>:3000` and set `ULTIMYR_BIND=0.0.0.0` (keep it firewalled to NPM).
+That is the whole setup: the web container forwards `/api/v1/*` to the api container itself, so you need no custom locations. NPM on a different host? Use the published port instead: forward to `<docker-host-ip>:3000` and set `ULTIMYR_BIND=0.0.0.0` (keep it firewalled to NPM).
 
-**Headless (API and MCP only):** `docker compose up -d auth content quiz mcp`. In NPM, create a Proxy Host forwarding to `ultimyr-auth:4001` (and, for MCP, send `/mcp` and `/.well-known/oauth-protected-resource` to `ultimyr-mcp:4005` with a custom location). Auth answers both `/v1/...` and `/api/v1/...`, so no path rewriting is needed.
+**Headless (API and MCP only):** `docker compose up -d api`. In NPM, create a Proxy Host forwarding to `ultimyr-api:4001` (and, for MCP, send `/mcp` and `/.well-known/oauth-protected-resource` to `ultimyr-api:4005` with a custom location). Auth answers both `/v1/...` and `/api/v1/...`, so no path rewriting is needed. The other services are on `ultimyr-api` ports 4002 (content), 4003 (quiz), 4004 (AI) and 4006 (notes).
 
 ### Traefik setup
 
-Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to auth, `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets`, `access`, `study`, `resources` and `roadmap` go to content, `/api/v1/ai` goes to the AI gateway, `/api/v1/notes` to the notes service, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
+Set `COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml`, run `docker compose up -d --build`, and open `http://localhost:8080`. Routes are defined by labels in the overlay: `/api/v1/auth`, `/api/v1/me`, `/api/v1/admin`, `/api/v1/users`, `/api/v1/groups`, `/scim/v2` and `/.well-known` go to the auth service (port 4001), `/api/v1/archives`, `items`, `cards`, `search`, `import`, `trash`, `assets`, `access`, `study`, `resources` and `roadmap` go to content, `/api/v1/ai` goes to the AI gateway, `/api/v1/notes` to the notes service, `/mcp` and `/.well-known/oauth-protected-resource` to the MCP server, `/oauth` to auth, everything else to web. Add your own TLS entrypoint or certificate resolver flags to the `traefik` command for HTTPS.
 
-### Use an existing Postgres
+### Using your existing Postgres
 
-Set `DATABASE_URL` (or `PG_HOST`, `PG_USER`, `PG_DATABASE`, `PG_SSLMODE`) in `.env`, put its password in `secrets/pg_password`, and run `docker compose up -d --build` without the `bundled-db` profile. Optional least-privilege roles: [`deploy/postgres/roles.sql`](deploy/postgres/roles.sql).
+Ultimyr connects to a Postgres container you already run (the shared one for your homelab apps) with a dedicated `ultimyr` role that owns an `ultimyr` database. It cannot see your other databases, and each Ultimyr service keeps its tables in its own schema inside it (`auth`, `content`, `quiz`, `ai`, `notes`).
+
+1. **Create the role and database once** (set `secrets/pg_password` first, `./scripts/init-secrets.sh` makes a random one):
+   ```sh
+   docker exec -i postgres psql -U postgres -v pw="$(cat secrets/pg_password)" < deploy/postgres/setup.sql
+   ```
+2. **Join the network.** Find the network that container is on with `docker inspect postgres --format '{{json .NetworkSettings.Networks}}'` and set `DB_NETWORK` in `.env` to its name (default `postgres`). Set `PG_HOST` to the container name (default `postgres`).
+3. `docker compose up -d`. The api container applies the migrations itself on every start.
+
+Another host or a managed database? Set `DATABASE_URL` (or `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_DATABASE`, `PG_SSLMODE`) instead, and point `DB_NETWORK` at any existing Docker network (for example `bridge`). Upgrading from the six-container layout: [Moving to two containers](docs/operations.md#moving-to-two-containers).
 
 ## Develop locally
 
@@ -78,7 +91,8 @@ pnpm typecheck && pnpm test
 ## Layout
 
 ```
-apps/web              Next.js UI
+apps/web              Next.js UI (the web container)
+apps/api              Launcher for the api container: migrations, then each service as its own process
 services/auth         Auth service (Fastify + Drizzle), owns the `auth` schema
 services/content      Content service (Fastify + SQL), owns the `content` schema
 services/quiz         Quiz service (Fastify + SQL), owns the `quiz` schema

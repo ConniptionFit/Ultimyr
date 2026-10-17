@@ -1,15 +1,17 @@
-# Ultimyr core stack: web, auth, one-shot migrations, optional bundled Postgres.
+# Ultimyr core stack: two containers, web and api, using the Postgres you already run.
 # This file is reverse-proxy agnostic. Pick ONE proxy overlay via COMPOSE_FILE in .env:
 #
 #   Nginx Proxy Manager (default):  COMPOSE_FILE=docker-compose.yml:docker-compose.npm.yml
 #   Traefik (bundled):              COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml
 #   Neither (publish ports only):   COMPOSE_FILE=docker-compose.yml
 #
-# Bundled database:   docker compose --profile bundled-db up -d
-# External database:  set DATABASE_URL (or PG_*) in .env, then: docker compose up -d
-# API/MCP only:       docker compose up -d auth content quiz ai-gateway mcp notes   (skip the web container)
+# Database: your existing Postgres container. Create the ultimyr role and database once (deploy/postgres/setup.sql),
+# set DB_NETWORK to the Docker network that container is on, and PG_HOST to its name. No Postgres is bundled;
+# for a fresh machine add docker-compose.bundled-db.yml to COMPOSE_FILE.
+# API/MCP only (no web container):   docker compose up -d api
 #
-# Secrets are read from ./secrets via Docker secrets (see README).
+# The api container runs the auth, content, quiz, AI gateway, notes and MCP services as separate processes
+# (see docs/architecture.md). Secrets are read from ./secrets via Docker secrets (see README).
 
 name: ultimyr
 
@@ -34,47 +36,22 @@ x-labels: &labels
 
 services:
 
-  # Bundled Postgres. Skipped entirely unless the `bundled-db` profile is enabled.
-  postgres:
-    profiles: ["bundled-db"]
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${PG_USER:-ultimyr}
-      POSTGRES_DB: ${PG_DATABASE:-ultimyr}
-      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
-    secrets: [pg_password]
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
-  migrate:
+  # Auth, content, quiz, AI gateway, notes and MCP. Applies every service's migrations at start, then runs each service
+  # as its own process (restarted on its own if it exits). Ports 4001 to 4006 are the services, 4000 the container health.
+  api:
     <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-migrate:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: migrate }
-    environment:
-      <<: *db-env
-      PG_PASSWORD_FILE: /run/secrets/pg_password
-    secrets: [pg_password]
-    # Wait for the bundled database when it is enabled; with your own Postgres (profile off) this is skipped.
-    depends_on:
-      postgres: { condition: service_healthy, required: false }
-    restart: "no"
-
-  auth:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-auth:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: auth }
+    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-api:${ULTIMYR_TAG:-latest}
+    build: { context: ., target: api }
     environment:
       <<: *db-env
       PG_PASSWORD_FILE: /run/secrets/pg_password
       ULTIMYR_JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
       ULTIMYR_AUTH_ENC_KEY_FILE: /run/secrets/auth_enc_key
       ULTIMYR_API_KEY_PEPPER_FILE: /run/secrets/api_key_pepper
+      # Seals each person's AI keys and Fast Note Sync token. Without it the AI gateway and notes answer 503.
+      ULTIMYR_VAULT_KEK_FILE: /run/secrets/vault_kek
+      ULTIMYR_VAULT_KEK_VERSION: ${ULTIMYR_VAULT_KEK_VERSION:-1}
+      ULTIMYR_VAULT_KEK_PREVIOUS: ${ULTIMYR_VAULT_KEK_PREVIOUS:-}
       # Public origin users reach Ultimyr on. Drives passkey (WebAuthn) binding and SSO callback URLs.
       ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
       ULTIMYR_ALLOW_INSECURE_IDP: ${ULTIMYR_ALLOW_INSECURE_IDP:-false}
@@ -83,130 +60,22 @@ services:
       ULTIMYR_UPDATE_CHECK: ${ULTIMYR_UPDATE_CHECK:-true}
       ULTIMYR_REPO: ${ULTIMYR_REPO:-ConniptionFit/Ultimyr}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      # Admin panel > General checks these services' /readyz.
-      CONTENT_URL: http://content:4002
-      QUIZ_URL: http://quiz:4003
-      AI_URL: http://ai-gateway:4004
-      MCP_URL: http://mcp:4005
-      NOTES_URL: http://notes:4006
-      NODE_ENV: production
-    secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-    ports:
-      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AUTH_PORT:-4001}:4001"
-    restart: unless-stopped
-
-  content:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-content:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: content }
-    environment:
-      <<: *db-env
-      PG_PASSWORD_FILE: /run/secrets/pg_password
-      # Verifies access tokens (JWKS) and looks up group memberships here.
-      AUTH_URL: http://auth:4001
-      NODE_ENV: production
-    secrets: [pg_password]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      auth: { condition: service_healthy }
-    ports:
-      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_CONTENT_PORT:-4002}:4002"
-    restart: unless-stopped
-
-  quiz:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-quiz:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: quiz }
-    environment:
-      <<: *db-env
-      PG_PASSWORD_FILE: /run/secrets/pg_password
-      # Verifies access tokens (JWKS) here, and asks content who may attempt or edit a quiz.
-      AUTH_URL: http://auth:4001
-      CONTENT_URL: http://content:4002
-      NODE_ENV: production
-    secrets: [pg_password]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      auth: { condition: service_healthy }
-      content: { condition: service_healthy }
-    ports:
-      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_QUIZ_PORT:-4003}:4003"
-    restart: unless-stopped
-
-  ai-gateway:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-ai-gateway:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: ai-gateway }
-    environment:
-      <<: *db-env
-      PG_PASSWORD_FILE: /run/secrets/pg_password
-      # Wraps each person's AI keys. Without it the gateway starts but every AI route answers 503.
-      ULTIMYR_VAULT_KEK_FILE: /run/secrets/vault_kek
-      ULTIMYR_VAULT_KEK_VERSION: ${ULTIMYR_VAULT_KEK_VERSION:-1}
-      ULTIMYR_VAULT_KEK_PREVIOUS: ${ULTIMYR_VAULT_KEK_PREVIOUS:-}
-      AUTH_URL: http://auth:4001
-      CONTENT_URL: http://content:4002
-      QUIZ_URL: http://quiz:4003
       AI_DAILY_REQUESTS: ${AI_DAILY_REQUESTS:-200}
-      NODE_ENV: production
-    secrets: [pg_password, vault_kek]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      auth: { condition: service_healthy }
-      content: { condition: service_healthy }
-      quiz: { condition: service_healthy }
-    ports:
-      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AI_PORT:-4004}:4004"
-    restart: unless-stopped
-
-  notes:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-notes:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: notes }
-    environment:
-      <<: *db-env
-      PG_PASSWORD_FILE: /run/secrets/pg_password
-      # Seals each person's Fast Note Sync token (same master key as the AI vault).
-      ULTIMYR_VAULT_KEK_FILE: /run/secrets/vault_kek
-      ULTIMYR_VAULT_KEK_VERSION: ${ULTIMYR_VAULT_KEK_VERSION:-1}
-      ULTIMYR_VAULT_KEK_PREVIOUS: ${ULTIMYR_VAULT_KEK_PREVIOUS:-}
       # Your Fast Note Sync server. Leave empty and notes stay switched off (everything else works).
-      # Bundled one: docker compose -f docker-compose.yml -f docker-compose.notes.yml up -d   (then FNS_URL=http://fns:9000)
+      # Bundled one: add docker-compose.notes.yml to COMPOSE_FILE (then FNS_URL=http://fns:9000)
       FNS_URL: ${FNS_URL:-}
-      AUTH_URL: http://auth:4001
-      CONTENT_URL: http://content:4002
-      NODE_ENV: production
-    secrets: [pg_password, vault_kek]
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-      auth: { condition: service_healthy }
-      content: { condition: service_healthy }
-    ports:
-      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_NOTES_PORT:-4006}:4006"
-    restart: unless-stopped
-
-  mcp:
-    <<: [*hardening, *labels]
-    image: ${ULTIMYR_REGISTRY:-git.pwrs.dev/powers}/ultimyr-mcp:${ULTIMYR_TAG:-latest}
-    build: { context: ., target: mcp }
-    environment:
-      # Verifies tokens (JWKS) at auth and calls content and quiz as the signed in person. No database, no secrets.
-      AUTH_URL: http://auth:4001
-      CONTENT_URL: http://content:4002
-      QUIZ_URL: http://quiz:4003
-      NOTES_URL: http://notes:4006
-      ULTIMYR_PUBLIC_URL: ${ULTIMYR_PUBLIC_URL:-http://localhost:3000}
       MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-120}
       MCP_WRITE_PER_MINUTE: ${MCP_WRITE_PER_MINUTE:-30}
       NODE_ENV: production
-    depends_on:
-      auth: { condition: service_healthy }
-      content: { condition: service_healthy }
-      quiz: { condition: service_healthy }
+    secrets: [pg_password, jwt_private_key, auth_enc_key, api_key_pepper, vault_kek]
+    networks: [default, db]
     ports:
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AUTH_PORT:-4001}:4001"
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_CONTENT_PORT:-4002}:4002"
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_QUIZ_PORT:-4003}:4003"
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_AI_PORT:-4004}:4004"
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_MCP_PORT:-4005}:4005"
+      - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_NOTES_PORT:-4006}:4006"
     restart: unless-stopped
 
   web:
@@ -216,17 +85,25 @@ services:
       context: .
       target: web
       args:
-        # Baked into the web image: where the web app proxies /api/v1 (the compose service name).
-        AUTH_URL: http://auth:4001
-        CONTENT_URL: http://content:4002
-        QUIZ_URL: http://quiz:4003
-        AI_URL: http://ai-gateway:4004
-        MCP_URL: http://mcp:4005
-        NOTES_URL: http://notes:4006
-    depends_on: [auth, content, quiz, ai-gateway, mcp]
+        # Baked into the web image: where the web app proxies /api/v1 (the api container's service ports).
+        AUTH_URL: http://api:4001
+        CONTENT_URL: http://api:4002
+        QUIZ_URL: http://api:4003
+        AI_URL: http://api:4004
+        MCP_URL: http://api:4005
+        NOTES_URL: http://api:4006
+    depends_on:
+      api: { condition: service_healthy }
     ports:
       - "${ULTIMYR_BIND:-127.0.0.1}:${ULTIMYR_WEB_PORT:-3000}:3000"
     restart: unless-stopped
+
+networks:
+  # The Docker network your existing Postgres container is on (find it with: docker inspect postgres --format '{{json .NetworkSettings.Networks}}').
+  # The api container joins it, so PG_HOST can be the container name (postgres).
+  db:
+    name: ${DB_NETWORK:-postgres}
+    external: true
 
 secrets:
   pg_password:
@@ -239,6 +116,3 @@ secrets:
     file: ./secrets/api_key_pepper
   vault_kek:
     file: ./secrets/vault_kek
-
-volumes:
-  pgdata:

@@ -1,6 +1,6 @@
 # Traefik overlay (alternative to Nginx Proxy Manager).
 # Starts a Traefik edge on ULTIMYR_HTTP_PORT and routes by Docker labels.
-# The auth service answers /api/v1/* directly, so no path rewriting is needed.
+# The api container answers /api/v1/* itself: one router per service, each pointing at that service's port.
 
 services:
   traefik:
@@ -16,46 +16,32 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
-  auth:
+  api:
     labels:
       - traefik.enable=true
       - traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/me`) || PathPrefix(`/api/v1/admin`) || PathPrefix(`/api/v1/users`) || PathPrefix(`/api/v1/groups`) || PathPrefix(`/scim/v2`) || PathPrefix(`/.well-known`) || PathPrefix(`/oauth`)
       - traefik.http.routers.auth.priority=100
+      - traefik.http.routers.auth.service=auth
       - traefik.http.services.auth.loadbalancer.server.port=4001
-
-  content:
-    labels:
-      - traefik.enable=true
       - traefik.http.routers.content.rule=PathPrefix(`/api/v1/archives`) || PathPrefix(`/api/v1/items`) || PathPrefix(`/api/v1/cards`) || PathPrefix(`/api/v1/search`) || PathPrefix(`/api/v1/import`) || PathPrefix(`/api/v1/trash`) || PathPrefix(`/api/v1/assets`) || PathPrefix(`/api/v1/access`) || PathPrefix(`/api/v1/study`) || PathPrefix(`/api/v1/resources`) || PathPrefix(`/api/v1/roadmap`) || PathPrefix(`/api/v1/credentials`) || PathPrefix(`/api/v1/group-access`) || PathPrefix(`/api/v1/tags`) || PathPrefix(`/api/v1/icons`)
       - traefik.http.routers.content.priority=100
+      - traefik.http.routers.content.service=content
       - traefik.http.services.content.loadbalancer.server.port=4002
-
-  quiz:
-    labels:
-      - traefik.enable=true
       - traefik.http.routers.quiz.rule=PathPrefix(`/api/v1/quizzes`) || PathPrefix(`/api/v1/questions`) || PathPrefix(`/api/v1/attempts`) || PathPrefix(`/api/v1/scoring-profiles`) || PathPrefix(`/api/v1/analytics`) || PathPrefix(`/api/v1/goals`) || PathPrefix(`/api/v1/drills`) || PathPrefix(`/api/v1/drill-topics`) || PathPrefix(`/api/v1/mock-exams`) || PathPrefix(`/api/v1/marks`) || PathPrefix(`/api/v1/reports`) || PathPrefix(`/api/v1/plan`)
       - traefik.http.routers.quiz.priority=100
+      - traefik.http.routers.quiz.service=quiz
       - traefik.http.services.quiz.loadbalancer.server.port=4003
-
-  ai-gateway:
-    labels:
-      - traefik.enable=true
       - traefik.http.routers.ai.rule=PathPrefix(`/api/v1/ai`)
       - traefik.http.routers.ai.priority=100
+      - traefik.http.routers.ai.service=ai
       - traefik.http.services.ai.loadbalancer.server.port=4004
-
-  notes:
-    labels:
-      - traefik.enable=true
       - traefik.http.routers.notes.rule=PathPrefix(`/api/v1/notes`)
       - traefik.http.routers.notes.priority=100
+      - traefik.http.routers.notes.service=notes
       - traefik.http.services.notes.loadbalancer.server.port=4006
-
-  mcp:
-    labels:
-      - traefik.enable=true
       - traefik.http.routers.mcp.rule=PathPrefix(`/mcp`) || PathPrefix(`/.well-known/oauth-protected-resource`)
       - traefik.http.routers.mcp.priority=200
+      - traefik.http.routers.mcp.service=mcp
       - traefik.http.services.mcp.loadbalancer.server.port=4005
 
   web:

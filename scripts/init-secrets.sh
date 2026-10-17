@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # Generate local secrets for docker compose. Safe to re-run: existing files are kept.
+# secrets/pg_password must be the password of your Postgres "ultimyr" role (deploy/postgres/setup.sql sets the role to it).
 set -eu
 mkdir -p secrets
 [ -f secrets/pg_password ] || { openssl rand -base64 24 | tr -d '\n' > secrets/pg_password; echo "created secrets/pg_password"; }
