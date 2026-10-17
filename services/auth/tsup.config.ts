@@ -6,7 +6,9 @@ import { defineConfig } from "tsup";
 function buildInfo() {
   const root = resolve(import.meta.dirname, "../..");
   const read = (p: string) => (existsSync(p) ? readFileSync(p, "utf8").trim() : "");
-  const version = (JSON.parse(read(resolve(root, "package.json")) || "{}") as { version?: string }).version ?? "0.0.0";
+  const pkgVersion = (JSON.parse(read(resolve(root, "package.json")) || "{}") as { version?: string }).version ?? "0.0.0";
+  // Release images pass the tag (v1.2.0 -> 1.2.0) so Admin > About matches what was published.
+  const version = process.env.ULTIMYR_VERSION?.replace(/^v/, "") || pkgVersion;
   let commit = process.env.ULTIMYR_COMMIT ?? "";
   if (!commit) {
     const head = read(resolve(root, ".git/HEAD"));

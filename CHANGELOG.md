@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **New: update with `docker compose pull && docker compose up -d`.** CI now publishes every service as a prebuilt image (amd64 and arm64) to `ghcr.io/conniptionfit/ultimyr-<service>`, tagged `latest`, `sha-<commit>` and, for release tags, `v1.2.3`. `docker-compose.yml` uses those images (and still builds from source with `--build`), `scripts/update.sh` pulls them and falls back to a build, and every service carries a Watchtower label. Pin or roll back with `ULTIMYR_TAG`, use a fork or mirror with `ULTIMYR_REGISTRY`. Admin > About now shows the release version and commit of published images. No migrations; `git pull && docker compose up -d --build` still works. One-time: make the packages public on GitHub. See docs/operations.md.
 - **Changed: course builds leave out FAQs, introductions and other filler.** The connector prompt, the paste prompt, the Claude Skill, the `build_certification` MCP prompt, the build queue's guide task and the built-in AI guide generator now say to keep only learning material that serves the exam objectives, in guides and in saved links.
 - **New: print the exam countdown plan.** A Print button on the countdown page prints or saves the day-by-day plan as a clean black-on-white page without the menus and the course picker.
 - **Changed: credentials are listed by what is coming up.** Under Working toward the nearest exam date comes first, and under Earned the one that expires soonest, with undated ones last.

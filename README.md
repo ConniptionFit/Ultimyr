@@ -36,10 +36,12 @@ Set `ULTIMYR_PUBLIC_URL` in `.env` to the address you browse to (needed for pass
 | Traefik | `docker-compose.yml:docker-compose.traefik.yml` | Starts a bundled Traefik on `ULTIMYR_HTTP_PORT` (default 8080). |
 | None | `docker-compose.yml` | Only publishes web on `ULTIMYR_BIND:ULTIMYR_WEB_PORT` (default `127.0.0.1:3000`). |
 
+**Updating:** `docker compose pull && docker compose up -d` (or `./scripts/update.sh`). Images are prebuilt by CI, so `up -d` no longer needs `--build`; add `--build` only to build from source. Details, pinning and rollback: [docs/operations.md](docs/operations.md#upgrading).
+
 ### Nginx Proxy Manager setup (default)
 
 1. Put NPM and Ultimyr on one network. If you have no shared network yet: `docker network create proxy && docker network connect proxy <your-npm-container>`. If NPM already uses a network, set `PROXY_NETWORK` to its name.
-2. `docker compose up -d --build` (add `--profile bundled-db` for the bundled database).
+2. `docker compose up -d` (add `--profile bundled-db` for the bundled database).
 3. In NPM, add a **Proxy Host**: your domain, scheme `http`, forward host `ultimyr-web`, port `3000`, enable **Websockets Support** and **Block Common Exploits**, then request an SSL certificate.
 4. Set `COOKIE_SECURE=true` in `.env` and run `docker compose up -d` again.
 

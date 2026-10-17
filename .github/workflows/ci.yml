@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -57,3 +58,74 @@ jobs:
           docker network create proxy
           docker compose -f docker-compose.yml -f docker-compose.npm.yml config --quiet
           docker compose -f docker-compose.yml -f docker-compose.traefik.yml config --quiet
+
+  # Prebuilt images, so servers update with `docker compose pull && docker compose up -d` (no build on the server).
+  #   ghcr.io/<owner>/ultimyr-<service>:latest     newest build from main
+  #   ghcr.io/<owner>/ultimyr-<service>:sha-<7>    one per commit, to pin or roll back
+  #   ghcr.io/<owner>/ultimyr-<service>:v1.2.3     one per release tag (also :1.2 and :1)
+  # Optional mirror: set the repo secret REGISTRY_TOKEN (and variable MIRROR_REGISTRY, for example
+  # git.pwrs.dev/powers, plus MIRROR_USER) to push the same images to a second registry.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [check, docker]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [migrate, auth, content, quiz, ai-gateway, notes, mcp, web]
+    env:
+      MIRROR_REGISTRY: ${{ vars.MIRROR_REGISTRY }}
+      MIRROR_USER: ${{ vars.MIRROR_USER }}
+      MIRROR_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to the mirror registry
+        if: env.MIRROR_REGISTRY != '' && env.MIRROR_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.MIRROR_REGISTRY }}
+          username: ${{ vars.MIRROR_USER }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+      - name: Image names
+        id: names
+        run: |
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          LIST="ghcr.io/$OWNER/ultimyr-${{ matrix.target }}"
+          if [ -n "$MIRROR_REGISTRY" ] && [ -n "$MIRROR_TOKEN" ]; then LIST="$LIST"$'\n'"$MIRROR_REGISTRY/ultimyr-${{ matrix.target }}"; fi
+          { echo 'images<<EOF'; echo "$LIST"; echo 'EOF'; } >> "$GITHUB_OUTPUT"
+          VERSION=""; [ "${GITHUB_REF_TYPE}" = tag ] && VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.names.outputs.images }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' }}
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
+            type=raw,value=${{ github.ref_name }},enable=${{ github.ref_type == 'tag' }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ULTIMYR_COMMIT=${{ github.sha }}
+            ULTIMYR_VERSION=${{ steps.names.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,scope=${{ matrix.target }},mode=max

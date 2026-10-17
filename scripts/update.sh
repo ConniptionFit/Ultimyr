@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Update an Ultimyr install in one step: ./scripts/update.sh
+# Pulls the prebuilt images CI publishes (fast, nothing compiles on your server). If they cannot be
+# pulled (a fork, or a commit CI has not finished building), it builds from source instead.
+# Force a source build with: ULTIMYR_BUILD=1 ./scripts/update.sh
 # Local edits to tracked files (for example an old hand-made tsup.config.ts fix) are saved to a
 # stash first, so `git pull` can never be blocked by them.
 set -euo pipefail
@@ -18,7 +21,15 @@ PROFILE=()
 if grep -Eq '^PG_HOST=postgres[[:space:]]*$' .env 2>/dev/null || docker compose ps -a --services 2>/dev/null | grep -qx postgres; then
   PROFILE=(--profile bundled-db)
 fi
-docker compose "${PROFILE[@]}" up -d --build
+if [ "${ULTIMYR_BUILD:-0}" = 1 ]; then
+  docker compose "${PROFILE[@]}" up -d --build
+elif docker compose "${PROFILE[@]}" pull --quiet; then
+  docker compose "${PROFILE[@]}" up -d --remove-orphans
+else
+  echo "Could not pull the prebuilt images; building from source instead."
+  docker compose "${PROFILE[@]}" up -d --build
+fi
+docker image prune -f >/dev/null 2>&1 || true
 
 echo "Waiting for services to report healthy..."
 for _ in $(seq 1 40); do
