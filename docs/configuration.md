@@ -8,7 +8,7 @@ Set values in `.env` (Compose reads it) or the container environment. Any variab
 | `COMPOSE_FILE` | `docker-compose.yml:docker-compose.npm.yml` | Which proxy overlay to use. See the README. |
 | `PROXY_NETWORK` | `proxy` | Docker network Nginx Proxy Manager is on (NPM overlay). |
 | `ULTIMYR_HTTP_PORT` | `8080` | Port the bundled Traefik listens on (Traefik overlay). |
-| `DB_NETWORK` | `postgres` | Existing Docker network your Postgres container is on. The api container joins it. |
+| `DB_NETWORK` | `postgres_net` | Existing Docker network your Postgres container is on. The api container joins it. |
 | `ULTIMYR_REGISTRY`, `ULTIMYR_TAG` | `git.pwrs.dev/powers`, `latest` | Where the `ultimyr-api` and `ultimyr-web` images are pulled from, and which release. |
 | `ULTIMYR_BIND` | `127.0.0.1` | Interface for the published web and api ports. |
 | `ULTIMYR_WEB_PORT` | `3000` | Published web port. |

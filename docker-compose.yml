@@ -102,7 +102,7 @@ networks:
   # The Docker network your existing Postgres container is on (find it with: docker inspect postgres --format '{{json .NetworkSettings.Networks}}').
   # The api container joins it, so PG_HOST can be the container name (postgres).
   db:
-    name: ${DB_NETWORK:-postgres}
+    name: ${DB_NETWORK:-postgres_net}
     external: true
 
 secrets:
