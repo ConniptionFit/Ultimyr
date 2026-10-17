@@ -30,7 +30,7 @@ export interface StudyCard {
   next: Record<"1" | "2" | "3" | "4", { due: string; days: number }>;
 }
 export interface StudyQueue {
-  settings: { desiredRetention: number; newPerDay: number };
+  settings: { desiredRetention: number; newPerDay: number; leechSuspend?: boolean };
   counts: { due: number; new: number; newAllowanceLeft: number };
   cards: StudyCard[];
 }

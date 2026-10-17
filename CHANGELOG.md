@@ -125,6 +125,7 @@
 - **Fixed: the guide editor's Preview link split into "Previe / w" on a phone.** It now keeps its size and the label above it wraps instead.
 - **Fixed: file pickers pushed the page sideways on the narrowest phones.** On a 320 px wide screen the "Choose File" boxes (Build, deck import, guide editor, course icon) ran past the edge. They now stay inside it.
 - **Fixed: green buttons dropped below the contrast minimum while the pointer was over them.** The hover effect faded the whole button, which lowered text contrast in the light theme. It now darkens the button instead, and a hover audit of the sign-in, review and quiz editor buttons passes in light and dark.
+- **New: cloze cards, suspend, bury and leech handling for flashcards (Anki parity).** Write `{{c1::answer::hint}}` in a card's front and the daily review hides it until you show the answer. **Bury until tomorrow** and **Suspend this card** sit under every card; suspended cards are listed in Settings > Flashcards with **Bring back**, and an optional setting suspends a card automatically after the 8th time you forget it. New routes `POST /study/cards/:id/suspend`, `POST /study/cards/:id/bury`, `GET /study/suspended`; `leechSuspend` joins `/study/settings`. Adds migration `0010_card_flags` (content), applied by `docker compose up -d --build`. See docs/study.md.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

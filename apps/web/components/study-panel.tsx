@@ -10,6 +10,14 @@ import { withCurrent } from "@/lib/study-settings";
 interface StudySettings {
   desiredRetention: number;
   newPerDay: number;
+  leechSuspend: boolean;
+}
+interface Suspended {
+  id: string;
+  front: string;
+  deck: string;
+  course: string;
+  lapses: number;
 }
 
 /** Settings: how many new flashcards a day and how sure you want to be of remembering. Saved to your account. */
@@ -18,10 +26,21 @@ export function StudyPanel() {
   const [s, setS] = useState<StudySettings | null>(null);
   const [msg, setMsg] = useState("");
   const [at, setAt] = useState("19:00");
+  const [parked, setParked] = useState<Suspended[]>([]);
 
   useEffect(() => {
     api<StudySettings>("GET", "study/settings").then(setS).catch(() => setMsg("Could not load your study settings."));
+    api<{ cards: Suspended[] }>("GET", "study/suspended").then((r) => setParked(r.cards)).catch(() => undefined);
   }, [api]);
+
+  async function unsuspend(id: string) {
+    try {
+      await api("POST", `study/cards/${id}/suspend`, { suspended: false });
+      setParked((l) => l.filter((c) => c.id !== id));
+    } catch {
+      setMsg("Could not bring that card back. Try again.");
+    }
+  }
 
   async function save(patch: Partial<StudySettings>) {
     if (!s) return;
@@ -59,6 +78,30 @@ export function StudyPanel() {
             onChange={(desiredRetention) => save({ desiredRetention })}
             options={withCurrent<number>([[0.8, "80%"], [0.85, "85%"], [0.9, "90%"], [0.95, "95%"]], s.desiredRetention, (v) => `${Math.round(v * 100)}%`)}
           />
+          <Choice<string>
+            legend="Cards you keep forgetting"
+            hint="A card you have forgotten 8 times is probably worded badly. Suspend it for you so it stops draining your reviews, then rewrite it or ask the author."
+            value={s.leechSuspend ? "suspend" : "warn"}
+            onChange={(v) => save({ leechSuspend: v === "suspend" })}
+            options={[["warn", "Just warn me"], ["suspend", "Suspend it"]]}
+          />
+          {parked.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm">Suspended cards ({parked.length})</p>
+              <ul className="space-y-1 text-sm">
+                {parked.map((c) => (
+                  <li key={c.id} className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      {c.front} <span className="text-xs text-muted">{c.course} · {c.deck}</span>
+                    </span>
+                    <button onClick={() => unsuspend(c.id)} className="shrink-0 text-accent underline">
+                      Bring back
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       ) : (
         !msg && <p className="text-sm text-muted">Loading</p>

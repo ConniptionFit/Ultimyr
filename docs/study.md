@@ -20,6 +20,11 @@ You can change two settings in **Settings > Flashcards**, or through the API (`G
 
 The scheduler is a pure function (`packages/fsrs`): the same history always produces the same schedule, with no random fuzz. It is covered by tests for the formulas (for example, the recall probability is exactly 90% when the time since review equals the stability), for how intervals grow, shrink after a lapse, and respond to early or late reviews, and by randomised property tests (difficulty stays between 1 and 10, stability stays positive, results are repeatable).
 
+## Cloze cards, suspend and bury
+- **Cloze deletion.** Write a card's front as `The {{c1::SYN}} flag starts the handshake` (or `{{c1::answer::hint}}`). The review shows `The [...] flag starts...`, and the answer side shows the full sentence with the hidden words in bold, then the card's back as extra notes. Every deletion in a card is hidden together and the card is rated once. The back can stay empty.
+- **Bury until tomorrow** and **Suspend this card** sit under each card in the daily review. A buried card returns at the start of your next day; a suspended one stays out of your queue, due counts and forecast until you press **Bring back** in Settings > Flashcards. Both affect only you.
+- **Leeches.** A card you have forgotten 8 times is a leech. By default you get a warning on the card (from 6 lapses); set **Cards you keep forgetting** to **Suspend it** and the 8th lapse suspends it for you automatically. Adds migration `0010_card_flags` (content).
+
 ## Progress
 `GET /analytics?archive=&days=` summarises your closed attempts (practice, timed and exam) over the last 7 to 365 days:
 
