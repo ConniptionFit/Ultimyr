@@ -5,7 +5,7 @@
  * how weak the whole area is (its objective, else its domain), and how long since they last saw it. Questions never seen
  * sit in the middle, so a drill mixes known weak spots with fresh ground rather than only repeating mistakes.
  */
-export type Focus = "mixed" | "weak" | "missed";
+export type Focus = "mixed" | "weak" | "missed" | "unseen" | "bookmarked";
 
 export interface QuestionStats {
   answered: number;
@@ -20,12 +20,14 @@ export interface Candidate {
   /** The exam objective if the question is mapped to one, else its domain text, else null. */
   area: string | null;
   stats: QuestionStats;
+  /** The person bookmarked this question. */
+  bookmarked?: boolean;
 }
 
 export interface Pick {
   id: string;
   area: string | null;
-  reason: "missed" | "weak_area" | "not_seen" | "refresh";
+  reason: "missed" | "weak_area" | "not_seen" | "refresh" | "bookmarked";
 }
 
 export interface DrillOptions {
@@ -76,6 +78,8 @@ export function selectDrill(cands: Candidate[], opts: DrillOptions): Pick[] {
 
   let pool = scored;
   if (opts.focus === "missed") pool = scored.filter((s) => s.lastMiss);
+  else if (opts.focus === "unseen") pool = scored.filter((s) => !s.seen);
+  else if (opts.focus === "bookmarked") pool = scored.filter((s) => s.q.bookmarked);
   else if (opts.focus === "weak") {
     // Only the weaker half of areas (at least one), so the drill leans into them.
     const ranked = [...area].sort((a, b) => a[1] - b[1]).map(([k]) => k);
@@ -107,6 +111,6 @@ export function selectDrill(cands: Candidate[], opts: DrillOptions): Pick[] {
 }
 
 function toPick(s: { q: Candidate; lastMiss: boolean; seen: boolean; areaWeak: number }): Pick {
-  const reason: Pick["reason"] = s.lastMiss ? "missed" : !s.seen ? "not_seen" : s.areaWeak > 0.3 ? "weak_area" : "refresh";
+  const reason: Pick["reason"] = s.lastMiss ? "missed" : s.q.bookmarked ? "bookmarked" : !s.seen ? "not_seen" : s.areaWeak > 0.3 ? "weak_area" : "refresh";
   return { id: s.q.id, area: s.q.area, reason };
 }

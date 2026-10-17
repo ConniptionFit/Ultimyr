@@ -22,10 +22,12 @@ const startBody = z.object({
 const drillBody = z.object({
   archiveId: z.uuid(),
   count: z.number().int().min(3).max(50).default(15),
-  /** mixed: weak spots and fresh questions. weak: the weakest areas only. missed: only what you got wrong last time. */
-  focus: z.enum(["mixed", "weak", "missed"]).default("mixed"),
+  /** mixed: weak spots and fresh questions. weak: the weakest areas only. missed: only what you got wrong last time. unseen: questions you have never answered. bookmarked: questions you bookmarked. */
+  focus: z.enum(["mixed", "weak", "missed", "unseen", "bookmarked"]).default("mixed"),
   /** Narrow the drill to one exam objective. */
   objectiveId: z.uuid().optional(),
+  /** Narrow the drill to these question domains (topics). */
+  domains: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   restart: z.boolean().default(false),
 });
 const MAX_DRILL_POOL = 5000;
@@ -85,7 +87,7 @@ export function attemptRoutes(ctx: Ctx) {
     itemId: a.item_id,
     archiveId: a.archive_id,
     kind: a.kind ?? "quiz",
-    ...(a.kind === "drill" ? { drill: { focus: a.drill?.focus, count: a.drill?.count, objectiveId: a.drill?.objectiveId ?? null } } : {}),
+    ...(a.kind === "drill" ? { drill: { focus: a.drill?.focus, count: a.drill?.count, objectiveId: a.drill?.objectiveId ?? null, domains: a.drill?.domains ?? null } } : {}),
     mode: a.mode,
     status: a.status,
     startedAt: a.started_at,
@@ -109,6 +111,8 @@ export function attemptRoutes(ctx: Ctx) {
 
   async function view(a: Row) {
     const { rows } = await pool.query("SELECT * FROM quiz.attempt_items WHERE attempt_id = $1 ORDER BY ord", [a.id]);
+    const { rows: marks } = await pool.query("SELECT question_id, bookmarked, note FROM quiz.question_marks WHERE user_id = $1 AND question_id = ANY($2::uuid[])", [a.user_id, rows.map((i) => i.question_id)]);
+    const markOf = new Map<string, Row>(marks.map((m) => [m.question_id as string, m]));
     return {
       ...summary(a),
       serverTime: ctx.now().toISOString(),
@@ -119,6 +123,8 @@ export function attemptRoutes(ctx: Ctx) {
         ...(i.presented as object),
         response: i.response,
         flagged: i.flagged,
+        bookmarked: markOf.get(i.question_id)?.bookmarked ?? false,
+        note: markOf.get(i.question_id)?.note ?? "",
         timeMs: i.time_ms,
         // Feedback is only ever shown for questions the learner revealed (practice) or after the attempt closes.
         ...(i.revealed || a.status !== "in_progress" ? { feedback: feedback(i) } : {}),
@@ -201,16 +207,17 @@ export function attemptRoutes(ctx: Ctx) {
       const itemIds = arc.quizzes.filter((q) => q.canAttempt && (q.status === "published" || q.canWrite)).map((q) => q.id);
       if (!itemIds.length) throw new HttpError(409, "no_questions");
       const { rows: pool_ } = await pool.query(
-        `SELECT q.*, st.answered, st.correct, st.last_outcome, st.last_at
+        `SELECT q.*, st.answered, st.correct, st.last_outcome, st.last_at, COALESCE(mk.bookmarked, false) AS bookmarked
            FROM quiz.questions q
+           LEFT JOIN quiz.question_marks mk ON mk.question_id = q.id AND mk.user_id = $1
            LEFT JOIN LATERAL (
              SELECT count(*)::int AS answered, count(*) FILTER (WHERE ai.outcome = 'correct')::int AS correct,
                     (array_agg(ai.outcome ORDER BY att.started_at DESC))[1] AS last_outcome, max(att.started_at) AS last_at
                FROM quiz.attempt_items ai JOIN quiz.attempts att ON att.id = ai.attempt_id
               WHERE ai.question_id = q.id AND att.user_id = $1 AND ai.outcome IN ('correct', 'partial', 'incorrect')) st ON true
-          WHERE q.item_id = ANY($2::uuid[]) AND q.status = 'published' AND NOT q.is_pretest AND ($3::uuid IS NULL OR q.objective_id = $3)
+          WHERE q.item_id = ANY($2::uuid[]) AND q.status = 'published' AND NOT q.is_pretest AND ($3::uuid IS NULL OR q.objective_id = $3) AND ($4::text[] IS NULL OR q.domain = ANY($4))
           ORDER BY q.created_at LIMIT ${MAX_DRILL_POOL}`,
-        [a.userId, itemIds, body.objectiveId ?? null],
+        [a.userId, itemIds, body.objectiveId ?? null, body.domains?.length ? body.domains : null],
       );
       if (!pool_.length) throw new HttpError(409, "no_questions");
 
@@ -218,19 +225,20 @@ export function attemptRoutes(ctx: Ctx) {
       const cands: Candidate[] = pool_.map((q) => ({
         id: q.id,
         area: q.objective_id ? `o:${q.objective_id}` : q.domain ? `d:${q.domain}` : null,
+        bookmarked: q.bookmarked,
         stats: { answered: q.answered ?? 0, correct: q.correct ?? 0, lastOutcome: q.last_outcome ?? null, lastAt: q.last_at ? new Date(q.last_at).getTime() : null } as QuestionStats,
       }));
       const now = ctx.now();
       const seed = randomBytes(12).toString("hex");
       const picks = selectDrill(cands, { count: body.count, focus: body.focus, now: now.getTime(), seed });
-      if (!picks.length) throw new HttpError(409, "nothing_to_drill", { issues: [body.focus === "missed" ? "no questions to redo: nothing was missed last time" : "no questions match"] });
+      if (!picks.length) throw new HttpError(409, "nothing_to_drill", { issues: [body.focus === "missed" ? "no questions to redo: nothing was missed last time" : body.focus === "bookmarked" ? "no bookmarked questions match" : body.focus === "unseen" ? "you have answered every question" : "no questions match"] });
       const chosen = selectQuestions(picks.map((p) => byId.get(p.id)!) as Array<Row & { id: string }>, { count: null, shuffle: true, seed });
 
       const profileRow = (await pool.query("SELECT * FROM quiz.scoring_profiles WHERE is_official AND name = $1 ORDER BY version DESC LIMIT 1", [DEFAULT_PROFILE_NAME])).rows[0];
       if (!profileRow) throw new HttpError(500, "internal_error");
       const profile: ScoringProfile = parseProfile(profileRow.definition);
       const attemptId = uuidv7();
-      const drill = { focus: body.focus, count: chosen.length, objectiveId: body.objectiveId ?? null, reasons: Object.fromEntries(picks.map((p) => [p.id, p.reason])) };
+      const drill = { focus: body.focus, count: chosen.length, objectiveId: body.objectiveId ?? null, domains: body.domains?.length ? body.domains : null, reasons: Object.fromEntries(picks.map((p) => [p.id, p.reason])) };
 
       await tx(pool, async (c) => {
         await c.query(

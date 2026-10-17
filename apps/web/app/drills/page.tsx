@@ -17,7 +17,7 @@ const input = "w-full rounded-md border border-line bg-surface px-3 py-2 text-in
 
 const ERRORS: Record<string, string> = {
   no_questions: "There are no published practice questions in that course yet.",
-  nothing_to_drill: "Nothing to redo: you did not miss anything last time. Try the Mixed drill instead.",
+  nothing_to_drill: "Nothing matches that choice yet (for example nothing missed, nothing bookmarked, or every question already answered). Try Mixed instead.",
   not_found: "That course could not be found.",
 };
 
@@ -28,9 +28,11 @@ function Drills() {
   const params = useSearchParams();
   const [archives, setArchives] = useState<Archive[] | null>(null);
   const [archive, setArchive] = useState(params.get("archive") ?? "");
-  const [focus, setFocus] = useState<DrillFocus>(() => (["mixed", "weak", "missed"].includes(params.get("focus") ?? "") ? (params.get("focus") as DrillFocus) : "mixed"));
+  const [focus, setFocus] = useState<DrillFocus>(() => (["mixed", "weak", "missed", "unseen", "bookmarked"].includes(params.get("focus") ?? "") ? (params.get("focus") as DrillFocus) : "mixed"));
   const [count, setCount] = useState(15);
   const [weak, setWeak] = useState<Analytics["weak"]>([]);
+  const [topics, setTopics] = useState<{ domain: string; questions: number }[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,6 +49,10 @@ function Drills() {
     api<Analytics>("GET", `analytics?archive=${archive}&days=90`)
       .then((a) => setWeak(a.weak))
       .catch(() => setWeak([]));
+    setPicked([]);
+    api<{ domains: { domain: string; questions: number }[] }>("GET", `drill-topics?archive=${archive}`)
+      .then((r) => setTopics(r.domains))
+      .catch(() => setTopics([]));
   }, [api, archive]);
 
   async function start(e: FormEvent) {
@@ -54,7 +60,7 @@ function Drills() {
     setBusy(true);
     setError(null);
     try {
-      const a = await api<{ id: string }>("POST", "drills", { archiveId: archive, focus, count });
+      const a = await api<{ id: string }>("POST", "drills", { archiveId: archive, focus, count, ...(picked.length ? { domains: picked } : {}) });
       router.push(`/attempts/${a.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? (ERRORS[err.code] ?? "Could not start a drill.") : "Could not start a drill.");
@@ -99,6 +105,19 @@ function Drills() {
               </label>
             ))}
           </fieldset>
+          {topics.length > 1 && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm text-muted">Topics (leave empty for all)</legend>
+              <div className="flex flex-wrap gap-2">
+                {topics.map((tp) => (
+                  <label key={tp.domain} className="flex items-center gap-2 rounded-full border border-line px-3 py-1 text-sm has-[:checked]:border-accent has-[:checked]:bg-surface">
+                    <input type="checkbox" className="sr-only" checked={picked.includes(tp.domain)} onChange={(e) => setPicked((l) => (e.target.checked ? [...l, tp.domain] : l.filter((x) => x !== tp.domain)))} />
+                    {tp.domain} <span className="text-xs text-muted">{tp.questions}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <div className="space-y-1">
             <label htmlFor="d-count" className="text-sm text-muted">
               Questions

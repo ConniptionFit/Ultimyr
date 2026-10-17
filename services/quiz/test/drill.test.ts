@@ -87,3 +87,19 @@ describe("weak-area drill selection", () => {
     expect(m.get("y")).toBeCloseTo(0.7);
   });
 });
+
+describe("drill focus: unseen and bookmarked", () => {
+  const cands = [
+    { ...q("seen", "x", { answered: 2, correct: 1, lastOutcome: "incorrect" as const, lastAt: NOW - DAY }), bookmarked: true },
+    q("new1", "x"),
+    { ...q("new2", "y"), bookmarked: true },
+  ];
+  it("unseen keeps only questions never answered", () => {
+    expect(selectDrill(cands, { ...opts, focus: "unseen" }).map((p) => p.id).sort()).toEqual(["new1", "new2"]);
+  });
+  it("bookmarked keeps only bookmarked questions and says why", () => {
+    const picks = selectDrill(cands, { ...opts, focus: "bookmarked" });
+    expect(picks.map((p) => p.id).sort()).toEqual(["new2", "seen"]);
+    expect(picks.find((p) => p.id === "new2")!.reason).toBe("bookmarked");
+  });
+});

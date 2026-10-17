@@ -42,6 +42,9 @@ export interface PlayQuestion {
   payload: any;
   response: any;
   flagged: boolean;
+  /** Your own bookmark and private note on this question; they follow you across attempts. */
+  bookmarked?: boolean;
+  note?: string;
   timeMs: number;
   feedback?: { outcome: Outcome; earned: number; max: number; detail: any; explanation: string; key: any };
 }

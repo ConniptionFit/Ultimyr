@@ -9,6 +9,7 @@ import { Loading } from "@/components/loading";
 import { FocusButton } from "@/components/focus-button";
 import { Header } from "@/components/header";
 import { FeedbackView, QuestionView } from "@/components/quiz/question-view";
+import { QuestionMarks } from "@/components/quiz/question-marks";
 import { Button, Shell } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useNaming } from "@/lib/naming";
@@ -415,6 +416,15 @@ export default function AttemptPage() {
                 )}
                 {open && idx === qs.length - 1 && <Button onClick={() => setReviewing(true)}>Review and submit</Button>}
               </div>
+              {(closed || at.mode === "practice") && (
+                <QuestionMarks
+                  key={q.id}
+                  questionId={q.id}
+                  bookmarked={!!q.bookmarked}
+                  note={q.note ?? ""}
+                  onSaved={(m) => patchLocal(q.id, m)}
+                />
+              )}
             </section>
           )}
           {open && idx !== qs.length - 1 && (
