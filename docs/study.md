@@ -25,6 +25,9 @@ The scheduler is a pure function (`packages/fsrs`): the same history always prod
 - **Bury until tomorrow** and **Suspend this card** sit under each card in the daily review. A buried card returns at the start of your next day; a suspended one stays out of your queue, due counts and forecast until you press **Bring back** in Settings > Flashcards. Both affect only you.
 - **Leeches.** A card you have forgotten 8 times is a leech. By default you get a warning on the card (from 6 lapses); set **Cards you keep forgetting** to **Suspend it** and the 8th lapse suspends it for you automatically. Adds migration `0010_card_flags` (content).
 
+## Study time
+Progress has a **Study time** section (themed: Game Clock). **Start timer** on a course, then **Stop and log** to save the time (30 seconds or more, rounded to whole minutes); or type minutes and a note. The timer keeps running if you reload the page or close the tab, because its start time is kept in this browser. You see the last 30 days per course, recent entries you can delete, and a CSV download. It is private to you. Useful when an exam asks for training hours or contact hours. Adds migration `0012_study_time` (content).
+
 ## Progress
 `GET /analytics?archive=&days=` summarises your closed attempts (practice, timed and exam) over the last 7 to 365 days:
 

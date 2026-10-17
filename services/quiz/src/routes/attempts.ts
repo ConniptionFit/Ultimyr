@@ -95,6 +95,7 @@ export function attemptRoutes(ctx: Ctx) {
     startedAt: a.started_at,
     deadlineAt: a.deadline_at,
     extraTimePct: a.extra_time_pct,
+    calculator: !!a.calculator,
     submittedAt: a.submitted_at,
     profile: { id: a.profile_id, name: a.profile_snapshot?.name, fidelity: a.profile_snapshot?.fidelity },
     ...(a.status === "in_progress"
@@ -175,9 +176,9 @@ export function attemptRoutes(ctx: Ctx) {
 
       await tx(pool, async (c) => {
         await c.query(
-          `INSERT INTO quiz.attempts (id, user_id, item_id, archive_id, mode, profile_id, profile_snapshot, seed, started_at, deadline_at, grace_s, extra_time_pct)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-          [attemptId, a.userId, itemId, it.archiveId, mode, profileRow.id, profile, seed, now, deadline, cfg.grace_s, timed ? body.extraTimePct : 0],
+          `INSERT INTO quiz.attempts (id, user_id, item_id, archive_id, mode, profile_id, profile_snapshot, seed, started_at, deadline_at, grace_s, extra_time_pct, calculator)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          [attemptId, a.userId, itemId, it.archiveId, mode, profileRow.id, profile, seed, now, deadline, cfg.grace_s, timed ? body.extraTimePct : 0, !!cfg.calculator],
         );
         for (const [ord, q] of chosen.entries()) {
           const snap: Snap = { id: q.id, type: q.type, weight: q.weight, domain: q.domain, isPretest: q.is_pretest, payload: q.payload, key: q.answer_key, stem: q.stem, explanation: q.explanation } as Snap;

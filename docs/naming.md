@@ -46,6 +46,7 @@ Ultimyr has two name sets for the same things. **Plain names** (Course, Study gu
 | Search notes | Scan | Search your own notes for a course | Scan, reveals a chosen area of the map |
 | Offline reading | Backpack | Keep a copy of a guide or deck to read without a connection | Backpack, items a hero carries without equipping |
 | Copy a roadmap from another course | Tempest Double | Copy a roadmap | Arc Warden's Tempest Double, a copy that carries the original's items and abilities |
+| Study time | Game Clock | A log of the time you have spent studying, with a timer | Game Clock, the match timer in the Dota 2 HUD that counts elapsed time (Liquipedia: Time of Day) |
 | Glossary | Compendium | Terms and acronyms of a course with short definitions | The Compendium, Valve's interactive companion and reference book for The International |
 | Jump to any page or course by typing | Boots of Travel | Quick jump | The Boots of Travel item, which teleports you to any allied unit or building on the map |
 

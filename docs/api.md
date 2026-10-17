@@ -180,7 +180,7 @@ Scopes: reads need `quiz:read`, writes (including taking an attempt) need `quiz:
 | GET, POST | `/quizzes/:itemId/questions` | List (with keys and drafts) or add one. Body: `type`, `stem`, `payload`, `key`, optional `explanation`, `difficulty`, `domain`, `weight`, `isPretest`, `source`, `status`. `ai` and `mcp` sources default to `draft`. |
 | POST | `/quizzes/:itemId/questions/bulk` | `{ questions: [...] }`, up to 200, all or nothing. Errors name the failing `index`. |
 | GET, PATCH, DELETE | `/questions/:id` | To change `type`, `payload` or `key`, send all three together. |
-| GET, PUT | `/quizzes/:itemId/config` | `mode`, `timeLimitSeconds`, `questionCount`, `shuffleQuestions`, `shuffleOptions`, `scoringProfileId`, `graceSeconds`. GET is open to anyone who may attempt (no keys). |
+| GET, PUT | `/quizzes/:itemId/config` | `mode`, `timeLimitSeconds`, `questionCount`, `shuffleQuestions`, `shuffleOptions`, `scoringProfileId`, `graceSeconds`, `calculator` (offer an on-screen calculator). GET is open to anyone who may attempt (no keys). |
 
 ## Scoring profiles
 | Method | Path | Notes |
@@ -296,6 +296,10 @@ Scopes: reads `content:read`, reviews and settings `content:write`. Only publish
 | GET | `/study/activity?archive=&days=` | Flashcard reviews per UTC day, `activity: [{date, reviews}]`, days with none left out (default 84 days, 7 to 366). |
 | GET | `/study/stats?archive=&deck=` | `learning`, `review`, `dueNow`, `reviewedToday`, `retentionBp`, `forecast` (7 days). |
 | GET, PUT | `/study/settings` | `desiredRetention` (0.7 to 0.99), `newPerDay` (0 to 500) and `leechSuspend` (suspend a card for you after you forget it 8 times, default false). |
+| POST | `/study/time` | `{ archiveId, minutes: 1..1440, day? (YYYY-MM-DD, not in the future), note?, source: timer\|manual, tz? }`. Add to your own study time log. 404 if you cannot read the course. |
+| GET | `/study/time?archive=&days=&tz=` | Your study time for the last `days` (default 30): `totalMinutes`, `byDay`, `byCourse` and the latest 50 `entries`. |
+| DELETE | `/study/time/:id` | Delete one of your own entries. |
+| GET | `/study/time/export` | Your whole log as CSV (`date, course, minutes, note, source`); cells starting with `=`, `+`, `-` or `@` get a leading apostrophe. |
 | POST | `/study/cards/:id/suspend` | `{ suspended: boolean }`. Hides the card from your queue, due counts and forecast until you bring it back. Only you are affected. 404 if you cannot read the card. |
 | POST | `/study/cards/:id/bury` | `{ tz? }`. Hides the card until the start of tomorrow in that time zone. |
 | GET | `/study/suspended` | Your suspended cards (`id, front, deckId, deck, course, lapses`), up to 500. |

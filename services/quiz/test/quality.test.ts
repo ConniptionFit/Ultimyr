@@ -64,3 +64,24 @@ describe.skipIf(!testDbUrl)("question reports and item analysis", () => {
     expect(json(await call(author, "GET", `/v1/quizzes/${item}/reports?status=resolved`)).reports[0]).toMatchObject({ resolution: "Fixed" });
   });
 });
+
+describe.skipIf(!testDbUrl)("calculator setting", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+  it("is off by default, can be turned on per quiz and is copied onto the attempt", async () => {
+    const u = uuid();
+    const item = uuid();
+    h.access.set(`${u}:${item}`, { kind: "quiz", archiveId: uuid(), status: "published", canAttempt: true, canWrite: true });
+    const call = async (method: string, url: string, payload?: unknown) => h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId: u }), ...(payload !== undefined ? { payload: payload as any } : {}) });
+    await call("POST", `/v1/quizzes/${item}/questions`, mcq("Q"));
+    expect(JSON.parse((await call("GET", `/v1/quizzes/${item}/config`)).body).calculator).toBe(false);
+    expect(JSON.parse((await call("POST", `/v1/quizzes/${item}/attempts`, {})).body).calculator).toBe(false);
+    expect(JSON.parse((await call("PUT", `/v1/quizzes/${item}/config`, { calculator: true })).body).calculator).toBe(true);
+    const at = JSON.parse((await call("POST", `/v1/quizzes/${item}/attempts`, { restart: true })).body);
+    expect(at.calculator).toBe(true);
+    expect(JSON.parse((await call("GET", `/v1/attempts/${at.id}`)).body).calculator).toBe(true);
+  });
+});
