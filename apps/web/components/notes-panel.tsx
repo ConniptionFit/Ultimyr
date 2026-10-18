@@ -155,7 +155,7 @@ export function NotesPanel() {
         {!conn && error && (
           <div role="alert" className="space-y-2 rounded-md border border-line p-3 text-sm">
             <p>The Obsidian settings could not load. Your notes in Ultimyr still work.</p>
-            <p className="text-muted">An administrator can see why with <code>docker compose logs --tail 60 notes api</code>.</p>
+            <p className="text-muted">An administrator can see why with <code>docker compose logs --tail 60 api</code>.</p>
             <button type="button" className="rounded-md border border-line px-3 py-1" onClick={() => { setError(null); void load(); }}>Try again</button>
           </div>
         )}

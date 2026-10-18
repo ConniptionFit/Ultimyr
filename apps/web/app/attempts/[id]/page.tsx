@@ -446,7 +446,7 @@ export default function AttemptPage() {
                   ))}
                 </div>
               )}
-              <QuestionView key={q.id} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
+              <QuestionView key={`question-${q.id}`} q={q} disabled={closed || !!q.feedback} onChange={(r) => answer(q.id, r)} />
               {q.feedback && <FeedbackView q={q} fb={q.feedback} />}
               <div className="mt-6 flex flex-wrap items-center gap-2">
                 <Button variant="quiet" disabled={idx === 0} onClick={() => go(idx - 1)}>
@@ -478,7 +478,7 @@ export default function AttemptPage() {
               </div>
               {(closed || at.mode === "practice") && (
                 <QuestionMarks
-                  key={q.id}
+                  key={`marks-${q.id}`}
                   questionId={q.id}
                   bookmarked={!!q.bookmarked}
                   note={q.note ?? ""}

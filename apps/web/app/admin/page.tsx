@@ -91,7 +91,7 @@ export default function General() {
         </p>
       </Card>
 
-      <Card title={t("services")} hint="Whether each part of Ultimyr answers its health check. Anything red usually means its container is stopped or its database is unreachable: run docker compose logs <name>.">
+      <Card title={t("services")} hint="Whether each part of Ultimyr answers its health check. Anything red usually means that service stopped or its database is unreachable: run docker compose logs api.">
         {services ? (
           <ul className="space-y-1 text-sm">
             {services.map((x) => (

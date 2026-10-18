@@ -65,7 +65,7 @@ export default function AdminNotes() {
           </p>
           {!info.keyPresent && (
             <p role="alert" className="text-sm text-danger">
-              The encryption key is missing, so notes cannot work yet. Run <code>./scripts/init-secrets.sh</code> on the server, then <code>docker compose up -d notes</code>. The same key protects people&apos;s saved AI keys.
+              The encryption key is missing, so notes cannot work yet. Run <code>./scripts/init-secrets.sh</code> on the server, then <code>docker compose up -d api</code>. The same key protects people&apos;s saved AI keys.
             </p>
           )}
           {info.canEdit ? (
