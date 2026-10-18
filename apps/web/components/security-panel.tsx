@@ -14,6 +14,14 @@ interface MfaState {
 }
 interface Passkey { id: string; name: string; backedUp: boolean; createdAt: string; lastUsedAt: string | null }
 interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; expiresAt: string | null; revokedAt: string | null; lastUsedAt: string | null }
+/** "Chrome on Windows" from a raw user agent, so the list reads as devices and not as header text. */
+function deviceName(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : null;
+  const os = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : null;
+  return browser && os ? `${browser} on ${os}` : (browser ?? os ?? ua.slice(0, 40));
+}
+
 interface SessionRow { id: string; current: boolean; userAgent: string | null; ip: string | null; createdAt: string; lastSeenAt: string | null }
 
 const SCOPE_CHOICES = ["content:read", "content:write", "content:share", "quiz:read", "quiz:write", "ai:use", "notes:use"];
@@ -227,7 +235,7 @@ export function SecurityPanel() {
           {sessions.map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-3 p-3">
               <span>
-                {s.userAgent?.slice(0, 60) ?? "Unknown device"} {s.current && <strong>(this one)</strong>}
+                {deviceName(s.userAgent)} {s.current && <strong>(this one)</strong>}
                 <span className="block text-muted">{s.ip ?? "unknown IP"} · since {when(s.createdAt)}</span>
               </span>
               {!s.current && <Button variant="quiet" onClick={run(() => api("DELETE", `me/sessions/${s.id}`))}>Sign out</Button>}

@@ -237,16 +237,16 @@ function ShareToggle({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const { t } = useNaming();
   return (
-    <div className="w-full">
+    <>
       <Button variant="quiet" onClick={() => setOpen(!open)}>
         {t("share")}…
       </Button>
       {open && (
-        <div className="mt-3">
+        <div className="order-last w-full">
           <SharePanel base={`items/${id}`} />
         </div>
       )}
-    </div>
+    </>
   );
 }
 

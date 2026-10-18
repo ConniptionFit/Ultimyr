@@ -134,7 +134,7 @@ export default function AboutThisApp() {
         )}
         {u.status === "behind" && (
           <p className="text-sm text-muted">
-            To update, run <code className="rounded bg-surface px-1 py-0.5">git pull &amp;&amp; docker compose up -d --build</code> on the server.
+            To update, run <code className="rounded bg-surface px-1 py-0.5">docker compose pull &amp;&amp; docker compose up -d</code> on the server.
           </p>
         )}
         <div className="flex items-center gap-3">

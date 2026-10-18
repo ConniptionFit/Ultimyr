@@ -82,6 +82,11 @@ function ExamDay() {
   const load = useCallback(async () => {
     if (!archiveId) return;
     setError(null);
+    if (!date) {
+      setPlan(null);
+      setError("Add an exam date to see your plan.");
+      return;
+    }
     try {
       const q = new URLSearchParams({ archive: archiveId, minutes: String(minutes), mode: credential?.examMode ?? "unknown", today: todayIso() });
       if (date) q.set("examDate", date);
