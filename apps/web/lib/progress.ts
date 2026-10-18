@@ -31,7 +31,7 @@ export interface StudyCard {
 }
 export interface StudyQueue {
   settings: { desiredRetention: number; newPerDay: number; leechSuspend?: boolean };
-  counts: { due: number; new: number; newAllowanceLeft: number };
+  counts: { due: number; new: number; aheadDays?: number; newAllowanceLeft: number };
   cards: StudyCard[];
 }
 

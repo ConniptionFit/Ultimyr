@@ -21,6 +21,34 @@ const RATINGS = [
   { n: 4, label: "Easy", hint: "rateEasy" },
 ] as const;
 
+interface CardHistory {
+  schedule: { reps: number; lapses: number; stabilityDays: number; difficulty: number; due: string; recallChance: number | null } | null;
+  reviews: { rating: number; wasNew: boolean; daysSincePrevious: number | null; scheduledDays: number; at: string }[];
+}
+const RATING_NAME = ["", "Again", "Hard", "Good", "Easy"];
+
+/** What the scheduler knows about one card, so a card that keeps coming back can be understood. */
+function CardInfo({ h }: { h: CardHistory }) {
+  if (!h.schedule) return <p className="text-xs text-muted">You have not reviewed this card yet.</p>;
+  const sc = h.schedule;
+  return (
+    <div className="space-y-2 rounded-md bg-surface p-3 text-xs text-muted">
+      <p>
+        Seen {sc.reps} times, forgotten {sc.lapses}. Memory lasts about {sc.stabilityDays} days. Difficulty {sc.difficulty} of 10.
+        {sc.recallChance !== null ? ` Chance you remember it now: ${Math.round(sc.recallChance * 100)}%.` : ""} Next due {new Date(sc.due).toLocaleDateString()}.
+      </p>
+      <ul className="max-h-32 space-y-0.5 overflow-auto">
+        {h.reviews.map((r) => (
+          <li key={r.at}>
+            {new Date(r.at).toLocaleDateString()} · {RATING_NAME[r.rating]}
+            {r.wasNew ? " (first time)" : r.daysSincePrevious !== null ? ` after ${r.daysSincePrevious} days` : ""} · next in {r.scheduledDays} days
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** The spaced-repetition queue: due cards first, then new ones. Used by the Study page and inside a path step. */
 export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }: { archive: string | null; deck: string | null; embedded?: boolean; onCaughtUp?: () => void }) {
   const { state, api } = useAuth();
@@ -34,6 +62,9 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   const [notes, setNotes] = useState<ReviewNote[]>([]);
   const [last, setLast] = useState<{ card: StudyCard; reviewId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // "Study ahead" pulls in cards due within the next few days, for the stretch before an exam.
+  const [ahead, setAhead] = useState(0);
+  const [info, setInfo] = useState<CardHistory | "loading" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
   // "Type the answer" is a per-browser choice: it asks you to recall before you peek.
@@ -52,7 +83,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   };
 
   const load = useCallback(async () => {
-    const qs = [archive && `archive=${archive}`, deck && `deck=${deck}`].filter(Boolean).join("&");
+    const qs = [archive && `archive=${archive}`, deck && `deck=${deck}`, ahead && `ahead=${ahead}`].filter(Boolean).join("&");
     try {
       const q = await api<StudyQueue>("GET", `study/queue${qs ? `?${qs}` : ""}`);
       setQueue(q.cards);
@@ -62,7 +93,17 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
     } catch {
       setError("Could not load your cards.");
     }
-  }, [api, archive, deck]);
+  }, [api, archive, deck, ahead]);
+
+  async function showInfo(id: string) {
+    setInfo("loading");
+    try {
+      setInfo(await api<CardHistory>("GET", `study/cards/${id}/history`));
+    } catch {
+      setInfo(null);
+      setError("Could not load that card's history.");
+    }
+  }
 
   useEffect(() => {
     if (state.status === "anonymous") router.replace("/login");
@@ -208,12 +249,18 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                 {counts && counts.newAllowanceLeft === 0 ? "You have reached today's limit of new cards. " : ""}
                 Cards come back when it is time to see them again.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={() => router.push(`/progress${archive ? `?archive=${archive}` : ""}`)}>See progress</Button>
                 <Button variant="quiet" onClick={load}>
                   Check again
                 </Button>
+                {[3, 7].filter((d) => d > ahead).map((d) => (
+                  <Button key={d} variant="quiet" onClick={() => setAhead(d)}>
+                    Study ahead {d} days
+                  </Button>
+                ))}
               </div>
+              {ahead > 0 && <p className="text-xs text-muted">Studying ahead looks {ahead} days forward. Cards reviewed early are rescheduled as usual, so nothing is lost.</p>}
             </div>
           ) : (
             <section aria-label="Flashcard" className="space-y-4">
@@ -296,7 +343,12 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
                 <button onClick={() => hide("suspend")} className="underline">
                   Suspend this card
                 </button>
+                <button onClick={() => (info ? setInfo(null) : void showInfo(card.id))} className="underline" aria-expanded={info !== null}>
+                  Card info
+                </button>
               </p>
+              {info === "loading" && <p className="text-xs text-muted">Loading</p>}
+              {info && info !== "loading" && <CardInfo h={info} />}
             </section>
           )}
     </div>
