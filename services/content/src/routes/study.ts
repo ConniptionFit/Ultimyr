@@ -1,4 +1,4 @@
-import { DEFAULT_W, State, newCard, preview, review, type CardState, type Params, type Rating } from "@ultimyr/fsrs";
+import { DEFAULT_W, State, newCard, nextInterval, preview, retrievability, review, type CardState, type Params, type Rating } from "@ultimyr/fsrs";
 import { HttpError, parse, resolveZone, uuidv7 } from "@ultimyr/service-kit";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -12,6 +12,8 @@ const queueQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   /** IANA time zone, so the daily new-card allowance resets at the person's own midnight. */
   tz: z.string().max(64).optional(),
+  /** Also include cards that fall due within this many days ("study ahead"). New cards are left out when set. */
+  ahead: z.coerce.number().int().min(0).max(30).default(0),
 });
 const reviewBody = z.object({
   cardId: z.uuid(),
@@ -30,6 +32,9 @@ const suspendBody = z.object({ suspended: z.boolean() });
 const buryBody = z.object({ tz: z.string().max(64).optional() });
 
 type Row = Record<string, any>;
+
+/** Reviews per day to keep these cards at `retention`: each is seen about once per interval. */
+export const workload = (stabilities: number[], retention: number) => stabilities.reduce((sum, st) => sum + 1 / nextInterval(st, retention), 0);
 const toState = (r: Row): CardState => ({
   state: r.state as State,
   stability: r.stability,
@@ -126,12 +131,12 @@ export function studyRoutes(ctx: Ctx) {
         `WITH ${ACC}, readable AS (${READABLE})
          SELECT r.*, st.state, st.stability, st.difficulty, st.reps, st.lapses, st.last_review, st.due
            FROM readable r JOIN content.srs_state st ON st.card_id = r.id AND st.user_id = $1
-          WHERE st.due <= $5 AND ${AWAKE("r.id")} ORDER BY st.due LIMIT $6`,
-        [...base, q.limit],
+          WHERE st.due <= $7 AND ${AWAKE("r.id")} ORDER BY st.due LIMIT $6`,
+        [...base, q.limit, new Date(now.getTime() + q.ahead * 86_400_000)],
       );
       const zone = await resolveZone(pool, q.tz);
       const { rows: today } = await pool.query("SELECT count(*)::int AS n FROM content.srs_reviews WHERE user_id = $1 AND state_before = 0 AND reviewed_at >= date_trunc('day', $2::timestamptz AT TIME ZONE $3) AT TIME ZONE $3", [a.userId, now, zone]);
-      const room = Math.max(0, Math.min(s.newPerDay - today[0].n, q.limit - due.length));
+      const room = q.ahead ? 0 : Math.max(0, Math.min(s.newPerDay - today[0].n, q.limit - due.length));
       const { rows: fresh } = room
         ? await pool.query(
             `WITH ${ACC}, readable AS (${READABLE})
@@ -143,7 +148,7 @@ export function studyRoutes(ctx: Ctx) {
       const nowMs = now.getTime();
       return {
         settings: s,
-        counts: { due: due.length, new: fresh.length, newAllowanceLeft: Math.max(0, s.newPerDay - today[0].n) },
+        counts: { due: due.length, new: fresh.length, aheadDays: q.ahead, newAllowanceLeft: Math.max(0, s.newPerDay - today[0].n) },
         cards: [...due.map((c) => cardOut(c, toState(c), nowMs, p)), ...fresh.map((c) => cardOut(c, newCard(nowMs), nowMs, p))],
       };
     });
@@ -218,6 +223,57 @@ export function studyRoutes(ctx: Ctx) {
         [a.userId],
       );
       return { cards: rows.map((x) => ({ id: x.id, front: x.front, deckId: x.deck_id, deck: x.deck, course: x.course, lapses: x.lapses })) };
+    });
+
+    /**
+     * What your current cards would cost each day at different desired retentions, so the setting can be chosen
+     * with eyes open. Each learned card is reviewed about once per interval, so its daily load is 1 / interval.
+     */
+    r.get("/v1/study/workload", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const q = parse(z.object({ archive: z.uuid().optional() }), req.query);
+      const s = await settings(a.userId);
+      const { rows } = await pool.query(
+        `SELECT st.stability FROM content.srs_state st
+          WHERE st.user_id = $1 AND st.state = ${State.Review} AND st.stability > 0 AND ($2::uuid IS NULL OR st.archive_id = $2)
+            AND NOT EXISTS (SELECT 1 FROM content.card_flags f WHERE f.user_id = st.user_id AND f.card_id = st.card_id AND f.suspended)`,
+        [a.userId, q.archive ?? null],
+      );
+      const stabilities = rows.map((x) => Number(x.stability));
+      const options = [0.8, 0.85, 0.9, 0.95].map((retention) => ({ retention, reviewsPerDay: Math.round(workload(stabilities, retention) * 10) / 10 }));
+      if (!options.some((o) => o.retention === s.desiredRetention)) options.push({ retention: s.desiredRetention, reviewsPerDay: Math.round(workload(stabilities, s.desiredRetention) * 10) / 10 });
+      options.sort((x, y) => x.retention - y.retention);
+      return { cards: stabilities.length, current: s.desiredRetention, options };
+    });
+
+    /** One card's schedule and your review history of it, for working out why it keeps coming back. */
+    r.get("/v1/study/cards/:id/history", async (req) => {
+      const a = await ctx.actor(req, "content:read");
+      const { id } = parse(z.object({ id: z.uuid() }), req.params);
+      const card = await readableCard(a, id);
+      const p = params(await settings(a.userId));
+      const { rows: st } = await pool.query("SELECT * FROM content.srs_state WHERE user_id = $1 AND card_id = $2", [a.userId, card.id]);
+      const { rows: rv } = await pool.query(
+        "SELECT rating, state_before, elapsed_days, scheduled_days, duration_ms, reviewed_at FROM content.srs_reviews WHERE user_id = $1 AND card_id = $2 ORDER BY reviewed_at DESC LIMIT 100",
+        [a.userId, card.id],
+      );
+      const nowMs = ctx.now().getTime();
+      const cur = st[0] ? toState(st[0]) : null;
+      return {
+        cardId: card.id,
+        deck: card.deck_title,
+        schedule: cur && {
+          state: cur.state,
+          reps: cur.reps,
+          lapses: cur.lapses,
+          stabilityDays: Math.round(cur.stability * 10) / 10,
+          difficulty: Math.round(cur.difficulty * 10) / 10,
+          due: new Date(cur.due).toISOString(),
+          recallChance: cur.lastReview === null ? null : Math.round(retrievability(cur.stability, (nowMs - cur.lastReview) / 86_400_000) * 1000) / 1000,
+          desiredRetention: p.desiredRetention,
+        },
+        reviews: rv.map((x) => ({ rating: x.rating, wasNew: x.state_before === 0, daysSincePrevious: x.elapsed_days === null ? null : Math.round(x.elapsed_days * 10) / 10, scheduledDays: x.scheduled_days, seconds: Math.round(x.duration_ms / 1000), at: new Date(x.reviewed_at).toISOString() })),
+      };
     });
 
     /** Undo your most recent review of a card: restores the schedule it replaced and removes the log row. */

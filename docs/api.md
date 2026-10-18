@@ -288,9 +288,11 @@ Scopes: reads `content:read`, reviews and settings `content:write`. Only publish
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/study/queue?archive=&deck=&limit=` | Due cards first, then new cards up to today's allowance. Each card carries `next`: what every rating would schedule. |
+| GET | `/study/queue?archive=&deck=&limit=&ahead=` | Due cards first, then new cards up to today's allowance. `ahead` (0 to 30 days) also includes cards due within that many days and leaves new cards out. Each card carries `next`: what every rating would schedule. |
 | POST | `/study/review` | `{ cardId, rating: 1..4, durationMs? }`. Returns `reviewId`, the new `state`, `due`, `scheduledDays`, `lapses`, `leech` (this was the 8th or later lapse) and `suspended` (it was suspended because of that). |
 | POST | `/study/review/undo` | `{ reviewId }`. Restores the schedule the review replaced (or makes a first review new again) and removes it from your history. 404 if it is not your review, 409 `cannot_undo` if the card was reviewed again since or the review predates undo. |
+| GET | `/study/workload?archive=` | Estimated reviews per day for your learned cards at 80%, 85%, 90%, 95% and your current desired retention: `{cards, current, options: [{retention, reviewsPerDay}]}`. |
+| GET | `/study/cards/:id/history` | One card's schedule (`reps`, `lapses`, `stabilityDays`, `difficulty`, `due`, `recallChance`) and your last 100 reviews of it. 404 if you cannot read the card. |
 | GET | `/study/export` | Your own review history as CSV (`reviewed_at, course, deck, card, rating, was_new, scheduled_days, seconds`), newest first, up to 100,000 rows. Cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them. |
 | | `tz` | Every read that counts days (`/study/queue`, `/study/stats`, `/study/activity`, `/analytics`) takes an optional IANA time zone, for example `tz=America/Chicago`, so "today", streaks and the daily new-card limit follow the person's own calendar. Missing or unknown means UTC. |
 | GET | `/study/due` | Cards due now per course, `byCourse: {archiveId: n}`, courses with none left out. |

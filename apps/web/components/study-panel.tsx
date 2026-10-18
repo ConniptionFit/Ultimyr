@@ -27,9 +27,11 @@ export function StudyPanel() {
   const [msg, setMsg] = useState("");
   const [at, setAt] = useState("19:00");
   const [parked, setParked] = useState<Suspended[]>([]);
+  const [load, setLoad] = useState<{ cards: number; options: { retention: number; reviewsPerDay: number }[] } | null>(null);
 
   useEffect(() => {
     api<StudySettings>("GET", "study/settings").then(setS).catch(() => setMsg("Could not load your study settings."));
+    api<NonNullable<typeof load>>("GET", "study/workload").then(setLoad).catch(() => undefined);
     api<{ cards: Suspended[] }>("GET", "study/suspended").then((r) => setParked(r.cards)).catch(() => undefined);
   }, [api]);
 
@@ -78,6 +80,11 @@ export function StudyPanel() {
             onChange={(desiredRetention) => save({ desiredRetention })}
             options={withCurrent<number>([[0.8, "80%"], [0.85, "85%"], [0.9, "90%"], [0.95, "95%"]], s.desiredRetention, (v) => `${Math.round(v * 100)}%`)}
           />
+          {load && load.cards >= 10 && (
+            <p className="text-xs text-muted">
+              For the {load.cards} cards you are learning now, that is about {load.options.map((o) => `${o.reviewsPerDay} reviews a day at ${Math.round(o.retention * 100)}%`).join(", ")}. New cards add to this.
+            </p>
+          )}
           <Choice<string>
             legend="Cards you keep forgetting"
             hint="A card you have forgotten 8 times is probably worded badly. Suspend it for you so it stops draining your reviews, then rewrite it or ask the author."

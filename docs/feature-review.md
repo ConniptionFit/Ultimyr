@@ -13,6 +13,9 @@ Ultimyr is reviewed against how people actually prepare for certifications elsew
 | Flashcards with spaced repetition | FSRS daily review, undo, deck CSV (Anki, Quizlet text) import and export | Built |
 | Cloze cards, suspend, bury, leeches | Daily review | Added in batch 1 |
 | Typed-answer recall | Daily review, Type the answer | Added in batch 3 |
+| Review ahead of schedule (exam crunch) | Daily review, Study ahead | Added in batch 4 |
+| Why does this card keep coming back | Daily review, Card info | Added in batch 4 |
+| Cost of a higher retention target | Settings > Flashcards, workload line | Added in batch 4 |
 | Glossary and acronyms | Glossary tab | Added in batch 1 |
 | Practice questions in every exam format | Single, multiple, fill-in, drag and drop, scenario | Built |
 | Practice, timed and exam modes with a server clock | Quiz settings, attempts | Built |
@@ -48,6 +51,8 @@ Ultimyr is reviewed against how people actually prepare for certifications elsew
 1. **Flashcards and practice depth:** cloze deletion, suspend, bury, leeches; bookmarks, private notes, topic drills; confidence, rule-out, scratchpad; glossary.
 2. **Question quality and exam realism:** reports and item analysis, diagnostic drill, study time log, calculator, blueprint-weighted mock exam.
 3. **Recall and wrap-up:** type-the-answer cards, then a second research pass. Offline use, flags for review, calendar export and CSV deck import were already built; the remaining gaps are listed above with reasons.
+
+4. **Scheduler transparency (second round):** study ahead (Anki's review-ahead custom study), card info (Anki's card info), and a workload preview for the retention setting (a light take on the FSRS desired-retention simulator). Sources: the FSRS4Anki wiki on optimal retention and simulation, and Pluralsight's help pages for retake and readiness practices (already covered by the diagnostic and goals).
 
 ## Verdict
 After three batches the platform covers the full cycle on a single install: learn (roadmaps, guides, videos, glossary), memorise (FSRS flashcards with cloze, typing, suspend and bury), practise (every question format, drills, diagnostic, confidence, reports), rehearse (blueprint-weighted mock exams, calculator, extra time), track (readiness, coverage, study hours, credentials and renewals) and plan the exam day. It does not depend on one vendor's exam style, so the same flow works for cloud, security, project management, networking, IT and other certifications. The feature add task is considered complete; new ideas go through the same review.

@@ -243,3 +243,56 @@ describe.skipIf(!testDbUrl)("review history export", () => {
     expect((await call(bob, "GET", "/v1/study/export")).body.trim().split("\n")).toHaveLength(1);
   });
 });
+
+describe.skipIf(!testDbUrl)("study ahead, workload and card history", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+  afterAll(() => h.close());
+  const alice = uuid();
+  const bob = uuid();
+  const call = async (u: string, method: string, url: string, payload?: unknown) => h.app.inject({ method: method as any, url, headers: await h.issuer.bearer({ userId: u }), ...(payload !== undefined ? { payload: payload as any } : {}) });
+  const json = (r: { body: string }) => JSON.parse(r.body);
+
+  async function reviewed(n: number) {
+    h.clock.now = new Date("2026-10-04T12:00:00Z");
+    const archive = json(await call(alice, "POST", "/v1/archives", { title: "Ahead" })).id;
+    const deck = json(await call(alice, "POST", `/v1/archives/${archive}/items`, { kind: "deck", title: "D", cards: Array.from({ length: n }, (_, i) => ({ front: `Q${i}`, back: `A${i}` })) })).id;
+    const cards = json(await call(alice, "GET", `/v1/items/${deck}`)).cards as { id: string }[];
+    for (const c of cards) await call(alice, "POST", "/v1/study/review", { cardId: c.id, rating: 3 });
+    return { archive, cards };
+  }
+
+  it("studies ahead without adding new cards", async () => {
+    const { archive } = await reviewed(2);
+    expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}`)).cards).toHaveLength(0);
+    const ahead = json(await call(alice, "GET", `/v1/study/queue?archive=${archive}&ahead=7`));
+    expect(ahead.cards).toHaveLength(2);
+    expect(ahead.counts).toMatchObject({ due: 2, new: 0, aheadDays: 7 });
+    expect(json(await call(alice, "GET", `/v1/study/queue?archive=${archive}&ahead=2`)).cards).toHaveLength(0);
+    expect((await call(alice, "GET", `/v1/study/queue?ahead=99`)).statusCode).toBe(400);
+  });
+
+  it("estimates the daily load at several retentions, higher retention costing more", async () => {
+    const { archive } = await reviewed(2);
+    const w = json(await call(alice, "GET", `/v1/study/workload?archive=${archive}`));
+    expect(w.cards).toBe(2);
+    expect(w.current).toBe(0.9);
+    const by = Object.fromEntries(w.options.map((o: any) => [o.retention, o.reviewsPerDay]));
+    expect(by[0.95]).toBeGreaterThanOrEqual(by[0.9]);
+    expect(by[0.9]).toBeGreaterThanOrEqual(by[0.8]);
+    expect(json(await call(bob, "GET", "/v1/study/workload")).cards).toBe(0);
+  });
+
+  it("shows one card's schedule and history to its owner only", async () => {
+    const { cards } = await reviewed(1);
+    h.clock.now = new Date("2026-10-07T12:00:00Z");
+    await call(alice, "POST", "/v1/study/review", { cardId: cards[0]!.id, rating: 1 });
+    const hist = json(await call(alice, "GET", `/v1/study/cards/${cards[0]!.id}/history`));
+    expect(hist.schedule).toMatchObject({ reps: 2, lapses: 1 });
+    expect(hist.reviews.map((r: any) => r.rating)).toEqual([1, 3]);
+    expect(hist.reviews[1].wasNew).toBe(true);
+    expect(json(await call(bob, "GET", `/v1/study/cards/${cards[0]!.id}/history`)).error).toBeDefined();
+  });
+});

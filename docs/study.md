@@ -26,6 +26,11 @@ The scheduler is a pure function (`packages/fsrs`): the same history always prod
 - **Bury until tomorrow** and **Suspend this card** sit under each card in the daily review. A buried card returns at the start of your next day; a suspended one stays out of your queue, due counts and forecast until you press **Bring back** in Settings > Flashcards. Both affect only you.
 - **Leeches.** A card you have forgotten 8 times is a leech. By default you get a warning on the card (from 6 lapses); set **Cards you keep forgetting** to **Suspend it** and the 8th lapse suspends it for you automatically. Adds migration `0010_card_flags` (content).
 
+## Study ahead, card info and workload
+- **Study ahead.** When nothing is due, the daily review offers **Study ahead 3 days** and **7 days**. It lists cards that fall due in that window (no new cards) so you can cram before an exam. Each is rescheduled by its actual elapsed time, so reviewing early never breaks the schedule. API: `GET /study/queue?ahead=7`.
+- **Card info.** Under each card, **Card info** shows how often you have seen and forgotten it, how long the memory is expected to last, its difficulty, your chance of remembering it now, when it is next due and your last reviews of it. Useful for working out why a card keeps coming back. API: `GET /study/cards/:id/history`.
+- **Workload preview.** In Settings > Flashcards, under the retention choice, a line says roughly how many reviews a day your current cards need at 80%, 85%, 90% and 95%, so you can see what a higher target costs before choosing it. It assumes each card is seen about once per interval and leaves out new cards. Shown once you have 10 learned cards. API: `GET /study/workload`. No migrations.
+
 ## Study time
 Progress has a **Study time** section (themed: Game Clock). **Start timer** on a course, then **Stop and log** to save the time (30 seconds or more, rounded to whole minutes); or type minutes and a note. The timer keeps running if you reload the page or close the tab, because its start time is kept in this browser. You see the last 30 days per course, recent entries you can delete, and a CSV download. It is private to you. Useful when an exam asks for training hours or contact hours. Adds migration `0012_study_time` (content).
 
