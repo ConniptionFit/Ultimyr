@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/svg/logo-horizontal-dark.svg">
+    <img src="branding/svg/logo-horizontal-light.svg" alt="Ultimyr" height="96">
+  </picture>
+</p>
+
 # Ultimyr
 
 An AI-first learning and certification platform: study guides, flashcards and exam-accurate practice tests, behind a quiet, minimalist interface. Strictly non-monolithic and Docker-first.
