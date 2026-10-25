@@ -85,7 +85,7 @@ main:focus { outline: none; }
 /* Phones and tablets: bigger touch targets, no iOS zoom-on-focus, nothing wider than the screen. */
 html { -webkit-text-size-adjust: 100%; }
 body { overflow-wrap: anywhere; overflow-x: hidden; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
-img, svg, video { max-width: 100%; }
+img, svg, video, select { max-width: 100%; }
 @media (pointer: coarse) {
   button, [role="button"], select, summary { min-height: 2.5rem; }
   input:not([type="radio"]):not([type="checkbox"]), select, textarea { min-height: 2.5rem; }
