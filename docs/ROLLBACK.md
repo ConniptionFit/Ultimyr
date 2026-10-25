@@ -40,3 +40,23 @@ Last migration at the revert point: `services/content/migrations/0009_review_und
 |---|---|---|---|
 | `0007_refresh_grace` | auth | Adds `auth.sessions.rotated_at` (the refresh grace window) | None needed. Old code ignores the column. |
 | `0008_curriculum_admin_role` | auth | Replaces the Access delegate role with Curriculum admin and moves its people | `UPDATE auth.role_assignments SET role = 'access_delegate' WHERE role = 'curriculum_admin';` then restore the old constraint: `ALTER TABLE auth.role_assignments DROP CONSTRAINT role_assignments_role_check; ALTER TABLE auth.role_assignments ADD CONSTRAINT role_assignments_role_check CHECK (role IN ('platform_admin','org_admin','author','learner','access_delegate'));` |
+
+# Improvement run (2026-10-25)
+
+A six-hour improvement run started from `main` at commit **`a4a868e`** ("Add logo set and branding guide (#117)").
+
+| Marker | What it is |
+|---|---|
+| Branch `revert/pre-improvement-2026-10-25` | Pushed to both remotes at that commit. Never changes. |
+
+Last migrations at the revert point: auth `0008_curriculum_admin_role`, content `0012_study_time`, notes `0003_local_notes`, quiz `0009_mock_exams`. Any migration added after this run is listed below with a manual undo.
+
+To go back, check out the branch, or open a revert PR instead of resetting `main`:
+```sh
+git checkout -b revert-improvement origin/main
+git revert --no-commit a4a868e..origin/main
+git commit -m "Revert improvement run"
+```
+
+| Migration | Service | What it does | Manual undo |
+|---|---|---|---|

@@ -143,6 +143,7 @@
 - **New: study ahead, card info and a retention workload preview.** When no flashcards are due, **Study ahead 3 or 7 days** lists what is coming up (no new cards) for an exam crunch; early reviews reschedule normally. **Card info** under each card shows its stability, difficulty, chance of recall now, next due date and your review history. Settings > Flashcards shows roughly how many reviews a day your cards need at 80% to 95% retention. New routes `GET /study/workload` and `GET /study/cards/:id/history`, and an `ahead` option on `GET /study/queue`. No migrations. See docs/study.md.
 - **Fixed: quiz questions no longer pile up on screen.** In practice mode and on results, the question and its answer options appeared again every second (two siblings shared one React key). Each question now shows once.
 - **Changed: copy and screens match the two-container setup.** Admin hints and notes errors now point at `docker compose logs api` and `docker compose pull && docker compose up -d` instead of the old per-service containers and database container. Signed-in devices read "Chrome on Windows" instead of a cut-off browser string, Share and Delete sit on one row under a quiz or lesson, and the exam countdown no longer makes a failing request before you pick a date.
+- **Rollback point for the 2026-10-25 improvement run:** branch `revert/pre-improvement-2026-10-25` at `a4a868e`, documented in `docs/ROLLBACK.md`.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
