@@ -196,9 +196,9 @@ export default function ReadingRoom() {
                 <ul className="grid gap-3 sm:grid-cols-2">
                   {shownArchives.length === 0 && <li className="text-muted">Nothing matches “{filter.trim()}”.</li>}
                   {shownArchives.map((a) => (
-                    <li key={a.id}>
+                    <li key={a.id} className="min-w-0">
                       <Link href={`/archives/${a.id}`} className="flex h-full gap-3 rounded-md border border-line p-4 hover:bg-surface">
-                        <span className="mt-0.5 text-accent">
+                        <span className="mt-0.5 shrink-0 text-accent">
                           <ArchiveIcon pngUrl={a.icon.url} fallback={iconFor(a.icon.name)} size={28} />
                         </span>
                         <span className="min-w-0">
