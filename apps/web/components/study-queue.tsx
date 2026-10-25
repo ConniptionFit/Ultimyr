@@ -202,7 +202,7 @@ export function StudyQueuePanel({ archive, deck, embedded = false, onCaughtUp }:
   if (!queue) return error ? <p role="alert">{error}</p> : <Loading />;
   return (
     <div className="ulti-fade space-y-6">
-          <div className="flex items-baseline justify-between">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             {embedded ? <h3 className="text-lg">{t("queue")}</h3> : <h1 className="text-3xl">{t("queue")}</h1>}
             <div className="flex items-center gap-3">
               <p className="text-sm text-muted">
