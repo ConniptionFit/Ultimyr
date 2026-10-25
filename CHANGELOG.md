@@ -149,6 +149,7 @@
 - **New: score trend on every quiz.** Under Your attempts, a quiz with two or more finished attempts shows your latest score, how it compares with the attempt before, your best, and a small bar chart of the last ten. No migrations.
 - **Fixed: bad list parameters no longer cause server errors.** `GET /v1/admin/users` and `GET /v1/admin/audit` answered 500 to values such as `limit=-1`; they now answer 400 with the usual validation message.
 - **Fixed: two phone layout slips.** The Publish button on a draft banner no longer breaks into "Publi / sh", and the audit log keeps each word in the Action and Address columns together (the table scrolls sideways instead of squeezing them).
+- **Fixed: Daily review heading no longer touches its counter** on narrow screens ("Daily review0 done"). The counter wraps below the title when there is no room.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
