@@ -132,14 +132,15 @@ export function adminRoutes(ctx: Ctx) {
     // ---- users ------------------------------------------------------------
     r.get("/v1/admin/users", async (req, reply) => {
       await ctx.requireAdmin(req);
-      const q = z
-        .object({
+      const q = parse(
+        z.object({
           q: z.string().max(100).optional(),
           limit: z.coerce.number().int().min(1).max(10000).optional(),
           offset: z.coerce.number().int().min(0).default(0),
           format: z.enum(["json", "csv"]).default("json"),
-        })
-        .parse(req.query);
+        }),
+        req.query,
+      );
       if (q.format === "json" && (q.limit ?? 50) > 200) throw new HttpError(400, "limit_too_large");
       const limit = q.limit ?? (q.format === "csv" ? 10000 : 50);
       const where = q.q ? or(ilike(users.email, `%${q.q}%`), ilike(users.displayName, `%${q.q}%`)) : undefined;
@@ -353,14 +354,15 @@ export function adminRoutes(ctx: Ctx) {
     // ---- audit log --------------------------------------------------------
     r.get("/v1/admin/audit", async (req, reply) => {
       await ctx.requireAdmin(req);
-      const q = z
-        .object({
+      const q = parse(
+        z.object({
           limit: z.coerce.number().int().min(1).max(5000).default(100),
           action: z.string().max(80).optional(),
           before: z.coerce.number().int().positive().optional(),
           format: z.enum(["json", "csv"]).default("json"),
-        })
-        .parse(req.query);
+        }),
+        req.query,
+      );
       if (q.format === "json" && q.limit > 500) throw new HttpError(400, "limit_too_large");
       const rows = await db
         .select()

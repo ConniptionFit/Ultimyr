@@ -4,6 +4,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { BarChart } from "@/components/charts";
 import { Button, Field } from "@/components/ui";
 import { ApiError, useAuth } from "@/lib/auth";
 import { useDisplay } from "@/lib/display";
@@ -149,6 +150,7 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
       {attempts.length > 0 && (
         <div>
           <h2 className="mb-2 text-xl">Your attempts</h2>
+          <ScoreTrend attempts={attempts} />
           <ul className="divide-y divide-line rounded-md border border-line text-sm">
             {attempts.map((a) => (
               <li key={a.id}>
@@ -368,5 +370,24 @@ export function QuizPanel({ itemId, archiveId, editor, published, returnTo }: { 
         </>
       )}
     </section>
+  );
+}
+
+/** Raw score of each finished attempt, oldest first, with how the latest compares. Attempts arrive newest first. */
+function ScoreTrend({ attempts }: { attempts: Attempt[] }) {
+  const scored = attempts.filter((a) => a.status !== "in_progress" && a.result && a.result.rawBp !== null).reverse();
+  if (scored.length < 2) return null;
+  const bps = scored.map((a) => a.result!.rawBp as number);
+  const latest = bps[bps.length - 1]!;
+  const change = latest - bps[bps.length - 2]!;
+  const best = Math.max(...bps);
+  const delta = change === 0 ? "same as the attempt before" : `${change > 0 ? "up" : "down"} ${pct(Math.abs(change))} from the attempt before`;
+  return (
+    <div className="mb-3 space-y-1">
+      <p className="text-sm text-muted">
+        Latest {pct(latest)}, {delta}. Best {pct(best)}.
+      </p>
+      {best > 0 && <BarChart data={scored.map((a, i) => ({ label: `Attempt ${i + 1}`, value: bps[i]! }))} max={10000} label={`Score of your last ${scored.length} attempts, oldest to newest`} />}
+    </div>
   );
 }

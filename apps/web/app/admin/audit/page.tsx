@@ -93,21 +93,21 @@ export default function Audit() {
         <table className="w-full text-left text-xs">
           <thead className="text-muted">
             <tr>
-              <th scope="col" className="p-2 font-normal">When</th>
-              <th scope="col" className="p-2 font-normal">Action</th>
-              <th scope="col" className="p-2 font-normal">Who</th>
-              <th scope="col" className="p-2 font-normal">Target</th>
-              <th scope="col" className="p-2 font-normal">Address</th>
+              <th scope="col" className="whitespace-nowrap p-2 font-normal">When</th>
+              <th scope="col" className="whitespace-nowrap p-2 font-normal">Action</th>
+              <th scope="col" className="whitespace-nowrap p-2 font-normal">Who</th>
+              <th scope="col" className="whitespace-nowrap p-2 font-normal">Target</th>
+              <th scope="col" className="whitespace-nowrap p-2 font-normal">Address</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="whitespace-nowrap p-2">{when(r.ts)}</td>
-                <td className="p-2">{r.action}</td>
+                <td className="whitespace-nowrap p-2">{r.action}</td>
                 <td className="max-w-[10rem] truncate p-2">{r.actorId ?? "system"}</td>
                 <td className="max-w-[10rem] truncate p-2">{r.target ?? ""}</td>
-                <td className="p-2">{r.ip ?? ""}</td>
+                <td className="whitespace-nowrap p-2">{r.ip ?? ""}</td>
               </tr>
             ))}
             {!rows.length && (
