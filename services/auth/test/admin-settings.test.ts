@@ -24,6 +24,14 @@ describe.skipIf(!testDbUrl)("admin general settings", () => {
     expect(denied.statusCode).toBe(403);
   });
 
+  it("answers 400, not 500, to bad list parameters", async () => {
+    const admin = (await register(h.app, "ada@example.com")).json();
+    for (const url of ["/v1/admin/users?limit=-1", "/v1/admin/users?limit=abc", "/v1/admin/audit?limit=0", "/v1/admin/audit?before=x"]) {
+      const res = await h.app.inject({ url, headers: bearer(admin.accessToken) });
+      expect(res.statusCode, url).toBe(400);
+    }
+  });
+
   it("reports counts", async () => {
     const admin = (await register(h.app, "ada@example.com")).json();
     await register(h.app, "bob@example.com");

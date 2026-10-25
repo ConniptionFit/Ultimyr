@@ -160,6 +160,7 @@ export default function ItemPage() {
             <div className="flex items-center justify-between gap-3 rounded-md border border-line p-3 text-sm">
               <span>This is a draft. Publish it when you are happy with it.</span>
               <Button
+                className="shrink-0"
                 onClick={async () => {
                   await api("PATCH", `items/${id}`, { status: "published" }).catch(fail);
                   await load();

@@ -146,6 +146,9 @@
 - **Rollback point for the 2026-10-25 improvement run:** branch `revert/pre-improvement-2026-10-25` at `a4a868e`, documented in `docs/ROLLBACK.md`.
 - **Security: dependency updates.** Next.js 16.4.3 (fixes two critical and one high advisory, including remote code execution in image optimization and `use cache`), Fastify 5.12.6, zod 4.6.6 and patched transitive packages (body-parser, fast-uri, ip-address). `pnpm audit --prod` now reports no known vulnerabilities. No migrations.
 - **Fixed: long course names no longer push phone screens sideways.** On a narrow screen a long course title made its Dashboard card wider than the screen, and the course picker on Progress did the same. No migrations.
+- **New: score trend on every quiz.** Under Your attempts, a quiz with two or more finished attempts shows your latest score, how it compares with the attempt before, your best, and a small bar chart of the last ten. No migrations.
+- **Fixed: bad list parameters no longer cause server errors.** `GET /v1/admin/users` and `GET /v1/admin/audit` answered 500 to values such as `limit=-1`; they now answer 400 with the usual validation message.
+- **Fixed: two phone layout slips.** The Publish button on a draft banner no longer breaks into "Publi / sh", and the audit log keeps each word in the Action and Address columns together (the table scrolls sideways instead of squeezing them).
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.
