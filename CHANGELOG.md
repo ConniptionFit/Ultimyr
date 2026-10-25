@@ -144,6 +144,7 @@
 - **Fixed: quiz questions no longer pile up on screen.** In practice mode and on results, the question and its answer options appeared again every second (two siblings shared one React key). Each question now shows once.
 - **Changed: copy and screens match the two-container setup.** Admin hints and notes errors now point at `docker compose logs api` and `docker compose pull && docker compose up -d` instead of the old per-service containers and database container. Signed-in devices read "Chrome on Windows" instead of a cut-off browser string, Share and Delete sit on one row under a quiz or lesson, and the exam countdown no longer makes a failing request before you pick a date.
 - **Rollback point for the 2026-10-25 improvement run:** branch `revert/pre-improvement-2026-10-25` at `a4a868e`, documented in `docs/ROLLBACK.md`.
+- **Security: dependency updates.** Next.js 16.4.3 (fixes two critical and one high advisory, including remote code execution in image optimization and `use cache`), Fastify 5.12.6, zod 4.6.6 and patched transitive packages (body-parser, fast-uri, ip-address). `pnpm audit --prod` now reports no known vulnerabilities. No migrations.
 
 ## 1.0.0 (2026-10-04)
 First complete release. All nine roadmap phases are in.

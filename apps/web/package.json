@@ -18,7 +18,7 @@
     "@ultimyr/tagging": "workspace:^",
     "@ultimyr/ui-icons": "workspace:^",
     "lucide-react": "^1.51.0",
-    "next": "^16.3.8",
+    "next": "^16.4.3",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

@@ -11,12 +11,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@ultimyr/authz": "workspace:^",
     "@ultimyr/config": "workspace:^",
     "@ultimyr/coverage": "workspace:^",
-    "fastify": "^5.12.5",
-    "zod": "^4.6.5"
+    "fastify": "^5.12.7",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@ultimyr/service-kit": "workspace:^"
